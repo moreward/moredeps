@@ -51,47 +51,15 @@ if [[ ${valid} -eq 0 ]]; then
   exit 1
 fi
 
-# Validate toolchain file exists.
+# Validate the toolchain file exists.
 TOOLCHAIN="${REPO_ROOT}/toolchain/${PLATFORM}.cmake"
 if [[ ! -f "${TOOLCHAIN}" ]]; then
   echo "Error: toolchain file not found: ${TOOLCHAIN}"
   exit 1
 fi
 
-# Validate host capability for the requested platform.
-case "${PLATFORM}" in
-  macos_arm64)
-    if [[ "$(uname -s)" != "Darwin" ]]; then
-      echo "Error: macos_arm64 can only be built on macOS."
-      exit 1
-    fi
-    ;;
-  windows_x64|windows_arm64)
-    echo "Note: Windows builds require MSVC or clang-cl in the environment."
-    ;;
-  linux_x64)
-    if command -v gcc &>/dev/null; then
-      : # ok
-    else
-      echo "Warning: gcc not found in PATH."
-    fi
-    ;;
-  linux_arm64)
-    if command -v aarch64-linux-gnu-gcc &>/dev/null; then
-      : # ok
-    else
-      echo "Warning: aarch64-linux-gnu-gcc not found in PATH."
-    fi
-    ;;
-  wasm_emscripten)
-    if command -v emcc &>/dev/null; then
-      : # ok
-    else
-      echo "Error: emcc not found in PATH."
-      exit 1
-    fi
-    ;;
-esac
+# Validate the host environment.
+"${SCRIPT_DIR}/validate_dev_env.sh" "${PLATFORM}"
 
 BUILD_DIR="${REPO_ROOT}/_b/${PLATFORM}"
 OUT_DIR="${REPO_ROOT}/_out/${PLATFORM}"
@@ -104,12 +72,23 @@ echo "======================================================================"
 
 mkdir -p "${BUILD_DIR}"
 
-# Configure the top-level super-project. We use Unix Makefiles for portability
-# (ExternalProject with Makefiles avoids needing explicit BUILD_BYPRODUCTS).
+# Pick a generator that works on the host/target combination.
+GENERATOR="Unix Makefiles"
+if [[ "${PLATFORM}" == windows_* ]]; then
+  if command -v ninja &> /dev/null; then
+    GENERATOR="Ninja"
+  elif command -v jom &> /dev/null; then
+    GENERATOR="NMake Makefiles JOM"
+  else
+    GENERATOR="NMake Makefiles"
+  fi
+fi
+
+# Configure the top-level super-project if it has not been configured yet.
 if [[ ! -f "${BUILD_DIR}/CMakeCache.txt" ]]; then
   cmake -S "${REPO_ROOT}" \
         -B "${BUILD_DIR}" \
-        -G "Unix Makefiles" \
+        -G "${GENERATOR}" \
         -DCMAKE_TOOLCHAIN_FILE="${TOOLCHAIN}" \
         -DCMAKE_BUILD_TYPE=Release
 fi

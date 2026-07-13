@@ -107,7 +107,60 @@ The macOS arm64 build now produces 66 static libraries.
 
 ---
 
-## 2026-07-12 (later still) — Ghostty implemented for macOS arm64
+## 2026-07-12 (latest) — Skribidi deps pinned, Emscripten exclusions, build scripts
+
+### Skribidi reproducibility fix
+
+- Added `deps/SheenBidi`, `deps/libunibreak`, `deps/budouxc`, and `deps/imgui` as top-level submodules, all pinned to the commits expected by the current `skribidi`/`cimgui` revisions.
+- Updated `deps/harfbuzz` to `11.0.0` (matching what `skribidi` upstream expects).
+- Created `src/libunibreak/` and `src/budouxc/` wrappers to build these deps with correct CMake install rules.
+- Replaced the `skribidi` build-tree-copy + Python patch approach with a clean `src/skribidi/` wrapper that depends on `harfbuzz`, `SheenBidi`, `libunibreak`, and `budouxc`.
+- Removed `scripts/patch_skribidi.py` since it is no longer needed.
+- Result: `skribidi` no longer fetches anything at build time; it is fully air-gap compatible.
+
+### cimgui / imgui
+
+- `cimgui` wrapper now uses the top-level `deps/imgui` submodule instead of the nested `cimgui/imgui` submodule.
+- `README.md` updated to note that `--recursive` is no longer required.
+
+### Emscripten exclusions
+
+- Gated `enet`, `libwebsockets`, `reproc`, and `tinycsocket` on `if(NOT EMSCRIPTEN)` in `CMakeLists.txt` because they rely on platform APIs not available in the browser.
+- Documented these exclusions in `docs/build_plan.md` and `docs/build_options.md`.
+- Verified the full `wasm_emscripten` clean build still succeeds; artifacts now exclude the four network/process libraries.
+
+### raylib on Emscripten
+
+- Validated that `raylib` builds with `PLATFORM=Web` on Emscripten and that a downstream test program links successfully with `-sUSE_GLFW=3`.
+- Documented the `-sUSE_GLFW=3` requirement in `docs/build_options.md`.
+
+### Build scripts
+
+- Created `scripts/clean_all.sh` to remove `_b/` and `_out/`.
+- Created `scripts/validate_dev_env.sh` to check for required tools per platform and print actionable guidance when something is missing.
+- Updated `scripts/build_all.sh` to call `validate_dev_env.sh` and to select the right CMake generator on Windows (Ninja, JOM, or NMake Makefiles).
+
+### Linux cross-compilation
+
+- Updated `toolchain/linux_arm64.cmake` to auto-detect the cross compiler's sysroot via `gcc -print-sysroot` and set `CMAKE_SYSROOT` when a real sysroot is reported.
+
+### Documentation
+
+- Added `docs/build_plan.md` section 3.6 describing Windows build machine requirements (Visual Studio 2022, Ninja, etc.).
+- Added `budouxc`, `SheenBidi`, `libunibreak`, and `raylib` sections to `docs/build_options.md`.
+- Updated `skribidi`, `curl`, and `tinycsocket` notes in `docs/build_options.md`.
+- Updated `README.md` to list the new scripts and the updated submodule layout.
+
+### Validation
+
+- Full clean `macos_arm64` build succeeded (67 static libraries).
+- Full clean `wasm_emscripten` build succeeded (56 static libraries, excluding the newly gated network/process deps).
+- All submodules remained clean after the builds.
+
+### Next steps
+- Apply any further user comments before moving to Linux/Windows validation.
+- Validate `linux_x64` / `linux_arm64` on a Linux host.
+- Validate `windows_x64` / `windows_arm64` on the arm64 Windows VM.
 
 - Added `src/ghostty/CMakeLists.txt` wrapper:
   - Copies `deps/ghostty` to the build tree to keep the submodule clean.

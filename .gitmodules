@@ -154,3 +154,15 @@
 [submodule "deps/dawn_third_party/webgpu-headers/src"]
 	path = deps/dawn_third_party/webgpu-headers/src
 	url = https://chromium.googlesource.com/external/github.com/webgpu-native/webgpu-headers
+[submodule "deps/SheenBidi"]
+	path = deps/SheenBidi
+	url = https://github.com/Tehreer/SheenBidi.git
+[submodule "deps/libunibreak"]
+	path = deps/libunibreak
+	url = https://github.com/adah1972/libunibreak.git
+[submodule "deps/budouxc"]
+	path = deps/budouxc
+	url = https://github.com/memononen/budouxc.git
+[submodule "deps/imgui"]
+	path = deps/imgui
+	url = https://github.com/ocornut/imgui.git

@@ -180,6 +180,13 @@ moredeps_add_dep(cimgui
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/cimgui"
 )
 
+# --- budouxc ---
+# Upstream CMakeLists includes GNUInstallDirs after add_subdirectory(src), so
+# CMAKE_INSTALL_LIBDIR is empty during install. We wrap it to avoid patching.
+moredeps_add_dep(budouxc
+  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/budouxc"
+)
+
 # --- cJSON ---
 moredeps_add_dep(cJSON
   CMAKE_ARGS
@@ -284,14 +291,17 @@ moredeps_add_dep(dawn
 )
 
 # --- enet ---
-moredeps_add_dep(enet
-  CMAKE_ARGS
-    "-DENET_STATIC=ON"
-    "-DENET_SHARED=OFF"
-    "-DENET_TEST=OFF"
-    "-DENET_USE_MORE_PEERS=OFF"
-    "-DENET_IPV4_ONLY=OFF"
-)
+# UDP networking; not usable in a browser.
+if(NOT EMSCRIPTEN)
+  moredeps_add_dep(enet
+    CMAKE_ARGS
+      "-DENET_STATIC=ON"
+      "-DENET_SHARED=OFF"
+      "-DENET_TEST=OFF"
+      "-DENET_USE_MORE_PEERS=OFF"
+      "-DENET_IPV4_ONLY=OFF"
+  )
+endif()
 
 # --- flecs ---
 moredeps_add_dep(flecs
@@ -351,139 +361,147 @@ moredeps_add_dep(harfbuzz
 )
 
 # --- libwebsockets ---
-# Uses BoringSSL from the common prefix.
-if(WIN32)
-  set(_LWS_SSL_LIBS "${CMAKE_INSTALL_PREFIX}/lib/ssl.lib;${CMAKE_INSTALL_PREFIX}/lib/crypto.lib")
-else()
-  set(_LWS_SSL_LIBS "${CMAKE_INSTALL_PREFIX}/lib/libssl.a;${CMAKE_INSTALL_PREFIX}/lib/libcrypto.a")
+# Uses BoringSSL from the common prefix. BSD sockets are not available in a browser.
+if(NOT EMSCRIPTEN)
+  if(WIN32)
+    set(_LWS_SSL_LIBS "${CMAKE_INSTALL_PREFIX}/lib/ssl.lib;${CMAKE_INSTALL_PREFIX}/lib/crypto.lib")
+  else()
+    set(_LWS_SSL_LIBS "${CMAKE_INSTALL_PREFIX}/lib/libssl.a;${CMAKE_INSTALL_PREFIX}/lib/libcrypto.a")
+  endif()
+  moredeps_add_dep(libwebsockets
+    DEPENDS boringssl
+    CMAKE_ARGS
+      "-DLWS_WITH_STATIC=ON"
+      "-DLWS_WITH_SHARED=OFF"
+      "-DLWS_WITHOUT_TESTAPPS=ON"
+      "-DLWS_WITHOUT_TEST_SERVER=ON"
+      "-DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON"
+      "-DLWS_WITHOUT_TEST_PING=ON"
+      "-DLWS_WITHOUT_TEST_CLIENT=ON"
+      "-DLWS_WITH_MINIMAL_EXAMPLES=OFF"
+      "-DLWS_WITH_SSL=ON"
+      "-DLWS_WITH_BORINGSSL=ON"
+      "-DLWS_OPENSSL_INCLUDE_DIRS=${CMAKE_INSTALL_PREFIX}/include"
+      "-DLWS_OPENSSL_LIBRARIES=${_LWS_SSL_LIBS}"
+      "-DDISABLE_WERROR=ON"
+      "-DLWS_HAVE_RSA_SET0_KEY=ON"
+      "-DLWS_HAVE_ECDSA_SIG_get0=ON"
+      "-DLWS_HAVE_ECDSA_SIG_set0=ON"
+      "-DLWS_HAVE_BN_bn2binpad=ON"
+      "-DLWS_WITH_MBEDTLS=OFF"
+      "-DLWS_WITH_WOLFSSL=OFF"
+      "-DLWS_WITH_ZLIB=OFF"
+      "-DLWS_WITH_LIBUV=OFF"
+      "-DLWS_WITH_LIBEV=OFF"
+      "-DLWS_WITH_LIBEVENT=OFF"
+      "-DLWS_WITH_GL=OFF"
+      "-DLWS_WITH_SMTP=OFF"
+      "-DLWS_WITH_SPAWN=OFF"
+      "-DLWS_WITH_FSMOUNT=OFF"
+      "-DLWS_WITH_OTA=OFF"
+      "-DLWS_WITH_LEJP=OFF"
+      "-DLWS_WITH_LHP=OFF"
+      "-DLWS_WITH_JSONRPC=OFF"
+      "-DLWS_WITH_CONMON=OFF"
+      "-DLWS_WITH_WOL=OFF"
+      "-DLWS_WITH_CACHE_NSCOOKIEJAR=OFF"
+      "-DLWS_WITH_NETLINK=OFF"
+      "-DLWS_WITH_BINDTODEVICE=OFF"
+      "-DLWS_WITH_LIBCAP=OFF"
+      "-DLWS_WITH_SECURE_STREAMS=OFF"
+      "-DLWS_WITH_HTTP_STREAM_COMPRESSION=OFF"
+      "-DLWS_WITH_HTTP_BROTLI=OFF"
+      "-DLWS_WITH_JOSE=OFF"
+      "-DLWS_WITH_COSE=OFF"
+      "-DLWS_WITH_GENCRYPTO=OFF"
+      "-DLWS_WITH_SQLITE3=OFF"
+      "-DLWS_WITH_STRUCT_JSON=OFF"
+      "-DLWS_WITH_STRUCT_SQLITE3=OFF"
+      "-DLWS_WITH_DRIVERS=OFF"
+      "-DLWS_WITH_CBOR=OFF"
+      "-DLWS_WITH_ALLOC_METADATA_LWS=OFF"
+      "-DLWS_WITH_COMPRESSED_BACKTRACES=OFF"
+      "-DLWS_WITH_DISKCACHE=OFF"
+      "-DLWS_WITH_LWS_DSH=OFF"
+      "-DLWS_WITH_PLUGINS_API=OFF"
+      "-DLWS_WITH_EVLIB_PLUGINS=OFF"
+      "-DLWS_WITH_GCOV=OFF"
+      "-DLWS_WITH_ASAN=OFF"
+      "-DLWS_WITH_FANALYZER=OFF"
+      "-DLWS_WITH_NO_LOGS=OFF"
+      "-DLWS_WITH_UDP=ON"
+      "-DLWS_CLIENT_HTTP_PROXYING=ON"
+      "-DLWS_WITH_FILE_OPS=ON"
+      "-DLWS_WITH_CUSTOM_HEADERS=ON"
+      "-DLWS_WITH_LWSAC=ON"
+      "-DLWS_WITH_EXTERNAL_POLL=OFF"
+      "-DLWS_WITH_TLS_JIT_TRUST=OFF"
+      "-DLWS_WITH_SELFTESTS=OFF"
+      "-DLWS_WITH_SYS_FAULT_INJECTION=OFF"
+      "-DLWS_WITH_SYS_METRICS=OFF"
+      "-DLWS_WITH_SYS_STATE=ON"
+      "-DLWS_WITH_SYS_SMD=ON"
+      "-DLWS_WITH_UPNG=ON"
+      "-DLWS_WITH_GZINFLATE=ON"
+      "-DLWS_WITH_JPEG=ON"
+      "-DLWS_WITH_DLO=ON"
+      "-DLWS_HTTP_HEADERS_ALL=OFF"
+      "-DLWS_WITH_SUL_DEBUGGING=OFF"
+      "-DLWS_WITH_WAKE_LOGGING=OFF"
+      "-DLWS_WITH_MCUFONT_ENCODER=OFF"
+      "-DLWS_WITH_COMPRESSED_BACKTRACES=OFF"
+      "-DLWS_MSVC_STATIC_RUNTIME=OFF"
+      "-DLWS_REPRODUCIBLE=ON"
+      "-DLWS_WITH_EXPORT_LWSTARGETS=ON"
+      "-DLWS_WITHOUT_EXTENSIONS=ON"
+      "-DLWS_WITHOUT_DAEMONIZE=ON"
+      "-DLWS_WITHOUT_BUILTIN_SHA1=OFF"
+      "-DLWS_FALLBACK_GETHOSTBYNAME=OFF"
+      "-DLWS_AVOID_SIGPIPE_IGN=OFF"
+      "-DLWS_WITH_NETWORK=ON"
+      "-DLWS_ROLE_H1=ON"
+      "-DLWS_ROLE_WS=ON"
+      "-DLWS_ROLE_MQTT=OFF"
+      "-DLWS_ROLE_DBUS=OFF"
+      "-DLWS_ROLE_RAW_PROXY=OFF"
+      "-DLWS_ROLE_RAW_FILE=ON"
+      "-DLWS_WITH_HTTP2=ON"
+      "-DLWS_WITH_LWSWS=OFF"
+      "-DLWS_WITH_CGI=OFF"
+      "-DLWS_IPV6=ON"
+      "-DLWS_UNIX_SOCK=ON"
+      "-DLWS_WITH_PLUGINS=OFF"
+      "-DLWS_WITH_PLUGINS_BUILTIN=OFF"
+      "-DLWS_WITH_HTTP_PROXY=OFF"
+      "-DLWS_WITH_ZIP_FOPS=OFF"
+      "-DLWS_WITH_SOCKS5=OFF"
+      "-DLWS_WITH_PEER_LIMITS=OFF"
+      "-DLWS_WITH_RANGES=OFF"
+      "-DLWS_WITH_THREADPOOL=OFF"
+      "-DLWS_WITH_ACME=OFF"
+      "-DLWS_WITH_HUBBUB=OFF"
+      "-DLWS_WITH_ALSA=OFF"
+      "-DLWS_WITH_GTK=OFF"
+      "-DLWS_WITH_FTS=OFF"
+      "-DLWS_WITH_SYS_ASYNC_DNS=OFF"
+      "-DLWS_WITH_SYS_NTPCLIENT=OFF"
+      "-DLWS_WITH_SYS_DHCP_CLIENT=OFF"
+      "-DLWS_WITH_HTTP_BASIC_AUTH=ON"
+      "-DLWS_WITH_HTTP_DIGEST_AUTH=ON"
+      "-DLWS_WITH_HTTP_UNCOMMON_HEADERS=ON"
+      "-DLWS_WITH_TLS_SESSIONS=ON"
+      "-DLWS_SSL_CLIENT_USE_OS_CA_CERTS=ON"
+      "-DLWS_TLS_LOG_PLAINTEXT_RX=OFF"
+      "-DLWS_TLS_LOG_PLAINTEXT_TX=OFF"
+      "-DLWS_WITHOUT_CLIENT=OFF"
+      "-DLWS_WITHOUT_SERVER=OFF"
+  )
 endif()
-moredeps_add_dep(libwebsockets
-  DEPENDS boringssl
-  CMAKE_ARGS
-    "-DLWS_WITH_STATIC=ON"
-    "-DLWS_WITH_SHARED=OFF"
-    "-DLWS_WITHOUT_TESTAPPS=ON"
-    "-DLWS_WITHOUT_TEST_SERVER=ON"
-    "-DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON"
-    "-DLWS_WITHOUT_TEST_PING=ON"
-    "-DLWS_WITHOUT_TEST_CLIENT=ON"
-    "-DLWS_WITH_MINIMAL_EXAMPLES=OFF"
-    "-DLWS_WITH_SSL=ON"
-    "-DLWS_WITH_BORINGSSL=ON"
-    "-DLWS_OPENSSL_INCLUDE_DIRS=${CMAKE_INSTALL_PREFIX}/include"
-    "-DLWS_OPENSSL_LIBRARIES=${_LWS_SSL_LIBS}"
-    "-DDISABLE_WERROR=ON"
-    "-DLWS_HAVE_RSA_SET0_KEY=ON"
-    "-DLWS_HAVE_ECDSA_SIG_get0=ON"
-    "-DLWS_HAVE_ECDSA_SIG_set0=ON"
-    "-DLWS_HAVE_BN_bn2binpad=ON"
-    "-DLWS_WITH_MBEDTLS=OFF"
-    "-DLWS_WITH_WOLFSSL=OFF"
-    "-DLWS_WITH_ZLIB=OFF"
-    "-DLWS_WITH_LIBUV=OFF"
-    "-DLWS_WITH_LIBEV=OFF"
-    "-DLWS_WITH_LIBEVENT=OFF"
-    "-DLWS_WITH_GL=OFF"
-    "-DLWS_WITH_SMTP=OFF"
-    "-DLWS_WITH_SPAWN=OFF"
-    "-DLWS_WITH_FSMOUNT=OFF"
-    "-DLWS_WITH_OTA=OFF"
-    "-DLWS_WITH_LEJP=OFF"
-    "-DLWS_WITH_LHP=OFF"
-    "-DLWS_WITH_JSONRPC=OFF"
-    "-DLWS_WITH_CONMON=OFF"
-    "-DLWS_WITH_WOL=OFF"
-    "-DLWS_WITH_CACHE_NSCOOKIEJAR=OFF"
-    "-DLWS_WITH_NETLINK=OFF"
-    "-DLWS_WITH_BINDTODEVICE=OFF"
-    "-DLWS_WITH_LIBCAP=OFF"
-    "-DLWS_WITH_SECURE_STREAMS=OFF"
-    "-DLWS_WITH_HTTP_STREAM_COMPRESSION=OFF"
-    "-DLWS_WITH_HTTP_BROTLI=OFF"
-    "-DLWS_WITH_JOSE=OFF"
-    "-DLWS_WITH_COSE=OFF"
-    "-DLWS_WITH_GENCRYPTO=OFF"
-    "-DLWS_WITH_SQLITE3=OFF"
-    "-DLWS_WITH_STRUCT_JSON=OFF"
-    "-DLWS_WITH_STRUCT_SQLITE3=OFF"
-    "-DLWS_WITH_DRIVERS=OFF"
-    "-DLWS_WITH_CBOR=OFF"
-    "-DLWS_WITH_ALLOC_METADATA_LWS=OFF"
-    "-DLWS_WITH_COMPRESSED_BACKTRACES=OFF"
-    "-DLWS_WITH_DISKCACHE=OFF"
-    "-DLWS_WITH_LWS_DSH=OFF"
-    "-DLWS_WITH_PLUGINS_API=OFF"
-    "-DLWS_WITH_EVLIB_PLUGINS=OFF"
-    "-DLWS_WITH_GCOV=OFF"
-    "-DLWS_WITH_ASAN=OFF"
-    "-DLWS_WITH_FANALYZER=OFF"
-    "-DLWS_WITH_NO_LOGS=OFF"
-    "-DLWS_WITH_UDP=ON"
-    "-DLWS_CLIENT_HTTP_PROXYING=ON"
-    "-DLWS_WITH_FILE_OPS=ON"
-    "-DLWS_WITH_CUSTOM_HEADERS=ON"
-    "-DLWS_WITH_LWSAC=ON"
-    "-DLWS_WITH_EXTERNAL_POLL=OFF"
-    "-DLWS_WITH_TLS_JIT_TRUST=OFF"
-    "-DLWS_WITH_SELFTESTS=OFF"
-    "-DLWS_WITH_SYS_FAULT_INJECTION=OFF"
-    "-DLWS_WITH_SYS_METRICS=OFF"
-    "-DLWS_WITH_SYS_STATE=ON"
-    "-DLWS_WITH_SYS_SMD=ON"
-    "-DLWS_WITH_UPNG=ON"
-    "-DLWS_WITH_GZINFLATE=ON"
-    "-DLWS_WITH_JPEG=ON"
-    "-DLWS_WITH_DLO=ON"
-    "-DLWS_HTTP_HEADERS_ALL=OFF"
-    "-DLWS_WITH_SUL_DEBUGGING=OFF"
-    "-DLWS_WITH_WAKE_LOGGING=OFF"
-    "-DLWS_WITH_MCUFONT_ENCODER=OFF"
-    "-DLWS_WITH_COMPRESSED_BACKTRACES=OFF"
-    "-DLWS_MSVC_STATIC_RUNTIME=OFF"
-    "-DLWS_REPRODUCIBLE=ON"
-    "-DLWS_WITH_EXPORT_LWSTARGETS=ON"
-    "-DLWS_WITHOUT_EXTENSIONS=ON"
-    "-DLWS_WITHOUT_DAEMONIZE=ON"
-    "-DLWS_WITHOUT_BUILTIN_SHA1=OFF"
-    "-DLWS_FALLBACK_GETHOSTBYNAME=OFF"
-    "-DLWS_AVOID_SIGPIPE_IGN=OFF"
-    "-DLWS_WITH_NETWORK=ON"
-    "-DLWS_ROLE_H1=ON"
-    "-DLWS_ROLE_WS=ON"
-    "-DLWS_ROLE_MQTT=OFF"
-    "-DLWS_ROLE_DBUS=OFF"
-    "-DLWS_ROLE_RAW_PROXY=OFF"
-    "-DLWS_ROLE_RAW_FILE=ON"
-    "-DLWS_WITH_HTTP2=ON"
-    "-DLWS_WITH_LWSWS=OFF"
-    "-DLWS_WITH_CGI=OFF"
-    "-DLWS_IPV6=ON"
-    "-DLWS_UNIX_SOCK=ON"
-    "-DLWS_WITH_PLUGINS=OFF"
-    "-DLWS_WITH_PLUGINS_BUILTIN=OFF"
-    "-DLWS_WITH_HTTP_PROXY=OFF"
-    "-DLWS_WITH_ZIP_FOPS=OFF"
-    "-DLWS_WITH_SOCKS5=OFF"
-    "-DLWS_WITH_PEER_LIMITS=OFF"
-    "-DLWS_WITH_RANGES=OFF"
-    "-DLWS_WITH_THREADPOOL=OFF"
-    "-DLWS_WITH_ACME=OFF"
-    "-DLWS_WITH_HUBBUB=OFF"
-    "-DLWS_WITH_ALSA=OFF"
-    "-DLWS_WITH_GTK=OFF"
-    "-DLWS_WITH_FTS=OFF"
-    "-DLWS_WITH_SYS_ASYNC_DNS=OFF"
-    "-DLWS_WITH_SYS_NTPCLIENT=OFF"
-    "-DLWS_WITH_SYS_DHCP_CLIENT=OFF"
-    "-DLWS_WITH_HTTP_BASIC_AUTH=ON"
-    "-DLWS_WITH_HTTP_DIGEST_AUTH=ON"
-    "-DLWS_WITH_HTTP_UNCOMMON_HEADERS=ON"
-    "-DLWS_WITH_TLS_SESSIONS=ON"
-    "-DLWS_SSL_CLIENT_USE_OS_CA_CERTS=ON"
-    "-DLWS_TLS_LOG_PLAINTEXT_RX=OFF"
-    "-DLWS_TLS_LOG_PLAINTEXT_TX=OFF"
-    "-DLWS_WITHOUT_CLIENT=OFF"
-    "-DLWS_WITHOUT_SERVER=OFF"
+
+# --- libunibreak ---
+# Makefile-only upstream; wrapped to provide CMake install rules.
+moredeps_add_dep(libunibreak
+  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/libunibreak"
 )
 
 # --- mimalloc ---
@@ -574,10 +592,13 @@ if(NOT EMSCRIPTEN)
 endif()
 
 # --- reproc ---
-moredeps_add_dep(reproc
-  CMAKE_ARGS
-    "-DREPROC_MULTITHREADED=ON"
-)
+# Process spawning is not supported on the web.
+if(NOT EMSCRIPTEN)
+  moredeps_add_dep(reproc
+    CMAKE_ARGS
+      "-DREPROC_MULTITHREADED=ON"
+  )
+endif()
 
 # --- sdl3 ---
 moredeps_add_dep(sdl3
@@ -624,30 +645,22 @@ if(NOT EMSCRIPTEN)
   )
 endif()
 
-# --- skribidi ---
-# Upstream CMakeLists fetches its own harfbuzz/SheenBidi/libunibreak/budouxc
-# and sets CMAKE_COMPILE_WARNING_AS_ERROR globally. We build it from a copy
-# of the source in the build tree so the submodule stays clean, and patch the
-# warning-as-error setting in the copy only.
-set(_SKRIBIDI_SRC_COPY "${CMAKE_BINARY_DIR}/skribidi_src_copy")
-set(_SKRIBIDI_PATCH_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/scripts/patch_skribidi.py")
-ExternalProject_Add(
-  skribidi
-  DOWNLOAD_COMMAND
-    ${CMAKE_COMMAND} -E rm -rf ${_SKRIBIDI_SRC_COPY}
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-      ${CMAKE_CURRENT_SOURCE_DIR}/deps/skribidi
-      ${_SKRIBIDI_SRC_COPY}
-  SOURCE_DIR ${_SKRIBIDI_SRC_COPY}
-  BINARY_DIR "${CMAKE_BINARY_DIR}/skribidi"
-  INSTALL_DIR "${CMAKE_INSTALL_PREFIX}"
-  PATCH_COMMAND
-    python3 ${_SKRIBIDI_PATCH_SCRIPT} ${_SKRIBIDI_SRC_COPY}
+# --- SheenBidi ---
+moredeps_add_dep(SheenBidi
   CMAKE_ARGS
-    ${MOREDEPS_COMMON_CMAKE_ARGS}
-    "-DSKRIBIDI_EXAMPLE=OFF"
-    "-DSKRIBIDI_UNIT_TESTS=OFF"
-    "-DENABLE_ASAN=OFF"
+    "-DBUILD_TESTING=OFF"
+    "-DSB_CONFIG_UNITY=ON"
+)
+
+# --- skribidi ---
+# Upstream fetches its own harfbuzz/SheenBidi/libunibreak/budouxc and sets
+# global CMAKE_COMPILE_WARNING_AS_ERROR=ON. We instead build it from a wrapper
+# that depends on the libraries already built by this project.
+moredeps_add_dep(skribidi
+  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/skribidi"
+  DEPENDS harfbuzz SheenBidi libunibreak budouxc
+  CMAKE_ARGS
+    "-DCMAKE_PREFIX_PATH=${CMAKE_INSTALL_PREFIX}"
 )
 
 # --- sqlite-amalgamation ---
@@ -673,14 +686,17 @@ moredeps_add_dep(sqlite-amalgamation
 # --- tinycsocket ---
 # Upstream CMake builds the library but has no install target. We wrap it
 # to add install rules without patching the submodule.
-moredeps_add_dep(tinycsocket
-  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/tinycsocket"
-  CMAKE_ARGS
-    "-DTCS_ENABLE_TESTS=OFF"
-    "-DTCS_ENABLE_EXAMPLES=OFF"
-    "-DTCS_WARNINGS_AS_ERRORS=OFF"
-    "-DTCS_GENERATE_COVERAGE=OFF"
-)
+# BSD sockets are not available in a browser, so exclude on Emscripten.
+if(NOT EMSCRIPTEN)
+  moredeps_add_dep(tinycsocket
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/tinycsocket"
+    CMAKE_ARGS
+      "-DTCS_ENABLE_TESTS=OFF"
+      "-DTCS_ENABLE_EXAMPLES=OFF"
+      "-DTCS_WARNINGS_AS_ERRORS=OFF"
+      "-DTCS_GENERATE_COVERAGE=OFF"
+  )
+endif()
 
 # --- tracy ---
 moredeps_add_dep(tracy

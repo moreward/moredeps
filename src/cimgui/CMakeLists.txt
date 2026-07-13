@@ -2,23 +2,24 @@ cmake_minimum_required(VERSION 3.25)
 project(cimgui LANGUAGES CXX)
 
 set(CIMGUI_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../deps/cimgui")
+set(IMGUI_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../deps/imgui")
 
 set(CIMGUI_SOURCES
   ${CIMGUI_SRC_DIR}/cimgui.cpp
-  ${CIMGUI_SRC_DIR}/imgui/imgui.cpp
-  ${CIMGUI_SRC_DIR}/imgui/imgui_demo.cpp
-  ${CIMGUI_SRC_DIR}/imgui/imgui_draw.cpp
-  ${CIMGUI_SRC_DIR}/imgui/imgui_widgets.cpp
+  ${IMGUI_SRC_DIR}/imgui.cpp
+  ${IMGUI_SRC_DIR}/imgui_demo.cpp
+  ${IMGUI_SRC_DIR}/imgui_draw.cpp
+  ${IMGUI_SRC_DIR}/imgui_widgets.cpp
 )
 # Newer ImGui versions include imgui_tables.cpp; include it if present.
-if(EXISTS ${CIMGUI_SRC_DIR}/imgui/imgui_tables.cpp)
-  list(APPEND CIMGUI_SOURCES ${CIMGUI_SRC_DIR}/imgui/imgui_tables.cpp)
+if(EXISTS ${IMGUI_SRC_DIR}/imgui_tables.cpp)
+  list(APPEND CIMGUI_SOURCES ${IMGUI_SRC_DIR}/imgui_tables.cpp)
 endif()
 
 add_library(cimgui STATIC ${CIMGUI_SOURCES})
 target_include_directories(cimgui PUBLIC
   $<BUILD_INTERFACE:${CIMGUI_SRC_DIR}>
-  $<BUILD_INTERFACE:${CIMGUI_SRC_DIR}/imgui>
+  $<BUILD_INTERFACE:${IMGUI_SRC_DIR}>
   $<INSTALL_INTERFACE:include>
 )
 target_compile_definitions(cimgui PUBLIC

@@ -53,6 +53,7 @@ Legend:
 | Dep | Build system | Category | Build approach in this repo | Known exclusions / notes |
 |---|---|---|---|---|
 | `box3d` | CMake | C | `ExternalProject_Add` | None known. |
+| `budouxc` | CMake | C | `src/budouxc/` wrapper | Upstream CMakeLists has broken install paths; wrapper builds from source. |
 | `cglm` | CMake | C | `ExternalProject_Add` | None known. |
 | `cgltf` | Header-only | H | `src/cgltf/` wrapper | None known. |
 | `cimgui` | CMake / Makefile | C++ wrapper | `src/cimgui/` wrapper | Upstream `CMakeLists.txt` hard-codes `SHARED`; we build static from source. |
@@ -67,8 +68,9 @@ Legend:
 | `ghostty` | Zig build | Z | `src/ghostty/` wrapper | macOS only; extracts `libghostty.a` from the xcframework produced by `zig build`. |
 | `glfw` | CMake | C | `ExternalProject_Add` | Excluded on `wasm_emscripten`. |
 | `harfbuzz` | CMake | C | `ExternalProject_Add` | `HB_HAVE_FREETYPE=ON`; built after FreeType. |
-| `libwebsockets` | CMake | C | `ExternalProject_Add` | BoringSSL; feature-detection flags forced for BoringSSL compatibility. |
-| `lua-5.5.0` | Makefile | M | `src/lua/` wrapper | Built as C. |
+| `libwebsockets` | CMake | C | `ExternalProject_Add` | BoringSSL; feature-detection flags forced for BoringSSL compatibility. **Excluded on `wasm_emscripten`.** |
+| `libunibreak` | Makefile | M | `src/libunibreak/` wrapper | No upstream CMake; wrapper builds from source. |
+| `lua-5.5.0` | Makefile | M | `src/lua/` wrapper | Built as C. **Excluded on `wasm_emscripten`.** |
 | `lz4` | CMake (in `build/cmake`) | C | `ExternalProject_Add` via `deps/lz4/build/cmake` | None known. |
 | `microui` | Single `.c` + header | H | `src/microui/` wrapper | None known. |
 | `mimalloc` | CMake | C | `ExternalProject_Add` | None known. |
@@ -83,7 +85,8 @@ Legend:
 | `reproc` | CMake | C | `ExternalProject_Add` | None known. |
 | `sdl3` | CMake | C | `ExternalProject_Add` | None known. |
 | `sdl3webgpu` | CMake | C | `src/sdl3webgpu/` wrapper | Excluded on `wasm_emscripten` (emdawnwebgpu type mismatch). |
-| `skribidi` | CMake | C | `ExternalProject_Add` from a build-tree copy | Patched at build time to disable global warning-as-error; submodule stays clean. |
+| `SheenBidi` | CMake | C | `ExternalProject_Add` | Unicode bidi algorithm library. |
+| `skribidi` | CMake | C | `src/skribidi/` wrapper | Depends on `harfbuzz`, `SheenBidi`, `libunibreak`, `budouxc`. Upstream fetches these; we use submodules. |
 | `sokol` | Header-only | H | `src/sokol_<mod>/` wrappers | Per-module static libs. `sokol_app`/`sokol_gfx`/`sokol_glue` use Metal on macOS. |
 | `sokol_gp` | Header-only | H | `src/sokol_gp/` wrapper | Built against the Sokol headers vendored in `deps/sokol_gp/thirdparty`. |
 | `sqlite-amalgamation` | CMake | C | `ExternalProject_Add` | None known. |
@@ -119,9 +122,11 @@ moredeps/
 ├── src/                        # Wrappers for header-only / non-CMake / patched deps
 │   ├── cgltf/
 │   ├── cimgui/                 # static lib wrapper (upstream hard-codes SHARED)
+│   ├── budouxc/                # wrapper; upstream install paths are broken
 │   ├── FastNoiseLite/
 │   ├── fontstash/
 │   ├── ghostty/                # Zig build wrapper; extracts libghostty.a from xcframework
+│   ├── libunibreak/            # Makefile-only wrapper
 │   ├── microui/
 │   ├── miniaudio/
 │   ├── minigamepad/
@@ -166,7 +171,11 @@ moredeps/
 │   ├── build_plan.md
 │   └── build_options.md
 ├── deps/                       # Git submodules (read-only source)
-│   └── dawn_third_party/       # Dawn's external deps as flat submodules
+│   ├── budouxc/                # Skribidi dependency
+│   ├── dawn_third_party/       # Dawn's external deps as flat submodules
+│   ├── imgui/                  # Dear ImGui (used by cimgui wrapper)
+│   ├── libunibreak/            # Skribidi dependency
+│   └── SheenBidi/              # Skribidi dependency
 └── .github/workflows/          # CI (future phase)
 ```
 
@@ -229,7 +238,23 @@ For Windows cross-compilation from macOS/Linux we cannot run MSVC locally, so bu
 - The build script must locate `emcmake`/`emmake` or `emcc`/`em++` and set the Emscripten toolchain file.
 - Emscripten outputs are `.a` static libraries and may be used in downstream CMake projects with `emcc`.
 - **Dawn**: use the Emscripten-specific WebGPU implementation `emdawnwebgpu`.  Do **not** pass `USE_WEBGPU`/`SOKOL_USE_WEBGPU` for the Emscripten target.
-- Some deps (e.g., `glfw`, `reproc`, `tinycsocket`, `mtcc`) will be **excluded** from Emscripten because they use platform APIs not available on the web.
+- Some deps (e.g., `glfw`, `reproc`, `tinycsocket`, `mtcc`, `enet`, `libwebsockets`) will be **excluded** from Emscripten because they use platform APIs not available on the web.
+- `raylib` builds on Emscripten with `PLATFORM=Web`; downstream apps must link with Emscripten's GLFW port (`-sUSE_GLFW=3`).
+
+### 3.6 Windows build machine requirements
+
+Windows builds are currently tested on an arm64 Windows VM. The host must have:
+
+- **Visual Studio 2022** (or Build Tools) with the C++ workload installed.
+  - For `windows_x64`: the MSVC x64/x86 cross-compiler or native x64 compiler.
+  - For `windows_arm64`: the MSVC arm64 compiler (available in VS 2022 17.4+).
+- **CMake** 3.25 or newer.
+- **Ninja** (recommended). `build_all.sh` will use Ninja if it is in PATH; otherwise it falls back to `NMake Makefiles` or `NMake Makefiles JOM` if `jom` is available.
+- **Python 3** (used by some helper scripts).
+
+Run `scripts/build_all.sh` from a **Native Tools Command Prompt** for the desired architecture (e.g., `x64 Native Tools Command Prompt` or `arm64 Native Tools Command Prompt`) so that `cl.exe` and the MSVC environment variables are available.
+
+Because MSVC is not available on macOS or Linux hosts, `windows_x64` and `windows_arm64` cannot be built from this macOS development machine; they must be built on a Windows host or in a Windows CI runner.
 
 ---
 
@@ -243,7 +268,7 @@ For Windows cross-compilation from macOS/Linux we cannot run MSVC locally, so bu
 | `boringssl` | CMake-based build. | Built via `ExternalProject_Add`. Used as the TLS backend for `curl` and `libwebsockets`. `OPENSSL_NO_ASM=ON` on Emscripten. |
 | `lua` | Makefile only, no CMake. | Wrapped in `src/lua/CMakeLists.txt` so the build is driven by CMake. |
 | `cimgui` | Upstream `CMakeLists.txt` hard-codes `SHARED`. | Wrapped in `src/cimgui/CMakeLists.txt` to build a static library from the cimgui/ImGui sources. |
-| `skribidi` | Upstream fetches its own harfbuzz/SheenBidi/libunibreak/budouxc and sets global `CMAKE_COMPILE_WARNING_AS_ERROR=ON`. | Built from a copy of the source in the build tree; `scripts/patch_skribidi.py` disables warning-as-error only in the copy, leaving the submodule untouched. |
+| `skribidi` | Upstream fetches unpinned `harfbuzz`/`SheenBidi`/`libunibreak`/`budouxc`. | Built from `src/skribidi/` wrapper that depends on the pinned submodules under `deps/`. |
 | `curl` | Needs TLS backend. | Use BoringSSL via `CURL_USE_OPENSSL=ON` (BoringSSL is OpenSSL-compatible). |
 | `harfbuzz` | Optional FreeType interdependency. | Build FreeType before HarfBuzz and set `HB_HAVE_FREETYPE=ON` / `FT_DISABLE_HARFBUZZ=OFF`. |
 | `glfw` on Emscripten | GLFW is not used on the web; SDL3 or emscripten HTML5 APIs are used. | **Exclude** from `wasm_emscripten`. |
@@ -251,6 +276,9 @@ For Windows cross-compilation from macOS/Linux we cannot run MSVC locally, so bu
 | `reproc` on Emscripten | Spawning processes is not supported on the web. | **Exclude** from `wasm_emscripten`. |
 | `tinycsocket` on Emscripten | No BSD sockets. | **Exclude** from `wasm_emscripten`. |
 | `enet` on Emscripten | UDP sockets not available in the browser. | **Exclude** from `wasm_emscripten`. |
+| `libwebsockets` on Emscripten | Relies on BSD sockets, not available in the browser. | **Exclude** from `wasm_emscripten`. |
+| `reproc` on Emscripten | Spawning processes is not supported on the web. | **Exclude** from `wasm_emscripten`. |
+| `tinycsocket` on Emscripten | No BSD sockets. | **Exclude** from `wasm_emscripten`. |
 | `minigamepad` on Emscripten | Gamepad API exists but the library may need platform-specific backend. | Evaluate; if not straightforward, **exclude** from `wasm_emscripten`. |
 
 ### 4.1 Dynamic library variants (optional future)

@@ -51,7 +51,9 @@ Set at the top level and inherited by all subdirectories:
 
 ### `cimgui`
 
-`deps/cimgui/CMakeLists.txt` is hard-coded to build a `SHARED` library.  We will therefore **not** call `add_subdirectory(deps/cimgui)` directly; instead we will create a `src/cimgui/` wrapper that compiles `cimgui.cpp` and the ImGui sources as a static library.  This avoids patching the upstream repo.
+`deps/cimgui/CMakeLists.txt` is hard-coded to build a `SHARED` library.  We will therefore **not** call `add_subdirectory(deps/cimgui)` directly; instead we create a `src/cimgui/` wrapper that compiles `cimgui.cpp` and the ImGui sources as a static library.  This avoids patching the upstream repo.
+
+The ImGui sources come from the top-level `deps/imgui` submodule (pinned to the commit expected by the current `cimgui` revision), not from the nested `cimgui/imgui` submodule. This keeps the source tree flatter and avoids relying on nested submodule initialization.
 
 | Wrapper setting | Proposed value | Notes |
 |---|---|---|
@@ -81,6 +83,10 @@ BoringSSL replaces OpenSSL as the single TLS backend for `curl` and `libwebsocke
 | `INSTALL_ENABLED` | `1` | `1` | Keep install enabled for `crypto`/`ssl` targets and headers. |
 
 BoringSSL does not expose an option to disable the `bssl` command-line tool, so it will be built but **not** included in the packaged artifact. Only `libcrypto.a`, `libssl.a`, and the public headers are packaged.
+
+### `budouxc`
+
+Upstream `CMakeLists.txt` includes `GNUInstallDirs` after `add_subdirectory(src)`, so `CMAKE_INSTALL_LIBDIR` is empty during install. We therefore wrap it in `src/budouxc/` to build the library with correct install rules.
 
 ### `curl`
 
@@ -324,6 +330,10 @@ Additionally, `LWS_OPENSSL_LIBRARIES` and `LWS_OPENSSL_INCLUDE_DIRS` are pointed
 
 **Excluded on `wasm_emscripten`**.
 
+### `libunibreak`
+
+Upstream is Makefile/Autotools only. We wrap it in `src/libunibreak/` to build a static library with CMake install rules.
+
 ### `mimalloc`
 
 | Option | Upstream default | Proposed default | Notes |
@@ -394,6 +404,17 @@ Additionally, `LWS_OPENSSL_LIBRARIES` and `LWS_OPENSSL_INCLUDE_DIRS` are pointed
 | `PHYSFS_ARCHIVE_QPAK` | `TRUE` | `FALSE` | Quake QPAK — disable. |
 | `PHYSFS_ARCHIVE_SLB` | `TRUE` | `FALSE` | I-War SLB — disable. |
 | `PHYSFS_ARCHIVE_VDF` | `TRUE` | `FALSE` | Gothic VDF — disable. |
+
+### `raylib`
+
+| Option | Upstream default | Proposed default | Notes |
+|---|---|---|---|
+| `BUILD_EXAMPLES` | `ON` | `OFF` | No examples. |
+| `BUILD_SHARED_LIBS` | `OFF` | `OFF` | Static library. |
+| `USE_EXTERNAL_GLFW` | `OFF`/`IF_POSSIBLE` | `ON` on desktop | Use the `glfw` built by this project. |
+| `OPENGL_VERSION` | varies | `3.3` | Desktop OpenGL version. |
+
+**Emscripten:** built with `PLATFORM=Web`. Downstream apps must link with Emscripten's GLFW port (`-sUSE_GLFW=3`) because we do not build `glfw` for `wasm_emscripten`.
 
 ### `reproc`
 
@@ -494,6 +515,15 @@ Additionally, `LWS_OPENSSL_LIBRARIES` and `LWS_OPENSSL_INCLUDE_DIRS` are pointed
 
 This is a small CMake library.  We will use the upstream `CMakeLists.txt` with `BUILD_SHARED_LIBS=OFF` and no tests/examples.
 
+### `SheenBidi`
+
+Upstream has a native CMake build with install rules. We disable testing.
+
+| Option | Upstream default | Proposed default | Notes |
+|---|---|---|---|
+| `BUILD_TESTING` | `ON` | `OFF` | No tests. |
+| `SB_CONFIG_UNITY` | `ON` | `ON` | Keep unity build. |
+
 ### `ghostty`
 
 Ghostty is built via Zig. The wrapper runs in `src/ghostty/`:
@@ -508,11 +538,13 @@ Ghostty is built via Zig. The wrapper runs in `src/ghostty/`:
 
 ### `skribidi`
 
-| Option | Upstream default | Proposed default | Notes |
-|---|---|---|---|
-| `SKRIBIDI_EXAMPLE` | `ON` | `OFF` | No example. |
-| `SKRIBIDI_UNIT_TESTS` | `ON` | `OFF` | No tests. |
-| `ENABLE_ASAN` | `OFF` | `OFF` | Keep off. |
+Upstream `CMakeLists.txt` fetches its own `harfbuzz`, `SheenBidi`, `libunibreak`, and `budouxc` at build time. We instead build `skribidi` from `src/skribidi/` and link against the pinned submodules under `deps/`.
+
+| Wrapper setting | Value | Notes |
+|---|---|---|
+| Dependencies | `harfbuzz`, `SheenBidi`, `libunibreak`, `budouxc` | All pinned as git submodules. |
+| Library type | `STATIC` | Required for our static-artifact goal. |
+| Source handling | direct from `deps/skribidi` | No build-tree copy or patching required. |
 
 ### `sqlite-amalgamation`
 
@@ -543,6 +575,8 @@ Ghostty is built via Zig. The wrapper runs in `src/ghostty/`:
 | `TCS_ENABLE_EXAMPLES` | `OFF` | `OFF` | No examples. |
 | `TCS_WARNINGS_AS_ERRORS` | `OFF` | `OFF` | Keep off. |
 | `TCS_GENERATE_COVERAGE` | `OFF` | `OFF` | Keep off. |
+
+Upstream writes generated version headers back into its source tree, so `src/tinycsocket/` copies the source into the build tree before invoking the upstream build.
 
 **Excluded on `wasm_emscripten`**.
 
@@ -657,10 +691,12 @@ These dependencies do not have native CMake builds (or the native build is unsui
 
 | Dep | Implementation macro(s) | Notes |
 |---|---|---|
+| `budouxc` | N/A (CMake wrapper) | Upstream CMakeLists has broken install paths; wrapper builds from source. |
 | `cgltf` | `CGLTF_IMPLEMENTATION` | glTF loader. |
-| `cimgui` | N/A (wrapper compiles `cimgui.cpp` + ImGui sources) | Upstream hard-codes `SHARED`; wrapper builds static. |
+| `cimgui` | N/A (wrapper compiles `cimgui.cpp` + ImGui sources) | Upstream hard-codes `SHARED`; wrapper builds static. ImGui sources come from `deps/imgui`. |
 | `FastNoiseLite` | `FNL_IMPLEMENTATION` | C noise library. |
 | `fontstash` | `FONTSTASH_IMPLEMENTATION` | Font rasterization. |
+| `libunibreak` | N/A (Makefile wrapper) | `src/libunibreak/CMakeLists.txt` builds from source. |
 | `microui` | `MUI_IMPLEMENTATION` | Single-source UI. |
 | `miniaudio` (fallback) | `MINIAUDIO_IMPLEMENTATION` | Only if we use the wrapper instead of upstream CMake. |
 | `minigamepad` | `MGP_IMPLEMENTATION` | Gamepad abstraction. |
@@ -681,6 +717,7 @@ These dependencies do not have native CMake builds (or the native build is unsui
 | `ghostty` | Zig | `src/ghostty/CMakeLists.txt` runs `zig build` and extracts `libghostty.a` from the xcframework. **macOS arm64 only.** |
 | `lua-5.5.0` | Makefile | `src/lua/CMakeLists.txt` drives the upstream `make` rules and installs `liblua.a` + headers. |
 | `mtcc` | Makefile | `src/mtcc/CMakeLists.txt` runs `./configure` and `make libtcc.a` in the build tree. **Excluded on `wasm_emscripten`**. |
+| `skribidi` | CMake | `src/skribidi/CMakeLists.txt` builds from `deps/skribidi` and links against the pinned `harfbuzz`, `SheenBidi`, `libunibreak`, and `budouxc` submodules. |
 
 ---
 
@@ -690,6 +727,6 @@ These dependencies do not have native CMake builds (or the native build is unsui
 2. **Dawn Emscripten path:** Resolved. `DAWN_ENABLE_INSTALL=OFF` and `DAWN_BUILD_MONOLITHIC_LIBRARY=OFF` on Emscripten; `scripts/install_dawn.cmake` stages the `emdawnwebgpu` artifacts.
 3. **Sokol / STB module granularity:** Resolved. Each module is a separate static library (`sokol_app`, `sokol_gfx`, `stb_image`, etc.).
 4. **TLS backend:** Resolved. BoringSSL is used everywhere for `curl` and `libwebsockets`.
-5. **Submodules:** All floating submodules are pinned by removing `branch = ...` from `.gitmodules` and committing the resolved submodule commits. `cimgui/imgui` is a nested submodule that must be initialized with `git submodule update --init --recursive`.
+5. **Submodules:** All floating submodules are pinned by removing `branch = ...` from `.gitmodules` and committing the resolved submodule commits. `cimgui` now uses the top-level `deps/imgui` submodule instead of the nested `cimgui/imgui` submodule. `skribidi` dependencies (`harfbuzz`, `SheenBidi`, `libunibreak`, `budouxc`) are all top-level submodules.
 6. **Remaining platforms:** `linux_x64`, `linux_arm64`, `windows_x64`, and `windows_arm64` toolchains are present but not yet validated locally.
 
