@@ -1,19 +1,25 @@
 @echo off
-setlocal enabledelayedanimation
+setlocal enabledelayedexpansion
 
-REM Build mtcc (TinyCC) for Windows x64 with MSVC.
-REM This batch is configured to run from the build-tree copy of the mtcc source.
-REM It produces:
-REM   win32/libtcc.lib   (static library)
-REM   win32/tcc.exe      (compiler, used to build libtcc1.a)
-REM   lib/libtcc1.a      (TCC runtime library)
-REM   include/           (headers)
+REM Build mtcc (TinyCC) for Windows with MSVC.
+REM This batch is configured from build_mtcc_windows.bat.in by CMake.
+REM It runs from the build-tree copy of the mtcc source.
+REM
+REM Expected CMake substitutions:
+REM   @MTCC_ARCH@      = x86_64 or arm64
+REM   @MTCC_TCC_TARGET@ = -DTCC_TARGET_X86_64 or -DTCC_TARGET_ARM64
+REM   @MTCC_MFLAG@     = -m64 or -marm64
+REM   @MTCC_LIBSRCS@   = space-separated list of core source files
+REM   @MTCC_RT_WIN32@  = space-separated runtime files from win32/lib/
+REM   @MTCC_RT_TOP@    = space-separated runtime files from top-level lib/
 
-REM Ensure we are in the mtcc build root (directory containing this script's parent).
 cd /d "%~dp0\.."
 
-set D=-DTCC_TARGET_PE -DTCC_TARGET_X86_64
-set LIBSRCS=libtcc.c tccpp.c tccgen.c tccdbg.c tccelf.c tccasm.c tccrun.c x86_64-gen.c x86_64-link.c i386-asm.c tccpe.c
+set D=-DTCC_TARGET_PE @MTCC_TCC_TARGET@
+set LIBSRCS=@MTCC_LIBSRCS@
+set RT_WIN32=@MTCC_RT_WIN32@
+set RT_TOP=@MTCC_RT_TOP@
+set MFLAG=@MTCC_MFLAG@
 
 echo Generating config.h...
 echo #define TCC_VERSION "0.9.28rc" > config.h
@@ -23,20 +29,20 @@ if not exist lib mkdir lib
 if not exist include mkdir include
 
 echo Building mtcc objects...
-for %%%%f in (%LIBSRCS%) do (
-    echo   %%%%f
-    if "%%%%f"=="libtcc.c" (
-        cl /c /O2 /W2 /Zi /MT /GS- /nologo %D% -DONE_SOURCE=0 "%%%%f" /Fowin32\\
+for %%f in (%LIBSRCS%) do (
+    echo   %%f
+    if "%%f"=="libtcc.c" (
+        cl /c /O2 /W2 /Zi /MT /GS- /nologo %D% -DONE_SOURCE=0 "%%f" /Fowin32\\
     ) else (
-        cl /c /O2 /W2 /Zi /MT /GS- /nologo %D% "%%%%f" /Fowin32\\
+        cl /c /O2 /W2 /Zi /MT /GS- /nologo %D% "%%f" /Fowin32\\
     )
     if errorlevel 1 exit /b 1
 )
 
 echo Building libtcc.lib...
 set OBJS=
-for %%%%f in (%LIBSRCS%) do (
-    set OBJS=!OBJS! win32\%%%%~nf.obj
+for %%f in (%LIBSRCS%) do (
+    set OBJS=!OBJS! win32\\%%~nf.obj
 )
 lib /OUT:win32\libtcc.lib %OBJS%
 if errorlevel 1 exit /b 1
@@ -49,22 +55,36 @@ echo Building libtcc1.a...
 copy /Y win32\include\*.h include\ > nul 2>&1
 copy /Y tcclib.h include\ > nul 2>&1
 
-win32\tcc.exe -Bwin32 -m64 -c lib\libtcc1.c
-win32\tcc.exe -Bwin32 -m64 -c lib\crt1.c
-win32\tcc.exe -Bwin32 -m64 -c lib\crt1w.c
-win32\tcc.exe -Bwin32 -m64 -c lib\wincrt1.c
-win32\tcc.exe -Bwin32 -m64 -c lib\wincrt1w.c
-win32\tcc.exe -Bwin32 -m64 -c lib\dllcrt1.c
-win32\tcc.exe -Bwin32 -m64 -c lib\dllmain.c
-win32\tcc.exe -Bwin32 -m64 -c lib\chkstk.S
-win32\tcc.exe -Bwin32 -m64 -c lib\alloca.S
-win32\tcc.exe -Bwin32 -m64 -c lib\alloca-bt.S
-win32\tcc.exe -Bwin32 -m64 -c lib\stdatomic.c
-win32\tcc.exe -Bwin32 -m64 -c lib\atomic.S
-win32\tcc.exe -Bwin32 -m64 -c lib\builtin.c
+set WIN32_O=
+for %%f in (%RT_WIN32%) do (
+    set FNAME=%%~nxf
+    set EXT=%%~xf
+    if "!EXT!"==".S" (
+        win32\tcc.exe -Bwin32 %MFLAG% -c %%f
+        set WIN32_O=!WIN32_O! !FNAME:.S=.o!
+    ) else (
+        win32\tcc.exe -Bwin32 %MFLAG% -c %%f
+        set WIN32_O=!WIN32_O! !FNAME:.c=.o!
+    )
+    if errorlevel 1 exit /b 1
+)
 
-win32\tcc.exe -Bwin32 -m64 -ar lib\libtcc1.a libtcc1.o crt1.o crt1w.o wincrt1.o wincrt1w.o dllcrt1.o dllmain.o chkstk.o alloca.o alloca-bt.o stdatomic.o atomic.o builtin.o
+set TOP_O=
+for %%f in (%RT_TOP%) do (
+    set FNAME=%%~nxf
+    set EXT=%%~xf
+    if "!EXT!"==".S" (
+        win32\tcc.exe -Bwin32 %MFLAG% -c %%f
+        set TOP_O=!TOP_O! !FNAME:.S=.o!
+    ) else (
+        win32\tcc.exe -Bwin32 %MFLAG% -c %%f
+        set TOP_O=!TOP_O! !FNAME:.c=.o!
+    )
+    if errorlevel 1 exit /b 1
+)
+
+win32\tcc.exe -Bwin32 %MFLAG% -ar lib\libtcc1.a %WIN32_O% %TOP_O%
 if errorlevel 1 exit /b 1
 
-echo mtcc Windows x64 build complete.
+echo mtcc Windows @MTCC_ARCH@ build complete.
 exit /b 0

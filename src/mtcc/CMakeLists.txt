@@ -8,13 +8,45 @@ file(MAKE_DIRECTORY ${MTCC_BUILD_DIR})
 
 if(WIN32)
   # mtcc on Windows must be built with MSVC (cl/lib). The upstream source ships a
-  # win32/ directory and x86_64 code generators, so we copy the source into the
-  # build tree and run a custom batch there. This keeps the submodule clean.
+  # win32/ directory and both x86_64 and arm64 code generators.
   #
-  # ARM64 Windows is not supported yet because the batch would need to use the
-  # arm64-* source files and a different TCC_TARGET_* define.
-  if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|x64|i[3-6]86")
-    message(FATAL_ERROR "mtcc Windows wrapper currently only supports x86/x64, not ${CMAKE_SYSTEM_PROCESSOR}")
+  # We copy the source into the build tree and run a custom batch there.
+  # This keeps the submodule clean.
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|x64|i[3-6]86|X86")
+    set(MTCC_ARCH "x86_64")
+    set(MTCC_TCC_TARGET "-DTCC_TARGET_X86_64")
+    set(MTCC_MFLAG "-m64")
+    # x86_64 uses win32/lib/*.c for crt files and ../lib/*.S for alloca
+    set(MTCC_LIBSRCS
+      libtcc.c tccpp.c tccgen.c tccdbg.c tccelf.c tccasm.c tccrun.c
+      x86_64-gen.c x86_64-link.c i386-asm.c tccpe.c
+    )
+    set(MTCC_RT_WIN32
+      win32/lib/libtcc1.c win32/lib/crt1.c win32/lib/crt1w.c win32/lib/wincrt1.c win32/lib/wincrt1w.c
+      win32/lib/dllcrt1.c win32/lib/dllmain.c win32/lib/chkstk.S
+    )
+    set(MTCC_RT_TOP
+      lib/alloca.S lib/alloca-bt.S lib/stdatomic.c lib/atomic.S lib/builtin.c
+    )
+  elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64|AARCH64")
+    set(MTCC_ARCH "arm64")
+    set(MTCC_TCC_TARGET "-DTCC_TARGET_ARM64")
+    set(MTCC_MFLAG "-marm64")
+    # arm64 uses arm64-* code generators; no i386-asm.c needed
+    set(MTCC_LIBSRCS
+      libtcc.c tccpp.c tccgen.c tccdbg.c tccelf.c tccasm.c tccrun.c
+      arm64-gen.c arm64-link.c arm64-asm.c tccpe.c
+    )
+    # ARM64 Windows runtime: no chkstk.S (Windows ARM64 has built-in stack probing)
+    set(MTCC_RT_WIN32
+      win32/lib/libtcc1.c win32/lib/crt1.c win32/lib/crt1w.c win32/lib/wincrt1.c win32/lib/wincrt1w.c
+      win32/lib/dllcrt1.c win32/lib/dllmain.c
+    )
+    set(MTCC_RT_TOP
+      lib/alloca.S lib/alloca-bt.S lib/stdatomic.c lib/atomic.S lib/builtin.c
+    )
+  else()
+    message(FATAL_ERROR "mtcc Windows wrapper: unsupported architecture ${CMAKE_SYSTEM_PROCESSOR}")
   endif()
 
   file(COPY ${MTCC_SRC_DIR}/ DESTINATION ${MTCC_BUILD_DIR})
@@ -33,7 +65,7 @@ if(WIN32)
     DEPENDS
       "${MTCC_BUILD_DIR}/win32/build_mtcc_windows.bat"
       ${MTCC_BUILD_DIR}/libtcc.c
-    COMMENT "Building mtcc for Windows x64"
+    COMMENT "Building mtcc for Windows ${MTCC_ARCH}"
   )
 
   add_custom_target(mtcc_build ALL DEPENDS
