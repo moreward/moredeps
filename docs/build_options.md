@@ -320,7 +320,7 @@ BoringSSL does not expose an option to disable the `bssl` command-line tool, so 
 
 Additionally, `LWS_OPENSSL_LIBRARIES` and `LWS_OPENSSL_INCLUDE_DIRS` are pointed at the installed BoringSSL prefix, and `DISABLE_WERROR=ON` is set to avoid BoringSSL-related warnings being treated as errors.
 
-**Windows note:** `LWS_OPENSSL_LIBRARIES` currently uses Unix-style library names (`libssl.a;libcrypto.a`). This will need to be adjusted to `.lib` files for MSVC builds.
+**Windows note:** `CMakeLists.txt` selects `ssl.lib`/`crypto.lib` for `LWS_OPENSSL_LIBRARIES` on `WIN32`; Unix builds use `libssl.a`/`libcrypto.a`.
 
 **Excluded on `wasm_emscripten`**.
 

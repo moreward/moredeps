@@ -380,7 +380,6 @@ The following decisions have been made and are recorded here for reference.
 ## 9. Immediate Next Steps
 
 1. Validate `linux_x64`, `linux_arm64`, `windows_x64`, and `windows_arm64` builds on appropriate hosts.
-2. Implement the Windows-specific `libwebsockets` BoringSSL library-name fix (`.lib` vs `.a`).
-3. Add CI matrix and artifact packaging in a future phase.
-4. Revisit `ghostty` when the upstream Zig build supports a library-only output.
+2. Add CI matrix and artifact packaging in a future phase.
+3. Revisit `ghostty` when the upstream Zig build supports a library-only output.
 
