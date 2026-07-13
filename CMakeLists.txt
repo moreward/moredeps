@@ -138,6 +138,60 @@ function(moredeps_add_dep name)
   )
 endfunction()
 
+# Helper for generating Sokol backend variants.
+# Usage: moredeps_sokol_variant(gfx GLCORE)
+# Generates a small wrapper source dir in the build tree and calls
+# moredeps_add_dep for the variant library (e.g. sokol_gfx_glcore).
+function(moredeps_sokol_variant component backend)
+  string(TOLOWER "${backend}" _backend_lower)
+  set(_variant_name "sokol_${component}_${_backend_lower}")
+  set(_variant_src_dir "${CMAKE_CURRENT_BINARY_DIR}/sokol_variants/${_variant_name}")
+  file(MAKE_DIRECTORY "${_variant_src_dir}")
+
+  if(component STREQUAL "gp")
+    set(SOKOL_GP_IMPL_DEFINE "#define SOKOL_GP_IMPL")
+    set(SOKOL_COMPONENT_INCLUDE "#include \"sokol_gfx.h\"\n#include \"sokol_gp.h\"")
+  elseif(component STREQUAL "glue")
+    set(SOKOL_GP_IMPL_DEFINE "")
+    set(SOKOL_COMPONENT_INCLUDE "#include \"sokol_gfx.h\"\n#include \"sokol_app.h\"\n#include \"sokol_glue.h\"")
+  else()
+    set(SOKOL_GP_IMPL_DEFINE "")
+    set(SOKOL_COMPONENT_INCLUDE "#include \"sokol_${component}.h\"")
+  endif()
+
+  set(SOKOL_VARIANT_NAME "${_variant_name}")
+  set(SOKOL_COMPONENT "${component}")
+  set(SOKOL_BACKEND "${backend}")
+  set(SOKOL_BACKEND_DEFINE "SOKOL_${backend}")
+  set(SOKOL_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
+  if(APPLE AND backend STREQUAL "METAL")
+    set(SOKOL_OBJC "OBJC")
+  else()
+    set(SOKOL_OBJC "")
+  endif()
+
+  configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/sokol_variant/sokol_impl.c.in"
+    "${_variant_src_dir}/sokol_impl.c"
+    @ONLY
+  )
+  configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/sokol_variant/CMakeLists.txt.in"
+    "${_variant_src_dir}/CMakeLists.txt"
+    @ONLY
+  )
+
+  set(_depends "")
+  if(backend STREQUAL "WGPU")
+    set(_depends "dawn")
+  endif()
+
+  moredeps_add_dep(${_variant_name}
+    SOURCE_DIR "${_variant_src_dir}"
+    DEPENDS ${_depends}
+  )
+endfunction()
+
 # -----------------------------------------------------------------------------
 # Dependency definitions
 # -----------------------------------------------------------------------------
@@ -837,6 +891,47 @@ foreach(_name IN LISTS MOREDEPS_WRAPPER_NAMES)
       ${MOREDEPS_COMMON_CMAKE_ARGS}
     BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/${_name}/${CMAKE_STATIC_LIBRARY_PREFIX}${_name}${CMAKE_STATIC_LIBRARY_SUFFIX}"
   )
+endforeach()
+
+# -----------------------------------------------------------------
+# Sokol backend variants (Option C: build all sensible combinations)
+# -----------------------------------------------------------------
+set(_sokol_variants)
+if(MOREDEPS_PLATFORM STREQUAL "macos_arm64")
+  list(APPEND _sokol_variants
+    gfx:GLCORE gfx:METAL
+    app:GLCORE app:METAL
+    glue:GLCORE glue:METAL
+    gp:GLCORE gp:METAL
+  )
+elseif(MOREDEPS_PLATFORM STREQUAL "linux_x64" OR MOREDEPS_PLATFORM STREQUAL "linux_arm64")
+  list(APPEND _sokol_variants
+    gfx:GLCORE gfx:GLES3
+    app:GLCORE app:GLES3
+    glue:GLCORE glue:GLES3
+    gp:GLCORE gp:GLES3
+  )
+elseif(MOREDEPS_PLATFORM MATCHES "windows_(x64|arm64)")
+  list(APPEND _sokol_variants
+    gfx:GLCORE gfx:GLES3 gfx:D3D11
+    app:GLCORE app:D3D11
+    glue:GLCORE glue:D3D11
+    gp:GLCORE gp:GLES3 gp:D3D11
+  )
+elseif(MOREDEPS_PLATFORM STREQUAL "wasm_emscripten")
+  list(APPEND _sokol_variants
+    gfx:GLES3
+    app:GLES3
+    glue:GLES3
+    gp:GLES3
+  )
+endif()
+
+foreach(_spec IN LISTS _sokol_variants)
+  string(REPLACE ":" ";" _parts "${_spec}")
+  list(GET _parts 0 _component)
+  list(GET _parts 1 _backend)
+  moredeps_sokol_variant("${_component}" "${_backend}")
 endforeach()
 
 # --- lua ---

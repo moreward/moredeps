@@ -1,0 +1,86 @@
+cmake_minimum_required(VERSION 3.25)
+project(@SOKOL_VARIANT_NAME@ LANGUAGES C @SOKOL_OBJC@)
+
+set(SOKOL_SRC_DIR "@SOKOL_REPO_ROOT@/deps/sokol")
+set(SOKOL_GP_SRC_DIR "@SOKOL_REPO_ROOT@/deps/sokol_gp")
+
+add_library(@SOKOL_VARIANT_NAME@ STATIC sokol_impl.c)
+target_include_directories(@SOKOL_VARIANT_NAME@ PUBLIC
+  $<BUILD_INTERFACE:${SOKOL_SRC_DIR}>
+  $<BUILD_INTERFACE:${SOKOL_GP_SRC_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_INSTALL_PREFIX}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
+set_target_properties(@SOKOL_VARIANT_NAME@ PROPERTIES
+  C_STANDARD 11
+  POSITION_INDEPENDENT_CODE ON
+)
+
+if(APPLE)
+  if("@SOKOL_BACKEND@" STREQUAL "METAL" OR "@SOKOL_COMPONENT@" STREQUAL "app" OR "@SOKOL_COMPONENT@" STREQUAL "glue")
+    target_compile_options(@SOKOL_VARIANT_NAME@ PRIVATE -x objective-c)
+  endif()
+  if("@SOKOL_BACKEND@" STREQUAL "METAL")
+    target_link_libraries(@SOKOL_VARIANT_NAME@ PRIVATE
+      "-framework AppKit"
+      "-framework Metal"
+      "-framework MetalKit"
+      "-framework Cocoa"
+      "-framework QuartzCore"
+    )
+  elseif("@SOKOL_BACKEND@" STREQUAL "GLCORE")
+    target_link_libraries(@SOKOL_VARIANT_NAME@ PRIVATE "-framework OpenGL")
+  endif()
+  # sokol_app always needs Cocoa on macOS regardless of backend.
+  if("@SOKOL_COMPONENT@" STREQUAL "app")
+    target_link_libraries(@SOKOL_VARIANT_NAME@ PRIVATE
+      "-framework AppKit"
+      "-framework Cocoa"
+      "-framework QuartzCore"
+    )
+  endif()
+endif()
+
+if(WIN32 AND "@SOKOL_BACKEND@" STREQUAL "D3D11")
+  target_link_libraries(@SOKOL_VARIANT_NAME@ PRIVATE d3d11 dxgi)
+endif()
+
+if("@SOKOL_BACKEND@" STREQUAL "WGPU")
+  # For WGPU variants, the final application must link the Dawn monolithic
+  # library (libwebgpu_dawn.a) or, on Emscripten, the emdawnwebgpu JS files.
+  # We do not link it here because the variant itself is a static library and
+  # Dawn may not be installed yet when this variant is configured.
+endif()
+
+install(TARGETS @SOKOL_VARIANT_NAME@
+  EXPORT @SOKOL_VARIANT_NAME@Targets
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+if("@SOKOL_COMPONENT@" STREQUAL "gp")
+  install(FILES
+    ${SOKOL_SRC_DIR}/sokol_gfx.h
+    ${SOKOL_GP_SRC_DIR}/sokol_gp.h
+    DESTINATION include
+  )
+elseif("@SOKOL_COMPONENT@" STREQUAL "glue")
+  install(FILES
+    ${SOKOL_SRC_DIR}/sokol_gfx.h
+    ${SOKOL_SRC_DIR}/sokol_app.h
+    ${SOKOL_SRC_DIR}/sokol_glue.h
+    DESTINATION include
+  )
+else()
+  install(FILES
+    ${SOKOL_SRC_DIR}/sokol_@SOKOL_COMPONENT@.h
+    DESTINATION include
+  )
+endif()
+
+install(EXPORT @SOKOL_VARIANT_NAME@Targets
+  FILE @SOKOL_VARIANT_NAME@Targets.cmake
+  NAMESPACE @SOKOL_VARIANT_NAME@::
+  DESTINATION lib/cmake/@SOKOL_VARIANT_NAME@
+)
