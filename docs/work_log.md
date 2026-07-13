@@ -51,3 +51,18 @@ cmake --build _b/macos_arm64 --parallel 2
 - Update `docs/build_plan.md` and `docs/build_options.md` to reflect the Dawn submodule layout and the BoringSSL/libwebsockets feature-detection workaround.
 - Commit and push the current state.
 
+---
+
+## 2026-07-12 (later still) — Submodules pinned
+
+- Removed all `branch = ...` entries from `.gitmodules`. Submodules now stay at their recorded SHA and will not drift when `git submodule update --remote` is run.
+- All submodule commits match the revisions validated by the macos_arm64 build.
+- `tinycsocket` submodule was cleaned of build-generated files in its source tree before the pin.
+
+### Next steps
+- Full review of the build system and docs.
+- Validate `wasm_emscripten` build.
+- Validate Linux and Windows builds on separate VMs.
+- Push to origin.
+
+
