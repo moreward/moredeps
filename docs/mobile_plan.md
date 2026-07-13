@@ -125,21 +125,24 @@ Notes:
 
 **sdl3webgpu on mobile:** The upstream `sdl3webgpu` source currently has surface creation code for macOS, iOS, Linux (X11/Wayland), Windows, and Emscripten. It does **not** have an Android implementation. For Android we would need to add a `WGPUSurfaceDescriptorFromAndroidNativeWindow` path (or similar) using `ANativeWindow` from the NDK. This is a small patch but is not present upstream.
 
+### sokol_app on Android
+
+`sokol_app.h` explicitly restricts Android to `SOKOL_GLES3`. It does not support `SOKOL_WGPU` on Android. Therefore, `sokol_app_wgpu` and `sokol_glue_wgpu` are **not** available for Android. The path for Android WebGPU is:
+- Use SDL3 or a native `ANativeWindow` for windowing.
+- Create the WGPU surface manually.
+- Use `sokol_gfx_wgpu` for rendering.
+
 ## 8. Raylib on mobile
 
-Raylib has `PLATFORM_ANDROID` and `PLATFORM_IOS`/`PLATFORM_DRM` support, but it is non-trivial to consume as a static library for mobile for several reasons:
+Raylib has `PLATFORM_ANDROID` and `PLATFORM_IOS`/`PLATFORM_DRM` support in its documentation, but the actual source tells a different story:
 
-1. **App scaffolding:** Mobile apps do not have a traditional `main()`. Android uses `android_main()` and the NativeActivity framework; iOS needs an Xcode project, `Info.plist`, app bundle, and code signing. A static library alone does not give you a runnable app.
+1. **iOS is not implemented.** There is no `rcore_ios.c` platform backend in `deps/raylib/src/platforms/`. Raylib cannot target iOS with its current source tree.
+2. **Android is Makefile-only.** There is an `rcore_android.c` backend, but the CMake build does **not** include `PLATFORM_ANDROID` support. Building raylib for Android would require porting the Makefile logic into CMake or building outside of our CMake super-project.
+3. **Android graphics backend is OpenGL ES 2.0/3.0.** Existing shaders need to be GLES-compatible. On iOS (if it were supported), OpenGL ES is deprecated.
 
-2. **Native app glue:** On Android, raylib links against the NDK's `native_app_glue` and system libraries (`libandroid`, `libEGL`, `libGLESv3`, `jnigraphics`). The downstream CMake project must set up the NativeActivity lifecycle correctly (`APP_CMD_INIT_WINDOW`, `APP_CMD_GAINED_FOCUS`, etc.).
+Compared to SDL3, which has first-class CMake support and platform backends for both iOS and Android, raylib's mobile support is incomplete. This is why raylib is flagged as non-trivial / risky for mobile, while SDL3 is expected to work.
 
-3. **Asset loading:** Android assets live inside the APK, not on a regular filesystem. Raylib's resource loading (`LoadTexture`, `LoadSound`, etc.) can read from the APK via `AAssetManager`, but this must be wired up by the host app.
-
-4. **Graphics backend:** Raylib on mobile uses **OpenGL ES 2.0/3.0**, not desktop GL. Existing shaders and render code may need to be GLES-compatible. On iOS, OpenGL ES is deprecated in favor of Metal, and raylib's iOS path is less maintained than its Android path.
-
-5. **Permissions:** Mobile apps require explicit permissions for network, storage, microphone, etc. These are outside the scope of a static library build.
-
-In short, raylib can be built as a static library for mobile, but making a real mobile app requires significant platform-specific integration work that is not handled by just linking `libraylib.a`.
+The other mobile concerns (app scaffolding, code signing, asset loading, permissions) apply to **both** SDL3 and raylib, but SDL3 has the platform backends and build-system support already in place, whereas raylib does not.
 
 ## 9. Open questions / next steps
 
