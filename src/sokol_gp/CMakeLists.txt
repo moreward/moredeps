@@ -7,6 +7,7 @@ endif()
 
 add_library(sokol_gp STATIC sokol_gp.c)
 target_include_directories(sokol_gp PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../deps/sokol_gp/thirdparty>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../deps/sokol_gp>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../deps/sokol>
   $<INSTALL_INTERFACE:include>

@@ -106,11 +106,18 @@ endif()
 function(moredeps_add_dep name)
   set(options "")
   set(oneValueArgs SOURCE_DIR)
-  set(multiValueArgs CMAKE_ARGS DEPENDS BUILD_BYPRODUCTS)
+  set(multiValueArgs CMAKE_ARGS DEPENDS BUILD_BYPRODUCTS INSTALL_COMMAND PATCH_COMMAND)
   cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
   if(NOT ARG_SOURCE_DIR)
     set(ARG_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/${name}")
+  endif()
+
+  if(ARG_INSTALL_COMMAND)
+    set(INSTALL_COMMAND_ARG INSTALL_COMMAND ${ARG_INSTALL_COMMAND})
+  endif()
+  if(ARG_PATCH_COMMAND)
+    set(PATCH_COMMAND_ARG PATCH_COMMAND ${ARG_PATCH_COMMAND})
   endif()
 
   ExternalProject_Add(
@@ -121,6 +128,8 @@ function(moredeps_add_dep name)
     CMAKE_ARGS
       ${MOREDEPS_COMMON_CMAKE_ARGS}
       ${ARG_CMAKE_ARGS}
+    ${PATCH_COMMAND_ARG}
+    ${INSTALL_COMMAND_ARG}
     DEPENDS ${ARG_DEPENDS}
     BUILD_BYPRODUCTS ${ARG_BUILD_BYPRODUCTS}
   )
@@ -231,22 +240,30 @@ moredeps_add_dep(curl
 
 # --- dawn ---
 # WebGPU-only build. Emscripten uses emdawnwebgpu (handled via dawn's own
-# Emscripten options).
+# Emscripten options). Dependencies are pre-populated as git submodules in
+# deps/dawn_third_party (they cannot be nested inside the deps/dawn submodule).
 moredeps_add_dep(dawn
   CMAKE_ARGS
+    "-DDAWN_THIRD_PARTY_DIR=${CMAKE_CURRENT_SOURCE_DIR}/deps/dawn_third_party"
     "-DDAWN_ENABLE_INSTALL=ON"
     "-DDAWN_BUILD_BENCHMARKS=OFF"
     "-DDAWN_BUILD_FUZZERS=OFF"
     "-DDAWN_BUILD_NODE_BINDINGS=OFF"
     "-DDAWN_BUILD_PROTOBUF=OFF"
+    "-DDAWN_BUILD_SAMPLES=OFF"
     "-DDAWN_ENABLE_SWIFTSHADER=OFF"
-    "-DDAWN_FETCH_DEPENDENCIES=ON"
+    "-DDAWN_FETCH_DEPENDENCIES=OFF"
+    "-DDAWN_USE_GLFW=OFF"
     "-DTINT_BUILD_TESTS=OFF"
     "-DTINT_BUILD_CMD_TOOLS=OFF"
     "-DTINT_BUILD_GLSL_VALIDATOR=OFF"
     "-DTINT_BUILD_WGSL_READER=ON"
     "-DTINT_BUILD_WGSL_WRITER=ON"
     "-DDAWN_BUILD_MONOLITHIC_LIBRARY=STATIC"
+    "-DDAWN_ENABLE_VULKAN=$<IF:$<PLATFORM_ID:Linux>,ON,OFF>"
+    "-DDAWN_ENABLE_METAL=$<IF:$<PLATFORM_ID:Darwin>,ON,OFF>"
+    "-DDAWN_ENABLE_DESKTOP_GL=OFF"
+    "-DDAWN_ENABLE_OPENGLES=OFF"
 )
 
 # --- enet ---
@@ -322,6 +339,10 @@ moredeps_add_dep(libwebsockets
     "-DLWS_OPENSSL_INCLUDE_DIRS=${CMAKE_INSTALL_PREFIX}/include"
     "-DLWS_OPENSSL_LIBRARIES=${CMAKE_INSTALL_PREFIX}/lib/libssl.a;${CMAKE_INSTALL_PREFIX}/lib/libcrypto.a"
     "-DDISABLE_WERROR=ON"
+    "-DLWS_HAVE_RSA_SET0_KEY=ON"
+    "-DLWS_HAVE_ECDSA_SIG_get0=ON"
+    "-DLWS_HAVE_ECDSA_SIG_set0=ON"
+    "-DLWS_HAVE_BN_bn2binpad=ON"
     "-DLWS_WITH_MBEDTLS=OFF"
     "-DLWS_WITH_WOLFSSL=OFF"
     "-DLWS_WITH_ZLIB=OFF"
@@ -530,7 +551,10 @@ moredeps_add_dep(sdl3
 )
 
 # --- sdl3webgpu ---
+# Upstream CMakeLists is missing cmake_minimum_required and links against
+# targets that are built in separate ExternalProjects. We wrap it.
 moredeps_add_dep(sdl3webgpu
+  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/sdl3webgpu"
   DEPENDS sdl3 dawn
 )
 
@@ -563,7 +587,10 @@ moredeps_add_dep(sqlite-amalgamation
 )
 
 # --- tinycsocket ---
+# Upstream CMake builds the library but has no install target. We wrap it
+# to add install rules without patching the submodule.
 moredeps_add_dep(tinycsocket
+  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/tinycsocket"
   CMAKE_ARGS
     "-DTCS_ENABLE_TESTS=OFF"
     "-DTCS_ENABLE_EXAMPLES=OFF"
