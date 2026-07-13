@@ -53,16 +53,56 @@ cmake --build _b/macos_arm64 --parallel 2
 
 ---
 
-## 2026-07-12 (later still) — Submodules pinned
+## 2026-07-12 (later) — Emscripten validated and macOS missing deps completed
 
-- Removed all `branch = ...` entries from `.gitmodules`. Submodules now stay at their recorded SHA and will not drift when `git submodule update --remote` is run.
-- All submodule commits match the revisions validated by the macos_arm64 build.
-- `tinycsocket` submodule was cleaned of build-generated files in its source tree before the pin.
+### Emscripten (wasm32) full-build results
+
+**Command:**
+```bash
+./scripts/build_all.sh wasm_emscripten
+```
+
+**Result:** Build completed successfully. 60 static libraries installed in `_out/wasm_emscripten/lib/`. Notable exclusions on this target:
+- `glfw` — no desktop windowing on the web.
+- `mtcc` — target-specific C/ASM cannot compile to WASM.
+- `sdl3webgpu` — `WGPUSurfaceDescriptorFromCanvasHTMLSelector` is incompatible with the current emdawnwebgpu headers.
+- `lua` — not wired for Emscripten yet.
+- `libwebgpu_dawn.a` — not produced; instead `emdawnwebgpu` headers/JS files are staged by `scripts/install_dawn.cmake`.
+
+Fixes applied during Emscripten validation:
+- `src/ubench/ubench.c` includes `emscripten/html5.h` before `ubench.h` to provide `emscripten_performance_now`.
+- `OPENSSL_NO_ASM=ON` for BoringSSL on Emscripten to avoid `-Wa,-g` assembler errors.
+- `CMAKE_C_STANDARD=11` and `CMAKE_CXX_STANDARD=17` added to common CMake args to fix cJSON C99 errors.
+- `CMAKE_FIND_ROOT_PATH` set to `CMAKE_INSTALL_PREFIX` so cross-builds can find installed deps.
+
+### macOS arm64 — missing deps completed
+
+Added and validated:
+- `cimgui` — wrapper in `src/cimgui/` builds a static library from the cimgui/ImGui sources.
+- `raylib` — built via `ExternalProject_Add` with `BUILD_EXAMPLES=OFF`, `BUILD_SHARED_LIBS=OFF`; on Emscripten uses `PLATFORM=Web`.
+- `mtcc` — wrapper in `src/mtcc/` runs `./configure` and `make libtcc.a` in the build tree.
+
+The macOS arm64 build now produces 66 static libraries.
+
+### Clean submodule handling
+
+- `skribidi` — upstream sets `CMAKE_COMPILE_WARNING_AS_ERROR ON` globally and would dirty the submodule during build. We now build it from a copy of the source in the build tree (`_b/<platform>/skribidi_src_copy`) and apply a Python patch only to the copy, leaving the submodule clean.
+- `tinycsocket` — upstream writes generated version headers back into the source tree. We now copy the source into the build tree in `src/tinycsocket/` before invoking the upstream build, leaving the submodule clean.
+- `deps/skribidi` and `deps/tinycsocket` remain unmodified after a full build.
+
+### Deferred
+
+- `ghostty` — still cannot be constrained to emit only `libghostty.a`. The default `zig build` install step tries to copy the macOS app bundle even with `-Dapp-runtime=none`. Deferred until upstream supports a library-only build.
+
+### Updated docs
+
+- `docs/build_plan.md` updated to reflect the implemented `ExternalProject_Add` super-build design, the `deps/dawn_third_party/` layout, and the new/updated wrappers.
+- `docs/build_options.md` updated with actual defaults (Dawn `DAWN_FETCH_DEPENDENCIES=OFF`, curl options, libwebsockets BoringSSL feature-detection flags, etc.).
+- `README.md` status updated to show both macOS arm64 and Emscripten as validated.
 
 ### Next steps
-- Full review of the build system and docs.
-- Validate `wasm_emscripten` build.
-- Validate Linux and Windows builds on separate VMs.
-- Push to origin.
+- Validate `linux_x64` and `linux_arm64` builds.
+- Validate `windows_x64` and `windows_arm64` builds; fix the `libwebsockets` BoringSSL library-name issue for MSVC (`.lib` vs `.a`).
+- Commit and push the current state to origin.
 
 

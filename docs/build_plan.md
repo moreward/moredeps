@@ -1,23 +1,21 @@
 # Build Infrastructure Plan for `moredeps`
 
-**Status:** Review draft (not yet implemented).  
+**Status:** Implemented and validated locally for `macos_arm64` and `wasm_emscripten`.
 **Purpose:** Define the production-grade build system that produces static (and optionally shared) libraries for every dependency across all supported host/target combinations, with deterministic versioning and releasable artifacts.
-
----
 
 ## 1. Goals & Constraints
 
 ### 1.1 Targets (initial matrix)
 We must produce static libraries for every buildable dependency on the following platforms:
 
-| Platform | Arch | Toolchain notes |
+| Platform | Arch | Status |
 |---|---|---|
-| Windows | x64 | MSVC or clang-cl via CMake |
-| Windows | arm64 | MSVC or clang-cl cross-compile |
-| Linux | x64 | GCC or Clang native |
-| Linux | arm64 | GCC/Clang cross-compile (e.g., `aarch64-linux-gnu`) |
-| macOS | arm64 | Apple Clang native (Apple Silicon) |
-| Emscripten | wasm32 | `emcc`/`emcmake`/`emmake` |
+| Windows | x64 | Toolchain provided; pending VM validation |
+| Windows | arm64 | Toolchain provided; pending VM validation |
+| Linux | x64 | Toolchain provided; pending VM validation |
+| Linux | arm64 | Toolchain provided; pending VM validation |
+| macOS | arm64 | **Validated locally** |
+| Emscripten | wasm32 | **Validated locally** |
 
 > **Mobile** (iOS/Android) is explicitly out of scope for the first phase but must be addable later without redesigning the layout.
 
@@ -54,50 +52,50 @@ Legend:
 
 | Dep | Build system | Category | Build approach in this repo | Known exclusions / notes |
 |---|---|---|---|---|
-| `box3d` | CMake | C | Top-level CMake | Verify Windows/macOS/Linux cross-builds. |
-| `cglm` | CMake / Meson / Autotools | C | Top-level CMake | Math lib, no tricky deps. |
-| `cgltf` | Header-only | H | `src/cgltf/*.c` with `CGTF_IMPLEMENTATION` | glTF loader. |
+| `box3d` | CMake | C | `ExternalProject_Add` | None known. |
+| `cglm` | CMake | C | `ExternalProject_Add` | None known. |
+| `cgltf` | Header-only | H | `src/cgltf/` wrapper | None known. |
 | `cimgui` | CMake / Makefile | C++ wrapper | `src/cimgui/` wrapper | Upstream `CMakeLists.txt` hard-codes `SHARED`; we build static from source. |
-| `cJSON` | CMake / Makefile | C | Top-level CMake | None known. |
-| `curl` | CMake / Autotools | C | Top-level CMake | Use BoringSSL (`CURL_USE_BORINGSSL=ON`) on all platforms. |
-| `dawn` | CMake / Bazel | C | Top-level CMake | Emscripten must use `emdawnwebgpu` instead of `USE_WEBGPU`. Very heavy; may need options to reduce build (disable tests, samples). |
-| `enet` | CMake | C | Top-level CMake | Network lib. Check Windows/Wasm viability. |
-| `FastNoiseLite` | Header-only | H | `src/FastNoiseLite/*.c` | C++ template header also available; we use the C header. |
-| `flecs` | CMake / Meson / Bazel | C | Top-level CMake | ECS library, builds as C lib. |
-| `fontstash` | Header-only | H | `src/fontstash/*.c` | Font rasterization. Usually needs `FONTSTASH_IMPLEMENTATION`. |
-| `freetype` | CMake / Meson / Makefile / Autotools | C | Top-level CMake | Common dependency; keep build minimal. |
-| `ghostty` | Zig build / Makefile | Z | CMake `IMPORTED` target via `zig build` | Build `libghostty`. Requires patched `zig` 0.15.2. |
-| `glfw` | CMake | C | Top-level CMake | Windowing. Does not make sense on Emscripten? Web platform usually replaces GLFW. |
-| `harfbuzz` | CMake / Meson | C | Top-level CMake | Text shaping. Often depends on FreeType. Build order / dependency graph matters. |
-| `libwebsockets` | CMake | C | Top-level CMake | Depends on BoringSSL (`LWS_WITH_BORINGSSL=ON`). Windows/macOS/Linux OK; Emscripten unlikely. |
-| `lua-5.5.0` | Makefile | M | Custom Makefile step (not CMake) | No CMake; must be built directly. Lua is compiled as C. |
-| `lz4` | Makefile | M | `src/lz4/` wrapper (uses `build/cmake`) | Use CMake wrapper in `deps/lz4/build/cmake/`. |
-| `microui` | Single `.c` + header | H | `src/microui/*.c` | Simple UI. |
-| `mimalloc` | CMake | C | Top-level CMake | Override allocator. Must be careful with build modes (secure, debug). |
-| `miniaudio` | CMake / header-only | C / H | Top-level CMake or wrapper | Check if CMake is upstream; otherwise `src/miniaudio/*.c` with `MINIAUDIO_IMPLEMENTATION`. |
-| `minigamepad` | Makefile / header-only | M / H | `src/minigamepad/*.c` or Makefile | Gamepad input abstraction. |
-| `mtcc` | Makefile / Autotools | M | Makefile or custom CMake | **Cannot build with Emscripten** (uses target-specific C code). Documented exclusion. |
-| `nanovg` | `.c` + header | H | `src/nanovg/*.c` | 2D vector graphics. |
-| `boringssl` | CMake / Bazel | C | Top-level CMake | Replaces OpenSSL. Built as static TLS backend for `curl` and `libwebsockets`. |
-| `physfs` | CMake | C | Top-level CMake | File system abstraction. |
-| `raudio` | `.c` + header | H | `src/raudio/*.c` | Audio. |
-| `raylib` | CMake / Zig | C | Top-level CMake | Game framework; may pull many subsystems. Build minimal config. |
-| `reproc` | CMake | C | Top-level CMake | Process library. Windows/Linux/macOS; Emscripten likely excluded. |
-| `sdl3` | CMake | C | Top-level CMake | Core windowing/input/audio. Emscripten build possible but uses special flags. |
-| `sdl3webgpu` | CMake | C | Top-level CMake | Depends on SDL3 and Dawn/WebGPU. Emscripten path may differ. |
-| `skribidi` | CMake | C | Top-level CMake | Text library. |
-| `sokol` | Header-only (with optional CMake tools) | H | `src/sokol_<mod>/` wrappers | Per-module static libraries: `sokol_app`, `sokol_gfx`, `sokol_audio`, `sokol_time`, `sokol_log`, `sokol_args`, `sokol_fetch`, `sokol_glue`. |
-| `sokol_gp` | Makefile | H | `src/sokol_gp/` wrapper | Header-only style; create implementation `.c`. |
-| `sqlite-amalgamation` | CMake | C | Top-level CMake | Two files, trivial build. |
-| `stb` | Header-only | H | `src/stb_<lib>/` wrappers | Per-module static libraries: `stb_image`, `stb_image_write`, `stb_image_resize`, `stb_truetype`, `stb_rect_pack`, `stb_ds`, etc. |
-| `tinycsocket` | CMake | C | Top-level CMake | Tiny cross-platform sockets; Emscripten may be excluded. |
-| `tracy` | CMake / Meson | C | Top-level CMake | Profiling. Usually optional in clients; build client library. |
-| `ubench` | Header-only | H | `src/ubench/*.c` | Micro-benchmarking. |
-| `utest` | Header-only | H | `src/utest/*.c` | Unit testing. |
-| `utf8proc` | CMake / Makefile | C | Top-level CMake | Unicode text processing. |
-| `xxhash` | Makefile | M | `src/xxhash/` wrapper (uses `cmake_unofficial`) | Use CMake wrapper in `deps/xxhash/cmake_unofficial/`. |
-| `zlib` | CMake / Makefile / Autotools / Bazel | C | Top-level CMake | Compression. |
-| `zstd` | Makefile | M | `src/zstd/` wrapper (uses `build/cmake`) | Use CMake wrapper in `deps/zstd/build/cmake/`. |
+| `cJSON` | CMake | C | `ExternalProject_Add` | None known. |
+| `curl` | CMake | C | `ExternalProject_Add` | BoringSSL (`CURL_USE_BORINGSSL=ON`) on all platforms. |
+| `dawn` | CMake | C | `ExternalProject_Add` | `DAWN_FETCH_DEPENDENCIES=OFF`; third-party deps in `deps/dawn_third_party/`. Emscripten uses `emdawnwebgpu`. |
+| `enet` | CMake | C | `ExternalProject_Add` | Network lib; currently builds on Emscripten but is documented as unsuitable for the browser. |
+| `FastNoiseLite` | Header-only | H | `src/FastNoiseLite/` wrapper | C header used. |
+| `flecs` | CMake | C | `ExternalProject_Add` | None known. |
+| `fontstash` | Header-only | H | `src/fontstash/` wrapper | None known. |
+| `freetype` | CMake | C | `ExternalProject_Add` | `FT_DISABLE_HARFBUZZ=OFF` so HarfBuzz can be used. |
+| `ghostty` | Zig build | Z | **Deferred** | Upstream cannot currently emit only `libghostty.a`; app bundle build fails. |
+| `glfw` | CMake | C | `ExternalProject_Add` | Excluded on `wasm_emscripten`. |
+| `harfbuzz` | CMake | C | `ExternalProject_Add` | `HB_HAVE_FREETYPE=ON`; built after FreeType. |
+| `libwebsockets` | CMake | C | `ExternalProject_Add` | BoringSSL; feature-detection flags forced for BoringSSL compatibility. |
+| `lua-5.5.0` | Makefile | M | `src/lua/` wrapper | Built as C. |
+| `lz4` | CMake (in `build/cmake`) | C | `ExternalProject_Add` via `deps/lz4/build/cmake` | None known. |
+| `microui` | Single `.c` + header | H | `src/microui/` wrapper | None known. |
+| `mimalloc` | CMake | C | `ExternalProject_Add` | None known. |
+| `miniaudio` | CMake | C | `ExternalProject_Add` | None known. |
+| `minigamepad` | Header-only | H | `src/minigamepad/` wrapper | None known. |
+| `mtcc` | Makefile | M | `src/mtcc/` wrapper | Excluded on `wasm_emscripten`. |
+| `nanovg` | `.c` + header | H | `src/nanovg/` wrapper | None known. |
+| `boringssl` | CMake | C | `ExternalProject_Add` | TLS backend for `curl` and `libwebsockets`. |
+| `physfs` | CMake | C | `ExternalProject_Add` | None known. |
+| `raudio` | `.c` + header | H | `src/raudio/` wrapper | None known. |
+| `raylib` | CMake | C | `ExternalProject_Add` | `BUILD_EXAMPLES=OFF`, `BUILD_SHARED_LIBS=OFF`. Emscripten uses `PLATFORM=Web`. |
+| `reproc` | CMake | C | `ExternalProject_Add` | None known. |
+| `sdl3` | CMake | C | `ExternalProject_Add` | None known. |
+| `sdl3webgpu` | CMake | C | `src/sdl3webgpu/` wrapper | Excluded on `wasm_emscripten` (emdawnwebgpu type mismatch). |
+| `skribidi` | CMake | C | `ExternalProject_Add` from a build-tree copy | Patched at build time to disable global warning-as-error; submodule stays clean. |
+| `sokol` | Header-only | H | `src/sokol_<mod>/` wrappers | Per-module static libs. `sokol_app`/`sokol_gfx`/`sokol_glue` use Metal on macOS. |
+| `sokol_gp` | Header-only | H | `src/sokol_gp/` wrapper | Built against the Sokol headers vendored in `deps/sokol_gp/thirdparty`. |
+| `sqlite-amalgamation` | CMake | C | `ExternalProject_Add` | None known. |
+| `stb` | Header-only | H | `src/stb_<lib>/` wrappers | Per-module static libraries. |
+| `tinycsocket` | CMake | C | `src/tinycsocket/` wrapper | Upstream writes into its source tree; wrapper copies to the build tree first. |
+| `tracy` | CMake | C | `ExternalProject_Add` | Client library only. |
+| `ubench` | Header-only | H | `src/ubench/` wrapper | Emscripten needs `emscripten/html5.h` for `emscripten_performance_now`. |
+| `utest` | Header-only | H | `src/utest/` wrapper | None known. |
+| `utf8proc` | CMake | C | `ExternalProject_Add` | None known. |
+| `xxhash` | CMake (in `cmake_unofficial`) | C | `ExternalProject_Add` via `deps/xxhash/cmake_unofficial` | None known. |
+| `zlib` | CMake | C | `ExternalProject_Add` | None known. |
+| `zstd` | CMake (in `build/cmake`) | C | `ExternalProject_Add` via `deps/zstd/build/cmake` | None known. |
 
 ### 2.1 Dependency ordering concerns
 Some dependencies consume others; the build order matters if we link tests/examples, but for pure static-library output each can be built independently.  However, for libraries that *offer* optional features (e.g., `curl` with SSL, `harfbuzz` with FreeType), we need to decide per-platform defaults and document them.  Where a feature requires another dep, we may need to build the provider first and pass paths in.
@@ -113,19 +111,23 @@ Several submodules currently point to branch heads (`stb`, `nanovg`, `fontstash`
 
 ```
 moredeps/
-├── CMakeLists.txt              # Top-level driver for all CMake deps
+├── CMakeLists.txt              # Top-level super-build orchestrator
 ├── scripts/
-│   └── build_all.sh            # Entry point for all combinations
-├── src/                        # Implementation files for header-only / non-CMake deps
+│   ├── build_all.sh            # Entry point for all combinations
+│   ├── install_dawn.cmake      # Stages emdawnwebgpu artifacts on Emscripten
+│   └── patch_skribidi.py       # Build-time patcher for skribidi warning-as-error
+├── src/                        # Wrappers for header-only / non-CMake / patched deps
 │   ├── cgltf/
-│   │   └── cgltf.c             # #define CGLTF_IMPLEMENTATION / #include "cgltf.h"
+│   ├── cimgui/                 # static lib wrapper (upstream hard-codes SHARED)
 │   ├── FastNoiseLite/
 │   ├── fontstash/
 │   ├── microui/
 │   ├── miniaudio/
 │   ├── minigamepad/
+│   ├── mtcc/                   # Makefile-based TinyCC wrapper
 │   ├── nanovg/
 │   ├── raudio/
+│   ├── sdl3webgpu/             # wrapper to avoid cross-ExternalProject target refs
 │   ├── sokol_app/              # per-module static libraries for sokol
 │   ├── sokol_args/
 │   ├── sokol_audio/
@@ -141,9 +143,10 @@ moredeps/
 │   ├── stb_truetype/
 │   ├── stb_rect_pack/
 │   ├── stb_ds/
+│   ├── tinycsocket/            # wrapper that copies upstream to build tree
 │   ├── ubench/
 │   └── utest/
-├── toolchain/                  # CMake toolchain files (optional but recommended)
+├── toolchain/                  # CMake toolchain files
 │   ├── windows_x64.cmake
 │   ├── windows_arm64.cmake
 │   ├── linux_x64.cmake
@@ -159,33 +162,32 @@ moredeps/
 │   └── wasm_emscripten/
 ├── _out/                       # Staged static libraries + headers
 ├── docs/
-│   └── build_plan.md           # This file
+│   ├── build_plan.md
+│   └── build_options.md
 ├── deps/                       # Git submodules (read-only source)
+│   └── dawn_third_party/       # Dawn's external deps as flat submodules
 └── .github/workflows/          # CI (future phase)
 ```
 
 ### 3.2 Top-level `CMakeLists.txt`
 
-The top-level `CMakeLists.txt` is **not** a monolithic build of all deps at once.  It is a dispatcher that, given the current platform and a selected subset, calls `add_subdirectory(deps/<dep>)` or builds a wrapper target in `src/<dep>` for each dependency that is configured to build on this platform.
+The top-level `CMakeLists.txt` is a **super-build** orchestrator.  Each dependency is built in isolation with `ExternalProject_Add` so that:
+
+* Each dependency can use its own CMake policy, generator expressions, and install rules without leaking into the parent project.
+* Cross-compilation toolchains are applied cleanly to each sub-build.
+* Each dependency installs into the common prefix `CMAKE_INSTALL_PREFIX` (set to `_out/<platform>` by `scripts/build_all.sh`), so later sub-builds can `find_package` earlier ones.
 
 Key contents:
 
 1. **Minimum CMake version** and project declaration.
-2. **Policy / defaults**:
-   - `CMAKE_POSITION_INDEPENDENT_CODE ON` (needed for later shared libs and safe for static too).
-   - Disable in-source builds.
-   - Default to `Release` if not specified.
-3. **Platform detection** from the toolchain / environment variables.  We will use CMake toolchain files for cross-compilation so the build directory encodes the platform.
-4. **Per-dependency build sections**.  Each section is guarded by an option like `MOREDEPS_BUILD_<DEP>_<PLATFORM>` or a single `MOREDEPS_BUILD_<DEP>` that is platform-aware.  Example:
-   ```cmake
-   option(MOREDEPS_BUILD_SOKOL_APP "Build sokol_app static library" ON)
-   if(MOREDEPS_BUILD_SOKOL_APP)
-       add_subdirectory(src/sokol_app)   # wrapper, not deps/sokol
-   endif()
-   ```
-5. **For CMake-native deps** (e.g., `zlib`, `freetype`, `sdl3`), we will `add_subdirectory(deps/<dep>)` with the right options, possibly with `EXCLUDE_FROM_ALL` to avoid building tests/examples.
-6. **For non-CMake deps** (currently only `lua`), `build_all.sh` will call the native build and install the outputs into a predictable layout, or we will create a CMake `add_custom_command` wrapper that invokes the native build.  BoringSSL is CMake-native and will be driven by the top-level `CMakeLists.txt`.
-7. **Header-only wrappers** live in `src/<dep>/CMakeLists.txt` and create a real `STATIC` library that includes the implementation file(s).
+2. **Policy / defaults** inherited by all `ExternalProject` sub-builds:
+   - `CMAKE_POSITION_INDEPENDENT_CODE ON`.
+   - `BUILD_SHARED_LIBS OFF`.
+   - `CMAKE_C_STANDARD=11`, `CMAKE_CXX_STANDARD=17`.
+   - `CMAKE_PREFIX_PATH` and `CMAKE_FIND_ROOT_PATH` pointing to the common install prefix so cross-compilation sub-builds can find previously installed dependencies.
+3. **`moredeps_add_dep(name ...)` helper** that wraps `ExternalProject_Add` with sensible defaults.
+4. **Per-dependency sections** guarded by platform when a dep is unsupported on a target (e.g. `glfw` and `mtcc` on Emscripten).
+5. **Wrappers in `src/<dep>/`** for header-only / non-CMake dependencies.  These wrappers are themselves built as `ExternalProject`s, so they install static libraries and headers into the common prefix.
 
 ### 3.3 `scripts/build_all.sh`
 
@@ -196,17 +198,20 @@ Responsibilities:
    ```bash
    ./scripts/build_all.sh all
    ./scripts/build_all.sh macos_arm64
-   ./scripts/build_all.sh windows_x64
+   ./scripts/build_all.sh wasm_emscripten
    ```
-3. For each platform, ensure the CMake toolchain file is used.
-4. Create `_b/<platform>` and run:
+3. For each platform, create `_b/<platform>` and run:
    ```bash
-   cmake -S . -B _b/<platform> -DCMAKE_TOOLCHAIN_FILE=toolchain/<platform>.cmake ...
-   cmake --build _b/<platform> --config Release
+   cmake -S . -B _b/<platform> -G "Unix Makefiles" \
+         -DCMAKE_TOOLCHAIN_FILE=toolchain/<platform>.cmake \
+         -DCMAKE_BUILD_TYPE=Release
+   cmake --build _b/<platform> --config Release --parallel
    ```
-5. For non-CMake deps, call their native build within `_b/<platform>/<dep>/` (e.g., `lua` make).
-6. After building, stage the resulting static libraries into a platform directory under `_b/<platform>/install/` or `out/<platform>/`.
-7. Record which dependencies were skipped due to known exclusions.
+   Emscripten uses the toolchain file (`toolchain/wasm_emscripten.cmake`) which locates the Homebrew Emscripten SDK root under `libexec/`.
+4. Stage outputs under `_out/<platform>/` (the value of `CMAKE_INSTALL_PREFIX`).
+5. Print a summary of built vs. skipped dependencies.
+
+`scripts/install_dawn.cmake` is used on Emscripten to stage the `emdawnwebgpu` headers and JS files, because Dawn produces no installable static library on that target.
 
 ### 3.4 Cross-compilation toolchains
 
@@ -231,12 +236,13 @@ For Windows cross-compilation from macOS/Linux we cannot run MSVC locally, so bu
 
 | Dependency | Issue | Resolution |
 |---|---|---|
-| `ghostty` | Uses Zig build, not CMake. | Build `libghostty` via CMake `add_custom_command` + `IMPORTED` target using patched `zig` 0.15.2.  If a clean static library cannot be produced, document as unsupported. |
-| `mtcc` | Uses target-specific C code / inline asm that cannot compile to Emscripten/WASM. | **Exclude** from `wasm_emscripten`. Build on Windows/Linux/macOS natively. |
-| `dawn` on Emscripten | Must select `emdawnwebgpu`, not `USE_WEBGPU`. | Configure in the Emscripten toolchain or per-dep section in top-level CMake. |
-| `boringssl` | CMake-based build. | Build as a static library via top-level CMake. Used as the TLS backend for `curl` and `libwebsockets`. |
-| `lua` | Makefile only, no CMake. | Build with `make` in `_b/<platform>/lua/` using the platform compiler. |
-| `lz4`, `xxhash`, `zstd`, `sokol_gp` | Makefile only (but have CMake in subdirectories). | Use the CMake wrappers in `deps/lz4/build/cmake/`, `deps/xxhash/cmake_unofficial/`, `deps/zstd/build/cmake/`, or create `src/<dep>/` wrappers. |
+| `ghostty` | Uses Zig build. A clean static library build is not currently achievable without upstream changes (default install step tries to build the macOS app bundle even with `app-runtime=none`). | **Deferred** until the Zig build can be constrained to emit only `libghostty.a`. |
+| `mtcc` | Makefile-based C compiler; target-specific C/ASM cannot compile to Emscripten/WASM. | Wrapped in `src/mtcc/CMakeLists.txt`. **Exclude** from `wasm_emscripten`. Build on Windows/Linux/macOS natively. |
+| `dawn` | WebGPU; heavy. | Built via `ExternalProject_Add` with `DAWN_FETCH_DEPENDENCIES=OFF`. Dawn's third-party dependencies are pre-populated as git submodules under `deps/dawn_third_party/` and `DAWN_THIRD_PARTY_DIR` points there. On native platforms a monolithic static library is produced. On Emscripten `scripts/install_dawn.cmake` stages the `emdawnwebgpu` headers and JS files. |
+| `boringssl` | CMake-based build. | Built via `ExternalProject_Add`. Used as the TLS backend for `curl` and `libwebsockets`. `OPENSSL_NO_ASM=ON` on Emscripten. |
+| `lua` | Makefile only, no CMake. | Wrapped in `src/lua/CMakeLists.txt` so the build is driven by CMake. |
+| `cimgui` | Upstream `CMakeLists.txt` hard-codes `SHARED`. | Wrapped in `src/cimgui/CMakeLists.txt` to build a static library from the cimgui/ImGui sources. |
+| `skribidi` | Upstream fetches its own harfbuzz/SheenBidi/libunibreak/budouxc and sets global `CMAKE_COMPILE_WARNING_AS_ERROR=ON`. | Built from a copy of the source in the build tree; `scripts/patch_skribidi.py` disables warning-as-error only in the copy, leaving the submodule untouched. |
 | `curl` | Needs TLS backend. | Use BoringSSL (`CURL_USE_BORINGSSL=ON`) on all platforms. |
 | `harfbuzz` | Optional FreeType interdependency. | Build FreeType before HarfBuzz and set `HB_HAVE_FREETYPE=ON` / `FT_DISABLE_HARFBUZZ=OFF`. |
 | `glfw` on Emscripten | GLFW is not used on the web; SDL3 or emscripten HTML5 APIs are used. | **Exclude** from `wasm_emscripten`. |
@@ -357,10 +363,12 @@ The following decisions have been made and are recorded here for reference.
 5. **HarfBuzz ↔ FreeType:** Enable `HB_HAVE_FREETYPE=ON` and `FT_DISABLE_HARFBUZZ=OFF` for improved auto-hinting. FreeType is built before HarfBuzz.
 6. **Version pins:** Yes — pin all floating submodules to concrete tags or commits.
 6. **Ghostty:** Build `libghostty`.  Integrate via CMake by using `add_custom_command` / `add_custom_target` to invoke the patched `zig` 0.15.2 build, then expose the resulting library as an `IMPORTED` target.  Zig 0.15.2 must be installed on CI machines.
-7. **Dawn scope:** WebGPU-only.  Disable examples, tests, benchmarks, samples, node bindings, SwiftShader, and protobuf.  Use `DAWN_BUILD_MONOLITHIC_LIBRARY=STATIC` and `DAWN_ENABLE_INSTALL=ON`.  On Emscripten, use `emdawnwebgpu` and do **not** set `USE_WEBGPU`.
-8. **Non-CMake deps:** Create small CMake wrappers in `src/<dep>/` (one wrapper per dependency, or per module for `sokol`/`stb`). Native build systems (make) are only used when unavoidable, e.g. `lua`.
-9. **Emscripten SDK:** Assume `emcc` / `emcmake` are installed and available at CMake configure time.  CI will install Emscripten before invoking the build.
-10. **CI matrix:** Deferred to the CI phase.  For now, focus on local/VM validation of `macos_arm64` and `wasm_emscripten` here, and `linux_x64`/`linux_arm64`/`windows_x64`/`windows_arm64` on separate VMs.
+7. **Dawn scope:** WebGPU-only. Disable examples, tests, benchmarks, samples, node bindings, SwiftShader, and protobuf. Use `DAWN_BUILD_MONOLITHIC_LIBRARY=STATIC` and `DAWN_ENABLE_INSTALL=ON` on native platforms. On Emscripten, `DAWN_ENABLE_INSTALL=OFF` and `DAWN_BUILD_MONOLITHIC_LIBRARY=OFF`; `scripts/install_dawn.cmake` stages `emdawnwebgpu` headers and JS files. `DAWN_FETCH_DEPENDENCIES=OFF`; third-party dependencies are pre-populated as git submodules in `deps/dawn_third_party/` and `DAWN_THIRD_PARTY_DIR` is set to that path.
+8. **Non-CMake deps:** Create small CMake wrappers in `src/<dep>/` (one wrapper per dependency, or per module for `sokol`/`stb`). Makefile-only deps (`mtcc`) are also wrapped in `src/<dep>/` so the super-build controls them.
+9. **Emscripten SDK:** The toolchain file (`toolchain/wasm_emscripten.cmake`) locates the SDK under `libexec/` (matching Homebrew's layout) and sets `CMAKE_SYSTEM_NAME=Emscripten`.
+10. **CI matrix:** Deferred to the CI phase. Local validation is complete for `macos_arm64` and `wasm_emscripten`; `linux_x64`/`linux_arm64`/`windows_x64`/`windows_arm64` remain to be validated on appropriate hosts.
+11. **Ghostty:** Deferred until the upstream Zig build can be constrained to emit only a static library without building the macOS app bundle.
+12. **Version pins:** All `branch = ...` entries removed from `.gitmodules`; submodules are pinned to their current commits.
 
 ### Remaining open questions
 
@@ -371,11 +379,8 @@ The following decisions have been made and are recorded here for reference.
 
 ## 9. Immediate Next Steps
 
-1. Review and approve this updated plan and `docs/build_options.md`.
-2. Pin floating submodules to specific commits/tags.
-3. Audit `docs/build_options.md` defaults and confirm or adjust them.
-4. Begin Phase 2 implementation:
-   - Create `toolchain/` files.
-   - Create top-level `CMakeLists.txt` and `src/<dep>/` wrappers.
-   - Create `scripts/build_all.sh`.
+1. Validate `linux_x64`, `linux_arm64`, `windows_x64`, and `windows_arm64` builds on appropriate hosts.
+2. Implement the Windows-specific `libwebsockets` BoringSSL library-name fix (`.lib` vs `.a`).
+3. Add CI matrix and artifact packaging in a future phase.
+4. Revisit `ghostty` when the upstream Zig build supports a library-only output.
 

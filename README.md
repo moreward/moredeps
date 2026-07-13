@@ -29,4 +29,8 @@ A collection of dependencies frequently used across projects, built as static li
 
 ## Status
 
-macOS arm64 builds and installs all configured dependencies successfully. Linux, Windows, and Emscripten builds are the next validation targets. See `docs/work_log.md` for the current state and known caveats.
+- **macOS arm64** — validated. All configured dependencies build and install (66 static libraries), including recently added `cimgui`, `raylib`, and `mtcc`.
+- **Emscripten (wasm32)** — validated. All Emscripten-compatible dependencies build and install; `glfw`, `mtcc`, `sdl3webgpu`, and `lua` are excluded on this target.
+- **Linux x64 / arm64** and **Windows x64 / arm64** — toolchains are provided, but these targets remain to be validated on appropriate hosts.
+
+See `docs/work_log.md` for the current state and known caveats.

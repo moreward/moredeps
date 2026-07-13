@@ -17,8 +17,11 @@ Set at the top level and inherited by all subdirectories:
 | `CMAKE_BUILD_TYPE` | `Release` | We produce release artifacts. |
 | `BUILD_SHARED_LIBS` | `OFF` | Static libraries by default. Shared libraries are deferred to a later phase. |
 | `CMAKE_POSITION_INDEPENDENT_CODE` | `ON` | Safe for static libs and required if we later mix in shared libs. |
-| `CMAKE_INSTALL_PREFIX` | `out/<platform>` | Staged output directory. |
-| `BUILD_TESTING` | `OFF` where possible | Avoid building upstream tests. |
+| `CMAKE_INSTALL_PREFIX` | `_out/<platform>` | Staged output directory. |
+| `CMAKE_C_STANDARD` | `11` | C99/C11 features (e.g., cJSON `long long`) required. |
+| `CMAKE_CXX_STANDARD` | `17` | Matches modern C++ deps (Dawn, abseil, etc.). |
+| `CMAKE_PREFIX_PATH` | `_out/<platform>` | Allows cross-compilation sub-builds to find installed deps. |
+| `CMAKE_FIND_ROOT_PATH` | `_out/<platform>` | Same as above for cross-compilation. |
 
 ---
 
@@ -93,10 +96,15 @@ BoringSSL does not expose an option to disable the `bssl` command-line tool, so 
 | `CURL_ENABLE_SSL` | `ON` | `ON` | Keep SSL. |
 | `CURL_USE_BORINGSSL` | `OFF` | `ON` | Use BoringSSL on all platforms. |
 | `CURL_DISABLE_LDAP` | `ON` | `ON` | Keep off. |
-| `HTTP_ONLY` | `OFF` | `OFF` | Keep full protocol set; may enable later if size matters. |
-| `USE_NGHTTP2` | `ON` | `ON` | HTTP/2 support if available. |
-| `USE_NGTCP2` | `OFF` | `OFF` | HTTP/3; keep off for now. |
+| `CURL_USE_LIBPSL` | `ON` | `OFF` | Avoid libpsl system dependency. |
+| `CURL_USE_LIBSSH2` | `ON` | `OFF` | Avoid libssh2 system dependency. |
+| `CURL_BROTLI` | `OFF` | `OFF` | Keep off. |
+| `CURL_ZSTD` | `OFF` | `OFF` | Keep off. |
+| `USE_NGHTTP2` | `ON` | `OFF` | HTTP/2 deferred; avoids nghttp2 dependency. |
+| `USE_NGTCP2` | `OFF` | `OFF` | HTTP/3; keep off. |
 | `USE_QUICHE` | `OFF` | `OFF` | HTTP/3; keep off. |
+| `USE_LIBIDN2` | `ON` | `OFF` | Avoid libidn2 system dependency. |
+| `CURL_DISABLE_LDAP` | `ON` | `ON` | Keep off. |
 
 **TLS backend:** BoringSSL (`deps/boringssl`) is the single TLS backend on all platforms. This replaces the previous platform-native approach and removes the OpenSSL dependency.
 
@@ -104,19 +112,21 @@ BoringSSL does not expose an option to disable the `bssl` command-line tool, so 
 
 | Option | Upstream default | Proposed default | Notes |
 |---|---|---|---|
-| `DAWN_ENABLE_INSTALL` | `OFF` | `ON` | We want installable targets. |
+| `DAWN_ENABLE_INSTALL` | `OFF` | `ON` on native, `OFF` on Emscripten | Emscripten produces no installable static library. |
 | `DAWN_BUILD_BENCHMARKS` | `OFF` | `OFF` | No benchmarks. |
 | `DAWN_BUILD_FUZZERS` | `OFF` | `OFF` | No fuzzers. |
 | `DAWN_BUILD_NODE_BINDINGS` | `OFF` | `OFF` | No Node.js bindings. |
 | `DAWN_BUILD_PROTOBUF` | `ON` | `OFF` | Only needed for some tools; disable for WebGPU-only build. |
 | `DAWN_ENABLE_SWIFTSHADER` | `OFF` | `OFF` | Keep off. |
-| `DAWN_FETCH_DEPENDENCIES` | `OFF` | `ON` | Use Python fetcher instead of depot_tools (much easier in CI). |
+| `DAWN_FETCH_DEPENDENCIES` | `ON` | `OFF` | Pre-populate third-party deps as git submodules in `deps/dawn_third_party/` and set `DAWN_THIRD_PARTY_DIR`. Avoids the broken Python fetch script. |
 | `TINT_BUILD_TESTS` | `ON` | `OFF` | No tests. |
 | `TINT_BUILD_CMD_TOOLS` | `ON` | `OFF` | No tools. |
 | `TINT_BUILD_GLSL_VALIDATOR` | `ON` | `OFF` | Only needed for tool output. |
-| `DAWN_BUILD_MONOLITHIC_LIBRARY` | `STATIC` | `STATIC` | Static monolithic library. |
+| `DAWN_BUILD_MONOLITHIC_LIBRARY` | `STATIC` | `STATIC` on native, `OFF` on Emscripten | Static monolithic library on desktop; none on Emscripten. |
+| `DAWN_ENABLE_VULKAN` | varies | `ON` on Linux, `OFF` otherwise | Only needed on Linux. |
+| `DAWN_ENABLE_METAL` | varies | `ON` on macOS, `OFF` otherwise | Only needed on macOS. |
 
-**Emscripten note:** On `wasm_emscripten`, we will set the upstream option to use `emdawnwebgpu` and **not** `USE_WEBGPU`.  The exact variable name (`DAWN_EMSCRIPTEN_EMDAWNWEBGPU` or similar) will be verified during implementation and documented here.
+**Emscripten note:** On `wasm_emscripten`, Dawn does not produce a static library. Instead, `scripts/install_dawn.cmake` stages the `emdawnwebgpu` headers (`webgpu/webgpu.h`, `dawn/dawn_version.h`) and JavaScript files (`library_webgpu_*.js`) into `_out/wasm_emscripten/`.
 
 ### `enet`
 
@@ -301,6 +311,16 @@ BoringSSL does not expose an option to disable the `bssl` command-line tool, so 
 | `LWS_TLS_LOG_PLAINTEXT_TX` | `OFF` | `OFF` | Keep off. |
 | `LWS_WITHOUT_CLIENT` | `OFF` | `OFF` | Keep client. |
 | `LWS_WITHOUT_SERVER` | `OFF` | `OFF` | Keep server. |
+
+**BoringSSL compatibility:** `libwebsockets`'s `CHECK_FUNCTION_EXISTS` feature detection misses several BoringSSL accessor APIs, so the following CMake cache variables are forced to `1`:
+- `LWS_HAVE_RSA_SET0_KEY`
+- `LWS_HAVE_ECDSA_SIG_get0`
+- `LWS_HAVE_ECDSA_SIG_set0`
+- `LWS_HAVE_BN_bn2binpad`
+
+Additionally, `LWS_OPENSSL_LIBRARIES` and `LWS_OPENSSL_INCLUDE_DIRS` are pointed at the installed BoringSSL prefix, and `DISABLE_WERROR=ON` is set to avoid BoringSSL-related warnings being treated as errors.
+
+**Windows note:** `LWS_OPENSSL_LIBRARIES` currently uses Unix-style library names (`libssl.a;libcrypto.a`). This will need to be adjusted to `.lib` files for MSVC builds.
 
 **Excluded on `wasm_emscripten`**.
 
@@ -626,32 +646,37 @@ These dependencies do not have native CMake builds (or the native build is unsui
 | Dep | Implementation macro(s) | Notes |
 |---|---|---|
 | `cgltf` | `CGLTF_IMPLEMENTATION` | glTF loader. |
-| `FastNoiseLite` | `FN_IMPLEMENTATION` (or `FNL_IMPLEMENTATION`; verify header) | C noise library. |
+| `cimgui` | N/A (wrapper compiles `cimgui.cpp` + ImGui sources) | Upstream hard-codes `SHARED`; wrapper builds static. |
+| `FastNoiseLite` | `FNL_IMPLEMENTATION` | C noise library. |
 | `fontstash` | `FONTSTASH_IMPLEMENTATION` | Font rasterization. |
-| `microui` | `MUI_IMPLEMENTATION` (or include `microui.c`) | Single-source UI. |
+| `microui` | `MUI_IMPLEMENTATION` | Single-source UI. |
 | `miniaudio` (fallback) | `MINIAUDIO_IMPLEMENTATION` | Only if we use the wrapper instead of upstream CMake. |
-| `minigamepad` | `MGP_IMPLEMENTATION` (verify header) | Gamepad abstraction. |
+| `minigamepad` | `MGP_IMPLEMENTATION` | Gamepad abstraction. |
+| `mtcc` | N/A (Makefile wrapper) | `src/mtcc/CMakeLists.txt` runs configure + make. |
 | `nanovg` | `NANOVG_IMPLEMENTATION` | 2D vector graphics. |
-| `raudio` | `RAUDIO_IMPLEMENTATION` | Audio library (wrapper in `src/raudio/`). |
-| `sokol` | `SOKOL_IMPL` (global) plus per-module macros (e.g., `SOKOL_APP_IMPL`, `SOKOL_GFX_IMPL`, etc.) | **Per-module static libraries:** `sokol_app`, `sokol_gfx`, `sokol_audio`, `sokol_time`, `sokol_log`, `sokol_args`, `sokol_fetch`, `sokol_glue`. Each gets its own `src/sokol_<mod>/` wrapper. |
-| `sokol_gp` | `SOKOL_GP_IMPL` (verify header) | Per-module static library `sokol_gp`. |
-| `sokol_gp` | `SOKOL_GP_IMPL` (verify header) | Sokol immediate-mode 2D. |
-| `stb` | `STB_IMAGE_IMPLEMENTATION`, `STB_TRUETYPE_IMPLEMENTATION`, etc. | **Per-module static libraries:** `stb_image`, `stb_image_write`, `stb_image_resize`, `stb_truetype`, `stb_rect_pack`, `stb_ds`, etc. Each gets its own `src/stb_<mod>/` wrapper so downstream apps only link what they use. |
-| `ubench` | `UBENCH_IMPLEMENTATION` | Micro-benchmarking. |
+| `raudio` | `RAUDIO_IMPLEMENTATION` | Audio library. |
+| `sokol` | `SOKOL_IMPL` plus per-module macros | **Per-module static libraries:** `sokol_app`, `sokol_args`, `sokol_audio`, `sokol_fetch`, `sokol_gfx`, `sokol_glue`, `sokol_log`, `sokol_time`. `sokol_app`/`sokol_gfx`/`sokol_glue` use Metal on macOS. |
+| `sokol_gp` | `SOKOL_GP_IMPL` | Built against the Sokol headers in `deps/sokol_gp/thirdparty`. |
+| `stb` | `STB_IMAGE_IMPLEMENTATION`, `STB_TRUETYPE_IMPLEMENTATION`, etc. | **Per-module static libraries:** `stb_image`, `stb_image_write`, `stb_image_resize`, `stb_truetype`, `stb_rect_pack`, `stb_ds`. |
+| `tinycsocket` | N/A (CMake wrapper) | Upstream writes into its source tree; wrapper copies to build tree first. |
+| `ubench` | `UBENCH_IMPLEMENTATION` | On Emscripten the wrapper includes `emscripten/html5.h` before `ubench.h`. |
 | `utest` | `UTEST_IMPLEMENTATION` | Unit testing. |
 
 ## Non-CMake / native build dependencies
 
-| Dep | Build system | Build command / options | Notes |
-|---|---|---|---|
-| `lua-5.5.0` | Makefile | `make -C deps/lua-5.5.0/src` with `CC=...` and `PLAT=...` | Produces `liblua.a`. We may wrap this in `src/lua/` or call from `build_all.sh`. |
-| `mtcc` | Makefile / Autotools | `make` or `autotools` | **Emscripten excluded.** |
+| Dep | Build system | Wrapper / notes |
+|---|---|---|
+| `lua-5.5.0` | Makefile | `src/lua/CMakeLists.txt` drives the upstream `make` rules and installs `liblua.a` + headers. |
+| `mtcc` | Makefile | `src/mtcc/CMakeLists.txt` runs `./configure` and `make libtcc.a` in the build tree. **Excluded on `wasm_emscripten`**. |
 
 ---
 
-## Open decisions
+## Open decisions / resolved items
 
-1. **HarfBuzz ↔ FreeType integration:** **Enable** `HB_HAVE_FREETYPE=ON` and `FT_DISABLE_HARFBUZZ=OFF` for improved auto-hinting. FreeType must be built before HarfBuzz.
-2. **Dawn Emscripten option name:** Verify the exact CMake variable for selecting `emdawnwebgpu` during implementation.
-3. **Sokol / STB module granularity:** Create a separate static library per module (e.g., `sokol_app`, `sokol_gfx`, `stb_image`, `stb_truetype`) so downstream apps only link what they use.
+1. **HarfBuzz ↔ FreeType integration:** **Enabled** `HB_HAVE_FREETYPE=ON` and `FT_DISABLE_HARFBUZZ=OFF`. FreeType is built before HarfBuzz.
+2. **Dawn Emscripten path:** Resolved. `DAWN_ENABLE_INSTALL=OFF` and `DAWN_BUILD_MONOLITHIC_LIBRARY=OFF` on Emscripten; `scripts/install_dawn.cmake` stages the `emdawnwebgpu` artifacts.
+3. **Sokol / STB module granularity:** Resolved. Each module is a separate static library (`sokol_app`, `sokol_gfx`, `stb_image`, etc.).
+4. **TLS backend:** Resolved. BoringSSL is used everywhere for `curl` and `libwebsockets`.
+5. **Submodules:** All floating submodules are pinned by removing `branch = ...` from `.gitmodules` and committing the resolved submodule commits. `cimgui/imgui` is a nested submodule that must be initialized with `git submodule update --init --recursive`.
+6. **Remaining platforms:** `linux_x64`, `linux_arm64`, `windows_x64`, and `windows_arm64` toolchains are present but not yet validated locally.
 

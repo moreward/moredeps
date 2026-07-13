@@ -80,7 +80,10 @@ set(MOREDEPS_COMMON_CMAKE_ARGS
   "-DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}"
   "-DBUILD_SHARED_LIBS=OFF"
   "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+  "-DCMAKE_C_STANDARD=11"
+  "-DCMAKE_CXX_STANDARD=17"
   "-DCMAKE_PREFIX_PATH=${CMAKE_INSTALL_PREFIX}"
+  "-DCMAKE_FIND_ROOT_PATH=${CMAKE_INSTALL_PREFIX}"
   "-DCMAKE_FIND_NO_INSTALL_PREFIX=ON"
   "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
 )
@@ -146,6 +149,7 @@ moredeps_add_dep(boringssl
   CMAKE_ARGS
     "-DBUILD_TESTING=OFF"
     "-DFIPS=OFF"
+    "-DOPENSSL_NO_ASM=$<IF:$<PLATFORM_ID:Emscripten>,ON,OFF>"
 )
 
 # --- box3d ---
@@ -168,6 +172,12 @@ moredeps_add_dep(cglm
     "-DCGLM_SHARED=OFF"
     "-DCGLM_USE_TEST=OFF"
     "-DCGLM_USE_C99=OFF"
+)
+
+# --- cimgui ---
+# Upstream CMakeLists hard-codes SHARED. We wrap it to build a static lib.
+moredeps_add_dep(cimgui
+  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/cimgui"
 )
 
 # --- cJSON ---
@@ -245,7 +255,9 @@ moredeps_add_dep(curl
 moredeps_add_dep(dawn
   CMAKE_ARGS
     "-DDAWN_THIRD_PARTY_DIR=${CMAKE_CURRENT_SOURCE_DIR}/deps/dawn_third_party"
-    "-DDAWN_ENABLE_INSTALL=ON"
+    "-DDAWN_EMDAWNWEBGPU_DIR=${CMAKE_CURRENT_SOURCE_DIR}/deps/dawn/third_party/emdawnwebgpu"
+    "-DDAWN_ENABLE_INSTALL=$<IF:$<PLATFORM_ID:Emscripten>,OFF,ON>"
+    "-DDAWN_BUILD_TESTS=OFF"
     "-DDAWN_BUILD_BENCHMARKS=OFF"
     "-DDAWN_BUILD_FUZZERS=OFF"
     "-DDAWN_BUILD_NODE_BINDINGS=OFF"
@@ -259,11 +271,16 @@ moredeps_add_dep(dawn
     "-DTINT_BUILD_GLSL_VALIDATOR=OFF"
     "-DTINT_BUILD_WGSL_READER=ON"
     "-DTINT_BUILD_WGSL_WRITER=ON"
-    "-DDAWN_BUILD_MONOLITHIC_LIBRARY=STATIC"
+    "-DDAWN_BUILD_MONOLITHIC_LIBRARY=$<IF:$<PLATFORM_ID:Emscripten>,OFF,STATIC>"
     "-DDAWN_ENABLE_VULKAN=$<IF:$<PLATFORM_ID:Linux>,ON,OFF>"
     "-DDAWN_ENABLE_METAL=$<IF:$<PLATFORM_ID:Darwin>,ON,OFF>"
     "-DDAWN_ENABLE_DESKTOP_GL=OFF"
     "-DDAWN_ENABLE_OPENGLES=OFF"
+  INSTALL_COMMAND
+    ${CMAKE_COMMAND} -DDAWN_BUILD_DIR=<BINARY_DIR>
+                     -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+                     -DEMSCRIPTEN=$<BOOL:$<PLATFORM_ID:Emscripten>>
+                     -P ${CMAKE_CURRENT_SOURCE_DIR}/scripts/install_dawn.cmake
 )
 
 # --- enet ---
@@ -299,12 +316,15 @@ moredeps_add_dep(freetype
 )
 
 # --- glfw ---
-moredeps_add_dep(glfw
-  CMAKE_ARGS
-    "-DBUILD_SHARED_LIBS=OFF"
-    "-DGLFW_BUILD_DOCS=OFF"
-    "-DGLFW_INSTALL=ON"
-)
+# GLFW is a desktop windowing library; it does not build for Emscripten.
+if(NOT EMSCRIPTEN)
+  moredeps_add_dep(glfw
+    CMAKE_ARGS
+      "-DBUILD_SHARED_LIBS=OFF"
+      "-DGLFW_BUILD_DOCS=OFF"
+      "-DGLFW_INSTALL=ON"
+  )
+endif()
 
 # --- harfbuzz ---
 moredeps_add_dep(harfbuzz
@@ -512,6 +532,33 @@ moredeps_add_dep(physfs
     "-DPHYSFS_ARCHIVE_VDF=OFF"
 )
 
+# --- raylib ---
+if(EMSCRIPTEN)
+  moredeps_add_dep(raylib
+    CMAKE_ARGS
+      "-DBUILD_EXAMPLES=OFF"
+      "-DBUILD_SHARED_LIBS=OFF"
+      "-DPLATFORM=Web"
+  )
+else()
+  moredeps_add_dep(raylib
+    DEPENDS glfw
+    CMAKE_ARGS
+      "-DBUILD_EXAMPLES=OFF"
+      "-DBUILD_SHARED_LIBS=OFF"
+      "-DUSE_EXTERNAL_GLFW=ON"
+      "-DOPENGL_VERSION=3.3"
+  )
+endif()
+
+# --- mtcc ---
+# TinyCC is Makefile-only and does not support Emscripten.
+if(NOT EMSCRIPTEN)
+  moredeps_add_dep(mtcc
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/mtcc"
+  )
+endif()
+
 # --- reproc ---
 moredeps_add_dep(reproc
   CMAKE_ARGS
@@ -553,14 +600,37 @@ moredeps_add_dep(sdl3
 # --- sdl3webgpu ---
 # Upstream CMakeLists is missing cmake_minimum_required and links against
 # targets that are built in separate ExternalProjects. We wrap it.
-moredeps_add_dep(sdl3webgpu
-  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/sdl3webgpu"
-  DEPENDS sdl3 dawn
-)
+# Excluded on Emscripten: the current sdl3webgpu and emdawnwebgpu versions use
+# incompatible WebGPU surface descriptor types (WGPUSurfaceDescriptorFromCanvasHTMLSelector
+# was removed/renamed in the upstream WebGPU header).
+if(NOT EMSCRIPTEN)
+  moredeps_add_dep(sdl3webgpu
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/sdl3webgpu"
+    DEPENDS sdl3 dawn
+  )
+endif()
 
 # --- skribidi ---
-moredeps_add_dep(skribidi
+# Upstream CMakeLists fetches its own harfbuzz/SheenBidi/libunibreak/budouxc
+# and sets CMAKE_COMPILE_WARNING_AS_ERROR globally. We build it from a copy
+# of the source in the build tree so the submodule stays clean, and patch the
+# warning-as-error setting in the copy only.
+set(_SKRIBIDI_SRC_COPY "${CMAKE_BINARY_DIR}/skribidi_src_copy")
+set(_SKRIBIDI_PATCH_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/scripts/patch_skribidi.py")
+ExternalProject_Add(
+  skribidi
+  DOWNLOAD_COMMAND
+    ${CMAKE_COMMAND} -E rm -rf ${_SKRIBIDI_SRC_COPY}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+      ${CMAKE_CURRENT_SOURCE_DIR}/deps/skribidi
+      ${_SKRIBIDI_SRC_COPY}
+  SOURCE_DIR ${_SKRIBIDI_SRC_COPY}
+  BINARY_DIR "${CMAKE_BINARY_DIR}/skribidi"
+  INSTALL_DIR "${CMAKE_INSTALL_PREFIX}"
+  PATCH_COMMAND
+    python3 ${_SKRIBIDI_PATCH_SCRIPT} ${_SKRIBIDI_SRC_COPY}
   CMAKE_ARGS
+    ${MOREDEPS_COMMON_CMAKE_ARGS}
     "-DSKRIBIDI_EXAMPLE=OFF"
     "-DSKRIBIDI_UNIT_TESTS=OFF"
     "-DENABLE_ASAN=OFF"
