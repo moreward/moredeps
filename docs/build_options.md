@@ -446,9 +446,11 @@ Per-platform variant availability:
 | Platform | `app` variants | `gfx` variants | `gp` variants |
 |---|---|---|---|
 | macOS | `metal`, `glcore` | `metal`, `glcore`, `wgpu` | `metal`, `glcore` |
-| Linux | `glcore`, `gles3` | `glcore`, `gles3`, `wgpu` | `glcore`, `gles3` |
-| Windows | `d3d11`, `glcore` | `d3d11`, `glcore`, `gles3`, `wgpu` | `d3d11`, `glcore`, `gles3` |
+| Linux | `glcore`, `gles3`, `wgpu` | `glcore`, `gles3`, `wgpu` | `glcore`, `gles3` |
+| Windows | `d3d11`, `glcore`, `wgpu` | `d3d11`, `glcore`, `gles3`, `wgpu` | `d3d11`, `glcore`, `gles3` |
 | Emscripten | `gles3`, `wgpu` | `gles3`, `wgpu` | `gles3` |
+
+**sokol_app_wgpu on macOS:** `sokol_app.h` nominally lists `SOKOL_WGPU` as a supported macOS backend, but the current `deps/sokol` (commit `3743ea6`) fails to compile for that combination (`_sapp.swap_interval` and `_sapp_macos_mtl_is_obscured` are used unconditionally on macOS). Therefore `sokol_app_wgpu` and `sokol_glue_wgpu` are enabled on Linux, Windows, and Emscripten only. `sokol_gfx_wgpu` is still built on macOS because `sokol_gfx.h` itself compiles cleanly.
 
 **sokol_gp isolation:** `sokol_gp` is built against the vendored sokol headers in `deps/sokol_gp/thirdparty`, which are older than the top-level `deps/sokol`. The `sokol_gp` headers are installed into `include/sokol_gp/` and must not be mixed with the top-level `sokol_*` libraries. This is documented in `include/sokol_gp/README.txt`.
 

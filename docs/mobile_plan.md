@@ -114,7 +114,34 @@ Notes:
 5. For Android, ensure `BUILD_SHARED_LIBS=OFF` and `POSITION_INDEPENDENT_CODE=ON` (already set).
 6. For iOS, ensure bitcode is disabled unless needed, and code signing is handled by the downstream app.
 
-## 7. Open questions / next steps
+## 7. Dawn / WebGPU on mobile
+
+**iOS:** Dawn supports iOS through its **Metal backend**. No extra third-party dependencies are needed beyond what is already in `deps/dawn_third_party/` (abseil, SPIR-V tools, Vulkan headers, etc.). The build just needs `DAWN_ENABLE_METAL=ON` and an iOS toolchain.
+
+**Android:** Dawn supports Android through its **Vulkan backend**. The Android system provides the Vulkan loader (`libvulkan.so`), and the NDK provides the Vulkan headers. No new git submodules are required. The build needs:
+- `DAWN_ENABLE_VULKAN=ON`
+- An Android NDK toolchain
+- `SDL_VULKAN=ON` (if using SDL3) or a custom Vulkan surface setup
+
+**sdl3webgpu on mobile:** The upstream `sdl3webgpu` source currently has surface creation code for macOS, iOS, Linux (X11/Wayland), Windows, and Emscripten. It does **not** have an Android implementation. For Android we would need to add a `WGPUSurfaceDescriptorFromAndroidNativeWindow` path (or similar) using `ANativeWindow` from the NDK. This is a small patch but is not present upstream.
+
+## 8. Raylib on mobile
+
+Raylib has `PLATFORM_ANDROID` and `PLATFORM_IOS`/`PLATFORM_DRM` support, but it is non-trivial to consume as a static library for mobile for several reasons:
+
+1. **App scaffolding:** Mobile apps do not have a traditional `main()`. Android uses `android_main()` and the NativeActivity framework; iOS needs an Xcode project, `Info.plist`, app bundle, and code signing. A static library alone does not give you a runnable app.
+
+2. **Native app glue:** On Android, raylib links against the NDK's `native_app_glue` and system libraries (`libandroid`, `libEGL`, `libGLESv3`, `jnigraphics`). The downstream CMake project must set up the NativeActivity lifecycle correctly (`APP_CMD_INIT_WINDOW`, `APP_CMD_GAINED_FOCUS`, etc.).
+
+3. **Asset loading:** Android assets live inside the APK, not on a regular filesystem. Raylib's resource loading (`LoadTexture`, `LoadSound`, etc.) can read from the APK via `AAssetManager`, but this must be wired up by the host app.
+
+4. **Graphics backend:** Raylib on mobile uses **OpenGL ES 2.0/3.0**, not desktop GL. Existing shaders and render code may need to be GLES-compatible. On iOS, OpenGL ES is deprecated in favor of Metal, and raylib's iOS path is less maintained than its Android path.
+
+5. **Permissions:** Mobile apps require explicit permissions for network, storage, microphone, etc. These are outside the scope of a static library build.
+
+In short, raylib can be built as a static library for mobile, but making a real mobile app requires significant platform-specific integration work that is not handled by just linking `libraylib.a`.
+
+## 9. Open questions / next steps
 
 - Do we want to support iOS/Android in this repository now, or keep it as a planned future phase?
 - Should we add a single `ios_arm64`/`android_arm64` build now, or wait until desktop platforms are fully validated?

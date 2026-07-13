@@ -920,15 +920,15 @@ if(MOREDEPS_PLATFORM STREQUAL "macos_arm64")
 elseif(MOREDEPS_PLATFORM STREQUAL "linux_x64" OR MOREDEPS_PLATFORM STREQUAL "linux_arm64")
   list(APPEND _sokol_variants
     gfx:GLCORE gfx:GLES3 gfx:WGPU
-    app:GLCORE app:GLES3
-    glue:GLCORE glue:GLES3
+    app:GLCORE app:GLES3 app:WGPU
+    glue:GLCORE glue:GLES3 glue:WGPU
     gp:GLCORE gp:GLES3
   )
 elseif(MOREDEPS_PLATFORM MATCHES "windows_(x64|arm64)")
   list(APPEND _sokol_variants
     gfx:GLCORE gfx:GLES3 gfx:D3D11 gfx:WGPU
-    app:GLCORE app:D3D11
-    glue:GLCORE glue:D3D11
+    app:GLCORE app:D3D11 app:WGPU
+    glue:GLCORE glue:D3D11 glue:WGPU
     gp:GLCORE gp:GLES3 gp:D3D11
   )
 elseif(MOREDEPS_PLATFORM STREQUAL "wasm_emscripten")
