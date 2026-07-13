@@ -1,0 +1,141 @@
+[submodule "deps/cimgui"]
+	path = deps/cimgui
+	url = https://github.com/cimgui/cimgui.git
+[submodule "deps/dawn"]
+	path = deps/dawn
+	url = https://github.com/google/dawn.git
+[submodule "deps/ghostty"]
+	path = deps/ghostty
+	url = https://github.com/ghostty-org/ghostty.git
+[submodule "deps/sdl3webgpu"]
+	path = deps/sdl3webgpu
+	url = https://github.com/eliemichel/sdl3webgpu.git
+[submodule "deps/skribidi"]
+	path = deps/skribidi
+	url = https://github.com/memononen/skribidi.git
+[submodule "deps/sokol"]
+	path = deps/sokol
+	url = https://github.com/floooh/sokol.git
+[submodule "deps/ubench"]
+	path = deps/ubench
+	url = https://github.com/sheredom/ubench.h.git
+[submodule "deps/utest"]
+	path = deps/utest
+	url = https://github.com/sheredom/utest.h.git
+[submodule "deps/cJSON"]
+	path = deps/cJSON
+	url = https://github.com/DaveGamble/cJSON.git
+	branch = master
+[submodule "deps/curl"]
+	path = deps/curl
+	url = https://github.com/curl/curl.git
+	branch = master
+[submodule "deps/libwebsockets"]
+	path = deps/libwebsockets
+	url = https://github.com/warmcat/libwebsockets.git
+	branch = v4.5-stable
+[submodule "deps/mtcc"]
+	path = deps/mtcc
+	url = https://github.com/moreward/mtcc.git
+[submodule "deps/openssl"]
+	path = deps/openssl
+	url = https://github.com/openssl/openssl.git
+[submodule "deps/physfs"]
+	path = deps/physfs
+	url = https://github.com/icculus/physfs.git
+	branch = main
+[submodule "deps/reproc"]
+	path = deps/reproc
+	url = https://github.com/daandemeyer/reproc.git
+	branch = main
+[submodule "deps/sqlite-amalgamation"]
+	path = deps/sqlite-amalgamation
+	url = https://github.com/azadkuh/sqlite-amalgamation.git
+	branch = master
+[submodule "deps/tinycsocket"]
+	path = deps/tinycsocket
+	url = https://github.com/dosshell/tinycsocket.git
+	branch = master
+[submodule "deps/utf8proc"]
+	path = deps/utf8proc
+	url = https://github.com/JuliaStrings/utf8proc.git
+	branch = master
+[submodule "deps/zlib"]
+	path = deps/zlib
+	url = https://github.com/madler/zlib.git
+	branch = develop
+[submodule "deps/zstd"]
+	path = deps/zstd
+	url = https://github.com/facebook/zstd.git
+	branch = dev
+[submodule "deps/stb"]
+	path = deps/stb
+	url = https://github.com/nothings/stb.git
+[submodule "deps/raylib"]
+	path = deps/raylib
+	url = https://github.com/raysan5/raylib.git
+	branch = master
+[submodule "deps/sdl3"]
+	path = deps/sdl3
+	url = https://github.com/libsdl-org/SDL.git
+	branch = main
+[submodule "deps/raudio"]
+	path = deps/raudio
+	url = https://github.com/raysan5/raudio.git
+[submodule "deps/sokol_gp"]
+	path = deps/sokol_gp
+	url = https://github.com/edubart/sokol_gp.git
+[submodule "deps/fontstash"]
+	path = deps/fontstash
+	url = https://github.com/memononen/fontstash.git
+[submodule "deps/freetype"]
+	path = deps/freetype
+	url = https://github.com/freetype/freetype.git
+[submodule "deps/harfbuzz"]
+	path = deps/harfbuzz
+	url = https://github.com/harfbuzz/harfbuzz.git
+[submodule "deps/glfw"]
+	path = deps/glfw
+	url = https://github.com/glfw/glfw.git
+[submodule "deps/minigamepad"]
+	path = deps/minigamepad
+	url = https://github.com/ColleagueRiley/minigamepad.git
+[submodule "deps/miniaudio"]
+	path = deps/miniaudio
+	url = https://github.com/mackron/miniaudio.git
+[submodule "deps/cglm"]
+	path = deps/cglm
+	url = https://github.com/recp/cglm.git
+[submodule "deps/box3d"]
+	path = deps/box3d
+	url = https://github.com/erincatto/box3d.git
+[submodule "deps/tracy"]
+	path = deps/tracy
+	url = https://github.com/wolfpld/tracy.git
+[submodule "deps/mimalloc"]
+	path = deps/mimalloc
+	url = https://github.com/microsoft/mimalloc.git
+[submodule "deps/cgltf"]
+	path = deps/cgltf
+	url = https://github.com/jkuhlmann/cgltf.git
+[submodule "deps/nanovg"]
+	path = deps/nanovg
+	url = https://github.com/memononen/nanovg.git
+[submodule "deps/enet"]
+	path = deps/enet
+	url = https://github.com/zpl-c/enet.git
+[submodule "deps/microui"]
+	path = deps/microui
+	url = https://github.com/rxi/microui.git
+[submodule "deps/xxhash"]
+	path = deps/xxhash
+	url = https://github.com/cyan4973/xxhash.git
+[submodule "deps/lz4"]
+	path = deps/lz4
+	url = https://github.com/lz4/lz4.git
+[submodule "deps/FastNoiseLite"]
+	path = deps/FastNoiseLite
+	url = https://github.com/Auburn/FastNoiseLite.git
+[submodule "deps/flecs"]
+	path = deps/flecs
+	url = https://github.com/SanderMertens/flecs.git

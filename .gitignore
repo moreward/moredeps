@@ -1,0 +1,36 @@
+# banned from everywhere
+.cache
+.DS_Store
+__pycache__
+.ipynb_checkpoints
+*~
+*.dSYM
+*.pyc
+
+# top level dot files/dirs
+/.*
+!/.gitignore
+!/.gitmodules
+!/.gitattributes
+!/.github
+# !/.vscode
+
+# C build artifacts
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Lua build artifacts
+/deps/lua-5.5.0/src/lua
+/deps/lua-5.5.0/src/luac
+
+# top level
+/_*
+/out_*
+/build
+/build_*
+/Testing
+
