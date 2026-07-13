@@ -94,7 +94,7 @@ BoringSSL does not expose an option to disable the `bssl` command-line tool, so 
 | `BUILD_MISC_DOCS` | `ON` | `OFF` | No docs. |
 | `ENABLE_CURL_MANUAL` | `ON` | `OFF` | No docs. |
 | `CURL_ENABLE_SSL` | `ON` | `ON` | Keep SSL. |
-| `CURL_USE_BORINGSSL` | `OFF` | `ON` | Use BoringSSL on all platforms. |
+| `CURL_USE_OPENSSL` | `OFF` | `ON` | Use OpenSSL backend; BoringSSL is used via OpenSSL compatibility. |
 | `CURL_DISABLE_LDAP` | `ON` | `ON` | Keep off. |
 | `CURL_USE_LIBPSL` | `ON` | `OFF` | Avoid libpsl system dependency. |
 | `CURL_USE_LIBSSH2` | `ON` | `OFF` | Avoid libssh2 system dependency. |
@@ -106,7 +106,7 @@ BoringSSL does not expose an option to disable the `bssl` command-line tool, so 
 | `USE_LIBIDN2` | `ON` | `OFF` | Avoid libidn2 system dependency. |
 | `CURL_DISABLE_LDAP` | `ON` | `ON` | Keep off. |
 
-**TLS backend:** BoringSSL (`deps/boringssl`) is the single TLS backend on all platforms. This replaces the previous platform-native approach and removes the OpenSSL dependency.
+**TLS backend:** BoringSSL (`deps/boringssl`) is the single TLS backend on all platforms. `curl` is configured with `CURL_USE_OPENSSL=ON`; BoringSSL is consumed via its OpenSSL compatibility layer.
 
 ### `dawn`
 

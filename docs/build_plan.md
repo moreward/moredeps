@@ -57,7 +57,7 @@ Legend:
 | `cgltf` | Header-only | H | `src/cgltf/` wrapper | None known. |
 | `cimgui` | CMake / Makefile | C++ wrapper | `src/cimgui/` wrapper | Upstream `CMakeLists.txt` hard-codes `SHARED`; we build static from source. |
 | `cJSON` | CMake | C | `ExternalProject_Add` | None known. |
-| `curl` | CMake | C | `ExternalProject_Add` | BoringSSL (`CURL_USE_BORINGSSL=ON`) on all platforms. |
+| `curl` | CMake | C | `ExternalProject_Add` | BoringSSL via `CURL_USE_OPENSSL=ON` (OpenSSL compatibility) on all platforms. |
 | `dawn` | CMake | C | `ExternalProject_Add` | `DAWN_FETCH_DEPENDENCIES=OFF`; third-party deps in `deps/dawn_third_party/`. Emscripten uses `emdawnwebgpu`. |
 | `enet` | CMake | C | `ExternalProject_Add` | Network lib; currently builds on Emscripten but is documented as unsuitable for the browser. |
 | `FastNoiseLite` | Header-only | H | `src/FastNoiseLite/` wrapper | C header used. |
@@ -121,6 +121,7 @@ moredeps/
 │   ├── cimgui/                 # static lib wrapper (upstream hard-codes SHARED)
 │   ├── FastNoiseLite/
 │   ├── fontstash/
+│   ├── ghostty/                # Zig build wrapper; extracts libghostty.a from xcframework
 │   ├── microui/
 │   ├── miniaudio/
 │   ├── minigamepad/
@@ -243,7 +244,7 @@ For Windows cross-compilation from macOS/Linux we cannot run MSVC locally, so bu
 | `lua` | Makefile only, no CMake. | Wrapped in `src/lua/CMakeLists.txt` so the build is driven by CMake. |
 | `cimgui` | Upstream `CMakeLists.txt` hard-codes `SHARED`. | Wrapped in `src/cimgui/CMakeLists.txt` to build a static library from the cimgui/ImGui sources. |
 | `skribidi` | Upstream fetches its own harfbuzz/SheenBidi/libunibreak/budouxc and sets global `CMAKE_COMPILE_WARNING_AS_ERROR=ON`. | Built from a copy of the source in the build tree; `scripts/patch_skribidi.py` disables warning-as-error only in the copy, leaving the submodule untouched. |
-| `curl` | Needs TLS backend. | Use BoringSSL (`CURL_USE_BORINGSSL=ON`) on all platforms. |
+| `curl` | Needs TLS backend. | Use BoringSSL via `CURL_USE_OPENSSL=ON` (BoringSSL is OpenSSL-compatible). |
 | `harfbuzz` | Optional FreeType interdependency. | Build FreeType before HarfBuzz and set `HB_HAVE_FREETYPE=ON` / `FT_DISABLE_HARFBUZZ=OFF`. |
 | `glfw` on Emscripten | GLFW is not used on the web; SDL3 or emscripten HTML5 APIs are used. | **Exclude** from `wasm_emscripten`. |
 | `libwebsockets` on Emscripten | Relies on BSD sockets, not available in the browser. | **Exclude** from `wasm_emscripten`. |
