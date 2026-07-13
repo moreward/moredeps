@@ -151,19 +151,32 @@ function(moredeps_sokol_variant component backend)
   if(component STREQUAL "gp")
     set(SOKOL_GP_IMPL_DEFINE "#define SOKOL_GP_IMPL")
     set(SOKOL_COMPONENT_INCLUDE "#include \"sokol_gfx.h\"\n#include \"sokol_gp.h\"")
-  elseif(component STREQUAL "glue")
-    set(SOKOL_GP_IMPL_DEFINE "")
-    set(SOKOL_COMPONENT_INCLUDE "#include \"sokol_gfx.h\"\n#include \"sokol_app.h\"\n#include \"sokol_glue.h\"")
+    # sokol_gp is built against the vendored sokol headers shipped in
+    # deps/sokol_gp/thirdparty. Copy them into the build tree so the variant
+    # is isolated from the top-level deps/sokol submodule version.
+    set(SOKOL_SRC_DIR "${_variant_src_dir}/sokol_gp_compat")
+    set(SOKOL_GP_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/sokol_gp")
+    file(MAKE_DIRECTORY "${SOKOL_SRC_DIR}")
+    file(COPY "${SOKOL_GP_SRC_DIR}/thirdparty/" DESTINATION "${SOKOL_SRC_DIR}")
+    file(COPY "${SOKOL_GP_SRC_DIR}/sokol_gp.h" DESTINATION "${SOKOL_SRC_DIR}")
+    set(SOKOL_GP_COMPAT_NOTE "${CMAKE_CURRENT_SOURCE_DIR}/src/sokol_variant/sokol_gp_compat_note.txt")
+    set(_template_name "CMakeLists.gp.in")
   else()
     set(SOKOL_GP_IMPL_DEFINE "")
-    set(SOKOL_COMPONENT_INCLUDE "#include \"sokol_${component}.h\"")
+    if(component STREQUAL "glue")
+      set(SOKOL_COMPONENT_INCLUDE "#include \"sokol_gfx.h\"\n#include \"sokol_app.h\"\n#include \"sokol_glue.h\"")
+    else()
+      set(SOKOL_COMPONENT_INCLUDE "#include \"sokol_${component}.h\"")
+    endif()
+    set(SOKOL_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/sokol")
+    set(SOKOL_GP_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/sokol_gp")
+    set(_template_name "CMakeLists.txt.in")
   endif()
 
   set(SOKOL_VARIANT_NAME "${_variant_name}")
   set(SOKOL_COMPONENT "${component}")
   set(SOKOL_BACKEND "${backend}")
   set(SOKOL_BACKEND_DEFINE "SOKOL_${backend}")
-  set(SOKOL_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}")
   if(APPLE AND backend STREQUAL "METAL")
     set(SOKOL_OBJC "OBJC")
   else()
@@ -176,7 +189,7 @@ function(moredeps_sokol_variant component backend)
     @ONLY
   )
   configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/sokol_variant/CMakeLists.txt.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/sokol_variant/${_template_name}"
     "${_variant_src_dir}/CMakeLists.txt"
     @ONLY
   )
@@ -899,30 +912,30 @@ endforeach()
 set(_sokol_variants)
 if(MOREDEPS_PLATFORM STREQUAL "macos_arm64")
   list(APPEND _sokol_variants
-    gfx:GLCORE gfx:METAL
+    gfx:GLCORE gfx:METAL gfx:WGPU
     app:GLCORE app:METAL
     glue:GLCORE glue:METAL
     gp:GLCORE gp:METAL
   )
 elseif(MOREDEPS_PLATFORM STREQUAL "linux_x64" OR MOREDEPS_PLATFORM STREQUAL "linux_arm64")
   list(APPEND _sokol_variants
-    gfx:GLCORE gfx:GLES3
+    gfx:GLCORE gfx:GLES3 gfx:WGPU
     app:GLCORE app:GLES3
     glue:GLCORE glue:GLES3
     gp:GLCORE gp:GLES3
   )
 elseif(MOREDEPS_PLATFORM MATCHES "windows_(x64|arm64)")
   list(APPEND _sokol_variants
-    gfx:GLCORE gfx:GLES3 gfx:D3D11
+    gfx:GLCORE gfx:GLES3 gfx:D3D11 gfx:WGPU
     app:GLCORE app:D3D11
     glue:GLCORE glue:D3D11
     gp:GLCORE gp:GLES3 gp:D3D11
   )
 elseif(MOREDEPS_PLATFORM STREQUAL "wasm_emscripten")
   list(APPEND _sokol_variants
-    gfx:GLES3
-    app:GLES3
-    glue:GLES3
+    gfx:GLES3 gfx:WGPU
+    app:GLES3 app:WGPU
+    glue:GLES3 glue:WGPU
     gp:GLES3
   )
 endif()

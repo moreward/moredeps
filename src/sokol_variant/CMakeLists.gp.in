@@ -2,12 +2,12 @@ cmake_minimum_required(VERSION 3.25)
 project(@SOKOL_VARIANT_NAME@ LANGUAGES C @SOKOL_OBJC@)
 
 set(SOKOL_SRC_DIR "@SOKOL_SRC_DIR@")
+set(SOKOL_GP_SRC_DIR "@SOKOL_GP_SRC_DIR@")
 
 add_library(@SOKOL_VARIANT_NAME@ STATIC sokol_impl.c)
 target_include_directories(@SOKOL_VARIANT_NAME@ PUBLIC
   $<BUILD_INTERFACE:${SOKOL_SRC_DIR}>
-  $<BUILD_INTERFACE:${CMAKE_INSTALL_PREFIX}/include>
-  $<INSTALL_INTERFACE:include>
+  $<INSTALL_INTERFACE:include/sokol_gp>
 )
 
 set_target_properties(@SOKOL_VARIANT_NAME@ PROPERTIES
@@ -16,10 +16,8 @@ set_target_properties(@SOKOL_VARIANT_NAME@ PROPERTIES
 )
 
 if(APPLE)
-  if("@SOKOL_BACKEND@" STREQUAL "METAL" OR "@SOKOL_COMPONENT@" STREQUAL "app" OR "@SOKOL_COMPONENT@" STREQUAL "glue")
-    target_compile_options(@SOKOL_VARIANT_NAME@ PRIVATE -x objective-c)
-  endif()
   if("@SOKOL_BACKEND@" STREQUAL "METAL")
+    target_compile_options(@SOKOL_VARIANT_NAME@ PRIVATE -x objective-c)
     target_link_libraries(@SOKOL_VARIANT_NAME@ PRIVATE
       "-framework AppKit"
       "-framework Metal"
@@ -29,14 +27,6 @@ if(APPLE)
     )
   elseif("@SOKOL_BACKEND@" STREQUAL "GLCORE")
     target_link_libraries(@SOKOL_VARIANT_NAME@ PRIVATE "-framework OpenGL")
-  endif()
-  # sokol_app always needs Cocoa on macOS regardless of backend.
-  if("@SOKOL_COMPONENT@" STREQUAL "app")
-    target_link_libraries(@SOKOL_VARIANT_NAME@ PRIVATE
-      "-framework AppKit"
-      "-framework Cocoa"
-      "-framework QuartzCore"
-    )
   endif()
 endif()
 
@@ -57,17 +47,14 @@ install(TARGETS @SOKOL_VARIANT_NAME@
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
-install(FILES
-  ${SOKOL_SRC_DIR}/sokol_@SOKOL_COMPONENT@.h
-  DESTINATION include
+install(DIRECTORY "${SOKOL_SRC_DIR}/"
+  DESTINATION include/sokol_gp
+  FILES_MATCHING PATTERN "*.h"
 )
-if("@SOKOL_COMPONENT@" STREQUAL "glue")
-  install(FILES
-    ${SOKOL_SRC_DIR}/sokol_gfx.h
-    ${SOKOL_SRC_DIR}/sokol_app.h
-    DESTINATION include
-  )
-endif()
+install(FILES "@SOKOL_GP_COMPAT_NOTE@"
+  DESTINATION include/sokol_gp
+  RENAME README.txt
+)
 
 install(EXPORT @SOKOL_VARIANT_NAME@Targets
   FILE @SOKOL_VARIANT_NAME@Targets.cmake

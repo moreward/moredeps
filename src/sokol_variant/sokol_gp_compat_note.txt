@@ -1,0 +1,24 @@
+sokol_gp compatibility note
+==========================
+
+The sokol_gp library is built against a vendored, older snapshot of the sokol
+headers located in deps/sokol_gp/thirdparty. The static libraries produced by
+this build (libsokol_gp*.a) contain object code generated from those vendored
+headers, not from the top-level deps/sokol submodule.
+
+Therefore:
+
+1. Do not mix libsokol_gp*.a with the top-level libsokol_gfx*.a,
+   libsokol_app*.a, libsokol_glue*.a, or libsokol*.a libraries in the same
+   downstream binary. The sokol struct layouts and ABIs differ between the
+   vendored snapshot and the top-level submodule.
+
+2. If you use sokol_gp, include the headers from include/sokol_gp/ and link
+   only the libsokol_gp*.a variants for the backend you need.
+
+3. sokol_gp_wgpu is not provided because the vendored sokol headers predate
+   the current Dawn webgpu.h API used by the rest of this repository.
+
+If you need a sokol_gp-compatible WebGPU backend, you must either wait for
+upstream sokol_gp to update its vendored sokol headers, or patch sokol_gp to
+match the current top-level sokol/Dawn versions.
