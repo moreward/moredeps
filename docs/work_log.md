@@ -183,5 +183,20 @@ The macOS arm64 build now produces 66 static libraries.
 - Verified `sdl3webgpu` still builds on `macos_arm64`.
 - Updated `docs/build_plan.md` and `docs/build_options.md`.
 
+## 2026-07-13 (later) — Sokol backend variants
+
+- Implemented Option C for Sokol backend variants using `src/sokol_variant/` templates and a `moredeps_sokol_variant()` helper.
+- Per-platform variants:
+  - macOS: `*_glcore`, `*_metal`
+  - Linux: `*_glcore`, `*_gles3`
+  - Windows: `*_glcore`, `*_gles3`, `*_d3d11`
+  - Emscripten: `*_gles3`
+- Default `sokol_app`/`sokol_gfx`/`sokol_glue`/`sokol_gp` targets still use the platform-specific backend.
+- **WGPU variants deferred:** the pinned `sokol` (matching `sokol_gp`) uses an older `webgpu.h` API that is incompatible with the current `dawn` submodule.
+- Verified full `macos_arm64` build (75 static libraries) and full `wasm_emscripten` build (62 static libraries) with the new variants.
+
 ### Next steps
 - Apply any further user comments before moving to Linux/Windows validation.
+- Validate `linux_x64` / `linux_arm64` on a Linux host.
+- Validate `windows_x64` / `windows_arm64` on the arm64 Windows VM.
+- Re-enable WGPU Sokol variants once Sokol/Sokol_GP/Dawn API versions align.

@@ -87,8 +87,8 @@ Legend:
 | `sdl3webgpu` | CMake | C | `src/sdl3webgpu/` wrapper | Patched at build time on Emscripten for `WGPUStringView` API; otherwise depends on `dawn` + `sdl3`. |
 | `SheenBidi` | CMake | C | `ExternalProject_Add` | Unicode bidi algorithm library. |
 | `skribidi` | CMake | C | `src/skribidi/` wrapper | Depends on `harfbuzz`, `SheenBidi`, `libunibreak`, `budouxc`. Upstream fetches these; we use submodules. |
-| `sokol` | Header-only | H | `src/sokol_<mod>/` wrappers | Per-module static libs. `sokol_app`/`sokol_gfx`/`sokol_glue` use Metal on macOS. |
-| `sokol_gp` | Header-only | H | `src/sokol_gp/` wrapper | Depends on `sokol` headers; `deps/sokol` is pinned to the same commit vendored in `deps/sokol_gp/thirdparty`. |
+| `sokol` | Header-only | H | `src/sokol_<mod>/` wrappers + generated backend variants | Per-module static libs. Platform defaults use Metal/D3D11/GLCORE/GLES3. Backend-specific variants (`*_glcore`, `*_metal`, `*_d3d11`, `*_gles3`) are also produced. WGPU variants are deferred until the Sokol/Dawn WebGPU API versions align. |
+| `sokol_gp` | Header-only | H | `src/sokol_gp/` wrapper + generated backend variants | Depends on `sokol` headers; `deps/sokol` is pinned to the same commit vendored in `deps/sokol_gp/thirdparty`. Backend variants produced matching `sokol_gfx`. |
 | `sqlite-amalgamation` | CMake | C | `ExternalProject_Add` | None known. |
 | `stb` | Header-only | H | `src/stb_<lib>/` wrappers | Per-module static libraries. |
 | `tinycsocket` | CMake | C | `src/tinycsocket/` wrapper | Upstream writes into its source tree; wrapper copies to the build tree first. |
@@ -238,10 +238,23 @@ For Windows cross-compilation from macOS/Linux we cannot run MSVC locally, so bu
 - The build script must locate `emcmake`/`emmake` or `emcc`/`em++` and set the Emscripten toolchain file.
 - Emscripten outputs are `.a` static libraries and may be used in downstream CMake projects with `emcc`.
 - **Dawn**: use the Emscripten-specific WebGPU implementation `emdawnwebgpu`.  Do **not** pass `USE_WEBGPU`/`SOKOL_USE_WEBGPU` for the Emscripten target.
-- Some deps (e.g., `glfw`, `reproc`, `tinycsocket`, `mtcc`, `enet`, `libwebsockets`) will be **excluded** from Emscripten because they use platform APIs not available on the web.
+- Some deps (e.g., `glfw`, `reproc`, `tinycsocket`, `mtcc`, `enet`, `libwebsockets`) will be **excluded** from Emscripten because they use platform APIs not available on the web. See the build output summary and `docs/build_options.md` for notes on which wasm artifacts are browser-usable.
 - `raylib` builds on Emscripten with `PLATFORM=Web`; downstream apps must link with Emscripten's GLFW port (`-sUSE_GLFW=3`).
 
-### 3.6 Windows build machine requirements
+### 3.7 Sokol backend variants
+
+Sokol headers are header-only, so the same source can be compiled multiple times with different backend macros to produce different static libraries. We generate per-backend variants using the `moredeps_sokol_variant()` helper and the templates in `src/sokol_variant/`.
+
+| Platform | Default backend | Built variants (library names) |
+|---|---|---|
+| `macos_arm64` | `SOKOL_METAL` | `sokol_*{_glcore, _metal}` for `app`, `gfx`, `glue`, `gp` |
+| `linux_x64` / `linux_arm64` | `SOKOL_GLCORE` | `sokol_*{_glcore, _gles3}` for `app`, `gfx`, `glue`, `gp` |
+| `windows_x64` / `windows_arm64` | `SOKOL_D3D11` | `sokol_*{_glcore, _gles3, _d3d11}` for `app`, `gfx`, `glue`, `gp` |
+| `wasm_emscripten` | `SOKOL_GLES3` | `sokol_*{_gles3}` for `app`, `gfx`, `glue`, `gp` |
+
+**WGPU variants are deferred.** The pinned `deps/sokol` (which matches `deps/sokol_gp`) uses an older `webgpu.h` API that is incompatible with the current `deps/dawn` submodule. We will re-enable `*_wgpu` variants once the Sokol / Sokol_GP / Dawn versions are aligned (or once Dawn is pinned to a compatible version).
+
+### 3.8 Windows build machine requirements
 
 Windows builds are currently tested on an arm64 Windows VM. The host must have:
 

@@ -428,6 +428,32 @@ Upstream is Makefile/Autotools only. We wrap it in `src/libunibreak/` to build a
 
 `sokol_gp` vendors a specific snapshot of the `sokol` headers in `deps/sokol_gp/thirdparty/`. The top-level `deps/sokol` submodule is pinned to that exact commit so that `sokol_gfx`, `sokol_app`, `sokol_glue`, and `sokol_gp` all see the same `sokol_gfx.h` ABI. Using mismatched versions can cause struct layout or enum mismatches when `sokol_gp` and `sokol_gfx` are linked in the same downstream binary.
 
+### `sokol` / `sokol_gp` backend variants
+
+Sokol is a header-only family of libraries. The backend is selected at compile time by defining one of `SOKOL_GLCORE`, `SOKOL_GLES3`, `SOKOL_D3D11`, `SOKOL_METAL`, or `SOKOL_WGPU`. We use the templates in `src/sokol_variant/` to generate a separate static library for each sensible backend per platform.
+
+Library names follow the pattern `sokol_<component>_<backend>`, e.g.:
+
+| Component | Variant names (examples) |
+|---|---|
+| `sokol_app` | `sokol_app_glcore`, `sokol_app_gles3`, `sokol_app_metal`, `sokol_app_d3d11` |
+| `sokol_gfx` | `sokol_gfx_glcore`, `sokol_gfx_gles3`, `sokol_gfx_metal`, `sokol_gfx_d3d11` |
+| `sokol_glue` | same set as `sokol_app` (depends on `sokol_app.h`) |
+| `sokol_gp` | same set as `sokol_gfx` (depends on `sokol_gfx.h`) |
+
+Per-platform variant availability:
+
+| Platform | `app` variants | `gfx`/`gp` variants |
+|---|---|---|
+| macOS | `metal`, `glcore` | `metal`, `glcore` |
+| Linux | `glcore`, `gles3` | `glcore`, `gles3` |
+| Windows | `d3d11`, `glcore` | `d3d11`, `glcore`, `gles3` |
+| Emscripten | `gles3` | `gles3` |
+
+**WGPU variants:** currently not built. The pinned `sokol`/`sokol_gp` use an older `webgpu.h` that is incompatible with the current `dawn` submodule. They will be re-enabled once the versions align.
+
+For a `lyte2d`-style project, link `sokol_gfx_glcore` + `sokol_gp_glcore` on desktop and `sokol_gfx_gles3` + `sokol_gp_gles3` on Emscripten.
+
 ### `sdl3`
 
 | Option | Upstream default | Proposed default | Notes |

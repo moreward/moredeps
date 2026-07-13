@@ -17,6 +17,8 @@ A collection of dependencies frequently used across projects, built as static li
 
 - [`docs/build_plan.md`](docs/build_plan.md) — the overall build-infrastructure plan, targets, exclusions, and implementation phases.
 - [`docs/build_options.md`](docs/build_options.md) — per-dependency CMake options and the defaults we selected (examples/tests/docs disabled, minimal optional features).
+- [`docs/mobile_plan.md`](docs/mobile_plan.md) — iOS/Android support plan and dependency matrix.
+- [`docs/shared_libs.md`](docs/shared_libs.md) — how to produce shared libraries from the static artifacts.
 
 ## Layout
 

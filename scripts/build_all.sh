@@ -96,6 +96,17 @@ fi
 # Build all targets.
 cmake --build "${BUILD_DIR}" --parallel
 
+if [[ "${PLATFORM}" == "wasm_emscripten" ]]; then
+  echo ""
+  echo "NOTE: The wasm_emscripten artifacts are built for the Emscripten target."
+  echo "      Some libraries (curl, enet, libwebsockets, tinycsocket, reproc) rely"
+  echo "      on BSD sockets or process APIs that are not available inside a web"
+  echo "      browser. They may be usable in non-browser WASM runtimes (WASI, Node,"
+  echo "      etc.), but for browser HTTP/WebSocket/fetch use emscripten_fetch or JS"
+  echo "      interop instead."
+  echo ""
+fi
+
 echo "======================================================================"
 echo "Build completed for ${PLATFORM}."
 echo "Artifacts staged in: ${OUT_DIR}"
