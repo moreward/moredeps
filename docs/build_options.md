@@ -424,6 +424,10 @@ Upstream is Makefile/Autotools only. We wrap it in `src/libunibreak/` to build a
 
 **Excluded on `wasm_emscripten`** (no process spawning).
 
+### `sokol` / `sokol_gp`
+
+`sokol_gp` vendors a specific snapshot of the `sokol` headers in `deps/sokol_gp/thirdparty/`. The top-level `deps/sokol` submodule is pinned to that exact commit so that `sokol_gfx`, `sokol_app`, `sokol_glue`, and `sokol_gp` all see the same `sokol_gfx.h` ABI. Using mismatched versions can cause struct layout or enum mismatches when `sokol_gp` and `sokol_gfx` are linked in the same downstream binary.
+
 ### `sdl3`
 
 | Option | Upstream default | Proposed default | Notes |

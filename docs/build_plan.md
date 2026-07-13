@@ -88,7 +88,7 @@ Legend:
 | `SheenBidi` | CMake | C | `ExternalProject_Add` | Unicode bidi algorithm library. |
 | `skribidi` | CMake | C | `src/skribidi/` wrapper | Depends on `harfbuzz`, `SheenBidi`, `libunibreak`, `budouxc`. Upstream fetches these; we use submodules. |
 | `sokol` | Header-only | H | `src/sokol_<mod>/` wrappers | Per-module static libs. `sokol_app`/`sokol_gfx`/`sokol_glue` use Metal on macOS. |
-| `sokol_gp` | Header-only | H | `src/sokol_gp/` wrapper | Built against the Sokol headers vendored in `deps/sokol_gp/thirdparty`. |
+| `sokol_gp` | Header-only | H | `src/sokol_gp/` wrapper | Depends on `sokol` headers; `deps/sokol` is pinned to the same commit vendored in `deps/sokol_gp/thirdparty`. |
 | `sqlite-amalgamation` | CMake | C | `ExternalProject_Add` | None known. |
 | `stb` | Header-only | H | `src/stb_<lib>/` wrappers | Per-module static libraries. |
 | `tinycsocket` | CMake | C | `src/tinycsocket/` wrapper | Upstream writes into its source tree; wrapper copies to the build tree first. |

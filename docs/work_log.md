@@ -157,8 +157,10 @@ The macOS arm64 build now produces 66 static libraries.
 - Full clean `wasm_emscripten` build succeeded (56 static libraries, excluding the newly gated network/process deps).
 - All submodules remained clean after the builds.
 
-### Next steps
-- Apply any further user comments before moving to Linux/Windows validation.
+- Discovered that `deps/sokol_gp/thirdparty/` vendored `sokol` headers at commit `ce91d77` (Dec 2024) while the top-level `deps/sokol` submodule was at a July 2026 commit.
+- Pinned `deps/sokol` to `ce91d77f93917bfbf772146c7e2538d71c0113a4` so that `sokol_gfx`, `sokol_app`, `sokol_glue`, and `sokol_gp` use the same `sokol` ABI.
+- Updated `src/sokol_gp/CMakeLists.txt` to prefer the top-level `deps/sokol` includes over the vendored copies.
+- Verified the sokol-related targets still build on macOS arm64 after the pin.
 - Validate `linux_x64` / `linux_arm64` on a Linux host.
 - Validate `windows_x64` / `windows_arm64` on the arm64 Windows VM.
 
