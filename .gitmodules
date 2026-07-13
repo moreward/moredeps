@@ -25,57 +25,45 @@
 [submodule "deps/cJSON"]
 	path = deps/cJSON
 	url = https://github.com/DaveGamble/cJSON.git
-	branch = master
 [submodule "deps/curl"]
 	path = deps/curl
 	url = https://github.com/curl/curl.git
-	branch = master
 [submodule "deps/libwebsockets"]
 	path = deps/libwebsockets
 	url = https://github.com/warmcat/libwebsockets.git
-	branch = v4.5-stable
 [submodule "deps/mtcc"]
 	path = deps/mtcc
 	url = https://github.com/moreward/mtcc.git
 [submodule "deps/physfs"]
 	path = deps/physfs
 	url = https://github.com/icculus/physfs.git
-	branch = main
 [submodule "deps/reproc"]
 	path = deps/reproc
 	url = https://github.com/daandemeyer/reproc.git
-	branch = main
 [submodule "deps/sqlite-amalgamation"]
 	path = deps/sqlite-amalgamation
 	url = https://github.com/azadkuh/sqlite-amalgamation.git
-	branch = master
 [submodule "deps/tinycsocket"]
 	path = deps/tinycsocket
 	url = https://github.com/dosshell/tinycsocket.git
-	branch = master
 [submodule "deps/utf8proc"]
 	path = deps/utf8proc
 	url = https://github.com/JuliaStrings/utf8proc.git
-	branch = master
 [submodule "deps/zlib"]
 	path = deps/zlib
 	url = https://github.com/madler/zlib.git
-	branch = develop
 [submodule "deps/zstd"]
 	path = deps/zstd
 	url = https://github.com/facebook/zstd.git
-	branch = dev
 [submodule "deps/stb"]
 	path = deps/stb
 	url = https://github.com/nothings/stb.git
 [submodule "deps/raylib"]
 	path = deps/raylib
 	url = https://github.com/raysan5/raylib.git
-	branch = master
 [submodule "deps/sdl3"]
 	path = deps/sdl3
 	url = https://github.com/libsdl-org/SDL.git
-	branch = main
 [submodule "deps/raudio"]
 	path = deps/raudio
 	url = https://github.com/raysan5/raudio.git
