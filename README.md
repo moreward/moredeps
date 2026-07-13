@@ -20,7 +20,7 @@ A collection of dependencies frequently used across projects, built as static li
 
 ## Layout
 
-- `deps/` — upstream sources as git submodules (read-only).
+- `deps/` — upstream sources as git submodules (read-only). Some submodules contain nested submodules (e.g. `cimgui/imgui`), so clone with `git submodule update --init --recursive`.
 - `src/<dep>/` — CMake wrappers and implementation files for header-only / non-CMake dependencies.
 - `toolchain/` — CMake toolchain files for cross-compilation.
 - `_b/<platform>/` — CMake build trees (gitignored).
