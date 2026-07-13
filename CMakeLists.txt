@@ -343,6 +343,11 @@ moredeps_add_dep(harfbuzz
 
 # --- libwebsockets ---
 # Uses BoringSSL from the common prefix.
+if(WIN32)
+  set(_LWS_SSL_LIBS "${CMAKE_INSTALL_PREFIX}/lib/ssl.lib;${CMAKE_INSTALL_PREFIX}/lib/crypto.lib")
+else()
+  set(_LWS_SSL_LIBS "${CMAKE_INSTALL_PREFIX}/lib/libssl.a;${CMAKE_INSTALL_PREFIX}/lib/libcrypto.a")
+endif()
 moredeps_add_dep(libwebsockets
   DEPENDS boringssl
   CMAKE_ARGS
@@ -357,7 +362,7 @@ moredeps_add_dep(libwebsockets
     "-DLWS_WITH_SSL=ON"
     "-DLWS_WITH_BORINGSSL=ON"
     "-DLWS_OPENSSL_INCLUDE_DIRS=${CMAKE_INSTALL_PREFIX}/include"
-    "-DLWS_OPENSSL_LIBRARIES=${CMAKE_INSTALL_PREFIX}/lib/libssl.a;${CMAKE_INSTALL_PREFIX}/lib/libcrypto.a"
+    "-DLWS_OPENSSL_LIBRARIES=${_LWS_SSL_LIBS}"
     "-DDISABLE_WERROR=ON"
     "-DLWS_HAVE_RSA_SET0_KEY=ON"
     "-DLWS_HAVE_ECDSA_SIG_get0=ON"
