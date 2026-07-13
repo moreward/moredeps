@@ -1,0 +1,16 @@
+--- a/sdl3webgpu.c
++++ b/sdl3webgpu.c
+@@ -159,11 +159,11 @@
+         fromCanvasHTMLSelector.chain.sType = WGPUSType_SurfaceDescriptorFromCanvasHTMLSelector;
+ #  endif
+         fromCanvasHTMLSelector.chain.next = NULL;
+-        fromCanvasHTMLSelector.selector = "canvas";
++        fromCanvasHTMLSelector.selector = (WGPUStringView){"canvas", WGPU_STRLEN};
+ 
+         WGPUSurfaceDescriptor surfaceDescriptor;
+         surfaceDescriptor.nextInChain = &fromCanvasHTMLSelector.chain;
+-        surfaceDescriptor.label = NULL;
++        surfaceDescriptor.label = (WGPUStringView){NULL, WGPU_STRLEN};
+ 
+         return wgpuInstanceCreateSurface(instance, &surfaceDescriptor);
+     }  

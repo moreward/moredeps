@@ -173,6 +173,15 @@ The macOS arm64 build now produces 66 static libraries.
 - Updated `docs/build_plan.md`, `docs/build_options.md`, `README.md`, and `docs/work_log.md` to reflect the new ghostty status.
 - Fixed `docs/build_options.md` libwebsockets option name: `LWS_CLIENT_HTTP_PROXYING` (not `LWS_WITH_CLIENT_HTTP_PROXYING`).
 
+## 2026-07-13 — Emscripten: re-enable lua and sdl3webgpu
+
+- Removed the `wasm_emscripten` exclusion for `lua` in `CMakeLists.txt`; `liblua.a` now builds for Emscripten.
+- Removed the `wasm_emscripten` exclusion for `sdl3webgpu` and added `WEBGPU_BACKEND_EMDAWNWEBGPU` compile definition.
+- Added `patches/sdl3webgpu_emdawn_stringview.patch` and updated `src/sdl3webgpu/CMakeLists.txt` to copy the source to the build tree and apply the patch on Emscripten, so the submodule stays clean.
+- The patch updates `WGPUSurfaceDescriptorFromCanvasHTMLSelector.selector` and `.label` to use `WGPUStringView`.
+- Verified full `wasm_emscripten` rebuild succeeds with 58 static libraries.
+- Verified `sdl3webgpu` still builds on `macos_arm64`.
+- Updated `docs/build_plan.md` and `docs/build_options.md`.
+
 ### Next steps
-- Deep review of the entire build system.
-- Collect and apply user's comments/changes before moving to Linux/Windows validation.
+- Apply any further user comments before moving to Linux/Windows validation.

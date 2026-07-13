@@ -635,15 +635,12 @@ moredeps_add_dep(sdl3
 # --- sdl3webgpu ---
 # Upstream CMakeLists is missing cmake_minimum_required and links against
 # targets that are built in separate ExternalProjects. We wrap it.
-# Excluded on Emscripten: the current sdl3webgpu and emdawnwebgpu versions use
-# incompatible WebGPU surface descriptor types (WGPUSurfaceDescriptorFromCanvasHTMLSelector
-# was removed/renamed in the upstream WebGPU header).
-if(NOT EMSCRIPTEN)
-  moredeps_add_dep(sdl3webgpu
-    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/sdl3webgpu"
-    DEPENDS sdl3 dawn
-  )
-endif()
+# On Emscripten we compile with -DWEBGPU_BACKEND_EMDAWNWEBGPU so that
+# sdl3webgpu uses the emdawnwebgpu surface descriptor types.
+moredeps_add_dep(sdl3webgpu
+  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/sdl3webgpu"
+  DEPENDS sdl3 dawn
+)
 
 # --- SheenBidi ---
 moredeps_add_dep(SheenBidi
@@ -844,11 +841,9 @@ endforeach()
 
 # --- lua ---
 # Lua is Makefile-only. We wrap it in src/lua/ to build it via CMake.
-if(NOT MOREDEPS_PLATFORM STREQUAL "wasm_emscripten")
-  moredeps_add_dep(lua
-    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/lua"
-  )
-endif()
+moredeps_add_dep(lua
+  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/lua"
+)
 
 # -----------------------------------------------------------------------------
 # Summary

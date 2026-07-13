@@ -70,7 +70,7 @@ Legend:
 | `harfbuzz` | CMake | C | `ExternalProject_Add` | `HB_HAVE_FREETYPE=ON`; built after FreeType. |
 | `libwebsockets` | CMake | C | `ExternalProject_Add` | BoringSSL; feature-detection flags forced for BoringSSL compatibility. **Excluded on `wasm_emscripten`.** |
 | `libunibreak` | Makefile | M | `src/libunibreak/` wrapper | No upstream CMake; wrapper builds from source. |
-| `lua-5.5.0` | Makefile | M | `src/lua/` wrapper | Built as C. **Excluded on `wasm_emscripten`.** |
+| `lua-5.5.0` | Makefile | M | `src/lua/` wrapper | Built as C. |
 | `lz4` | CMake (in `build/cmake`) | C | `ExternalProject_Add` via `deps/lz4/build/cmake` | None known. |
 | `microui` | Single `.c` + header | H | `src/microui/` wrapper | None known. |
 | `mimalloc` | CMake | C | `ExternalProject_Add` | None known. |
@@ -84,7 +84,7 @@ Legend:
 | `raylib` | CMake | C | `ExternalProject_Add` | `BUILD_EXAMPLES=OFF`, `BUILD_SHARED_LIBS=OFF`. Emscripten uses `PLATFORM=Web`. |
 | `reproc` | CMake | C | `ExternalProject_Add` | None known. |
 | `sdl3` | CMake | C | `ExternalProject_Add` | None known. |
-| `sdl3webgpu` | CMake | C | `src/sdl3webgpu/` wrapper | Excluded on `wasm_emscripten` (emdawnwebgpu type mismatch). |
+| `sdl3webgpu` | CMake | C | `src/sdl3webgpu/` wrapper | Patched at build time on Emscripten for `WGPUStringView` API; otherwise depends on `dawn` + `sdl3`. |
 | `SheenBidi` | CMake | C | `ExternalProject_Add` | Unicode bidi algorithm library. |
 | `skribidi` | CMake | C | `src/skribidi/` wrapper | Depends on `harfbuzz`, `SheenBidi`, `libunibreak`, `budouxc`. Upstream fetches these; we use submodules. |
 | `sokol` | Header-only | H | `src/sokol_<mod>/` wrappers | Per-module static libs. `sokol_app`/`sokol_gfx`/`sokol_glue` use Metal on macOS. |

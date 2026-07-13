@@ -515,9 +515,13 @@ Upstream is Makefile/Autotools only. We wrap it in `src/libunibreak/` to build a
 
 **Emscripten:** SDL3 supports Emscripten. We will enable the Emscripten video/audio backends and disable platform-specific ones (X11, Wayland, DirectX, etc.).
 
+### `lua`
+
+Upstream is Makefile-only. The `src/lua/` wrapper builds the core Lua runtime as a static library using CMake, which is portable to all supported platforms including Emscripten.
+
 ### `sdl3webgpu`
 
-This is a small CMake library.  We will use the upstream `CMakeLists.txt` with `BUILD_SHARED_LIBS=OFF` and no tests/examples.
+Upstream `CMakeLists.txt` is missing `cmake_minimum_required` and links against targets defined in separate `ExternalProject` builds, so we wrap it in `src/sdl3webgpu/`. On Emscripten the upstream source is copied to the build tree and patched with `patches/sdl3webgpu_emdawn_stringview.patch` so it uses the emdawnwebgpu `WGPUStringView` API.
 
 ### `SheenBidi`
 
