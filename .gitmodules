@@ -37,9 +37,6 @@
 [submodule "deps/mtcc"]
 	path = deps/mtcc
 	url = https://github.com/moreward/mtcc.git
-[submodule "deps/openssl"]
-	path = deps/openssl
-	url = https://github.com/openssl/openssl.git
 [submodule "deps/physfs"]
 	path = deps/physfs
 	url = https://github.com/icculus/physfs.git
@@ -139,3 +136,6 @@
 [submodule "deps/flecs"]
 	path = deps/flecs
 	url = https://github.com/SanderMertens/flecs.git
+[submodule "deps/boringssl"]
+	path = deps/boringssl
+	url = https://github.com/google/boringssl.git
