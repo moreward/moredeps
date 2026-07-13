@@ -87,8 +87,8 @@ Legend:
 | `sdl3webgpu` | CMake | C | `src/sdl3webgpu/` wrapper | Patched at build time on Emscripten for `WGPUStringView` API; otherwise depends on `dawn` + `sdl3`. |
 | `SheenBidi` | CMake | C | `ExternalProject_Add` | Unicode bidi algorithm library. |
 | `skribidi` | CMake | C | `src/skribidi/` wrapper | Depends on `harfbuzz`, `SheenBidi`, `libunibreak`, `budouxc`. Upstream fetches these; we use submodules. |
-| `sokol` | Header-only | H | `src/sokol_<mod>/` wrappers + generated backend variants | Per-module static libs. Platform defaults use Metal/D3D11/GLCORE/GLES3. Backend-specific variants (`*_glcore`, `*_metal`, `*_d3d11`, `*_gles3`) are also produced. WGPU variants are deferred until the Sokol/Dawn WebGPU API versions align. |
-| `sokol_gp` | Header-only | H | `src/sokol_gp/` wrapper + generated backend variants | Depends on `sokol` headers; `deps/sokol` is pinned to the same commit vendored in `deps/sokol_gp/thirdparty`. Backend variants produced matching `sokol_gfx`. |
+| `sokol` | Header-only | H | `src/sokol_<mod>/` wrappers + generated backend variants | Per-module static libs. Platform defaults use Metal/D3D11/GLCORE/GLES3. Backend-specific variants (`*_glcore`, `*_metal`, `*_d3d11`, `*_gles3`, `*_wgpu`) are produced. `sokol_app`/`sokol_glue` WGPU is only available on Emscripten. |
+| `sokol_gp` | Header-only | H | `src/sokol_gp/` wrapper + generated backend variants | Built against the vendored sokol headers in `deps/sokol_gp/thirdparty`; must not be mixed with top-level `sokol` libraries. Variants: `*_glcore`, `*_gles3`, `*_metal`, `*_d3d11`. No WGPU variant. |
 | `sqlite-amalgamation` | CMake | C | `ExternalProject_Add` | None known. |
 | `stb` | Header-only | H | `src/stb_<lib>/` wrappers | Per-module static libraries. |
 | `tinycsocket` | CMake | C | `src/tinycsocket/` wrapper | Upstream writes into its source tree; wrapper copies to the build tree first. |
@@ -247,12 +247,14 @@ Sokol headers are header-only, so the same source can be compiled multiple times
 
 | Platform | Default backend | Built variants (library names) |
 |---|---|---|
-| `macos_arm64` | `SOKOL_METAL` | `sokol_*{_glcore, _metal}` for `app`, `gfx`, `glue`, `gp` |
-| `linux_x64` / `linux_arm64` | `SOKOL_GLCORE` | `sokol_*{_glcore, _gles3}` for `app`, `gfx`, `glue`, `gp` |
-| `windows_x64` / `windows_arm64` | `SOKOL_D3D11` | `sokol_*{_glcore, _gles3, _d3d11}` for `app`, `gfx`, `glue`, `gp` |
-| `wasm_emscripten` | `SOKOL_GLES3` | `sokol_*{_gles3}` for `app`, `gfx`, `glue`, `gp` |
+| `macos_arm64` | `SOKOL_METAL` | `sokol_*{_glcore, _metal}` for `app`/`gfx`/`glue`; `sokol_gfx_wgpu` |
+| `linux_x64` / `linux_arm64` | `SOKOL_GLCORE` | `sokol_*{_glcore, _gles3}` for `app`/`gfx`/`glue`; `sokol_gfx_wgpu` |
+| `windows_x64` / `windows_arm64` | `SOKOL_D3D11` | `sokol_*{_glcore, _gles3, _d3d11}` for `app`/`gfx`/`glue`; `sokol_gfx_wgpu` |
+| `wasm_emscripten` | `SOKOL_GLES3` | `sokol_*{_gles3, _wgpu}` for `app`/`gfx`/`glue` |
 
-**WGPU variants are deferred.** The pinned `deps/sokol` (which matches `deps/sokol_gp`) uses an older `webgpu.h` API that is incompatible with the current `deps/dawn` submodule. We will re-enable `*_wgpu` variants once the Sokol / Sokol_GP / Dawn versions are aligned (or once Dawn is pinned to a compatible version).
+`sokol_gp` is built against the vendored sokol headers in `deps/sokol_gp/thirdparty`, which are older than the top-level `deps/sokol` submodule. `sokol_gp` variants are therefore `*_glcore`, `*_gles3`, `*_metal`, and `*_d3d11` only, and they must not be mixed with the top-level `sokol_gfx`/`sokol_app`/`sokol_glue` libraries. This is documented in the installed `include/sokol_gp/README.txt`.
+
+`sokol_gp_wgpu` is not provided because the vendored sokol headers predate the current `deps/dawn` `webgpu.h` API. It will become available once upstream `sokol_gp` updates its vendored sokol headers, or once we patch `sokol_gp` to match the current top-level `sokol`/`dawn` versions.
 
 ### 3.8 Windows build machine requirements
 

@@ -195,8 +195,24 @@ The macOS arm64 build now produces 66 static libraries.
 - **WGPU variants deferred:** the pinned `sokol` (matching `sokol_gp`) uses an older `webgpu.h` API that is incompatible with the current `dawn` submodule.
 - Verified full `macos_arm64` build (75 static libraries) and full `wasm_emscripten` build (62 static libraries) with the new variants.
 
+## 2026-07-13 (latest) — Update sokol to latest, enable WGPU variants, isolate sokol_gp
+
+- Updated `deps/sokol` to the latest commit (`3743ea6`, 2026-07-08) so that `sokol_gfx`/`sokol_app`/`sokol_glue` match the current `deps/dawn` `webgpu.h` API.
+- Kept `deps/sokol_gp` at `f6c9639` (it does not compile against latest sokol).
+- Built `sokol_gp` against the vendored sokol headers in `deps/sokol_gp/thirdparty`; headers are now installed to `include/sokol_gp/`.
+- Added `src/sokol_variant/sokol_gp_compat_note.txt` and install it as `include/sokol_gp/README.txt` to warn that `sokol_gp` must not be mixed with top-level `sokol_*` libraries.
+- Re-enabled WGPU variants:
+  - `sokol_gfx_wgpu` on all platforms
+  - `sokol_app_wgpu` and `sokol_glue_wgpu` only on Emscripten (sokol_app does not support WGPU on desktop)
+- `sokol_gp_wgpu` remains unavailable because the vendored sokol headers predate the current Dawn API.
+- Verified full `macos_arm64` build (76 static libraries) and full `wasm_emscripten` build (65 static libraries).
+- Updated `docs/build_plan.md`, `docs/build_options.md`, and `docs/work_log.md`.
+
 ### Next steps
 - Apply any further user comments before moving to Linux/Windows validation.
+- Validate `linux_x64` / `linux_arm64` on a Linux host.
+- Validate `windows_x64` / `windows_arm64` on the arm64 Windows VM.
+- Re-enable `sokol_gp_wgpu` once upstream `sokol_gp` updates its vendored sokol headers, or patch `sokol_gp` to match current `sokol`/`dawn`.
 - Validate `linux_x64` / `linux_arm64` on a Linux host.
 - Validate `windows_x64` / `windows_arm64` on the arm64 Windows VM.
 - Re-enable WGPU Sokol variants once Sokol/Sokol_GP/Dawn API versions align.

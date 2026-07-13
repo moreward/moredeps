@@ -436,21 +436,23 @@ Library names follow the pattern `sokol_<component>_<backend>`, e.g.:
 
 | Component | Variant names (examples) |
 |---|---|
-| `sokol_app` | `sokol_app_glcore`, `sokol_app_gles3`, `sokol_app_metal`, `sokol_app_d3d11` |
-| `sokol_gfx` | `sokol_gfx_glcore`, `sokol_gfx_gles3`, `sokol_gfx_metal`, `sokol_gfx_d3d11` |
+| `sokol_app` | `sokol_app_glcore`, `sokol_app_gles3`, `sokol_app_metal`, `sokol_app_d3d11`, `sokol_app_wgpu` (Emscripten only) |
+| `sokol_gfx` | `sokol_gfx_glcore`, `sokol_gfx_gles3`, `sokol_gfx_metal`, `sokol_gfx_d3d11`, `sokol_gfx_wgpu` |
 | `sokol_glue` | same set as `sokol_app` (depends on `sokol_app.h`) |
-| `sokol_gp` | same set as `sokol_gfx` (depends on `sokol_gfx.h`) |
+| `sokol_gp` | `sokol_gp_glcore`, `sokol_gp_gles3`, `sokol_gp_metal`, `sokol_gp_d3d11` |
 
 Per-platform variant availability:
 
-| Platform | `app` variants | `gfx`/`gp` variants |
-|---|---|---|
-| macOS | `metal`, `glcore` | `metal`, `glcore` |
-| Linux | `glcore`, `gles3` | `glcore`, `gles3` |
-| Windows | `d3d11`, `glcore` | `d3d11`, `glcore`, `gles3` |
-| Emscripten | `gles3` | `gles3` |
+| Platform | `app` variants | `gfx` variants | `gp` variants |
+|---|---|---|---|
+| macOS | `metal`, `glcore` | `metal`, `glcore`, `wgpu` | `metal`, `glcore` |
+| Linux | `glcore`, `gles3` | `glcore`, `gles3`, `wgpu` | `glcore`, `gles3` |
+| Windows | `d3d11`, `glcore` | `d3d11`, `glcore`, `gles3`, `wgpu` | `d3d11`, `glcore`, `gles3` |
+| Emscripten | `gles3`, `wgpu` | `gles3`, `wgpu` | `gles3` |
 
-**WGPU variants:** currently not built. The pinned `sokol`/`sokol_gp` use an older `webgpu.h` that is incompatible with the current `dawn` submodule. They will be re-enabled once the versions align.
+**sokol_gp isolation:** `sokol_gp` is built against the vendored sokol headers in `deps/sokol_gp/thirdparty`, which are older than the top-level `deps/sokol`. The `sokol_gp` headers are installed into `include/sokol_gp/` and must not be mixed with the top-level `sokol_*` libraries. This is documented in `include/sokol_gp/README.txt`.
+
+**sokol_gp_wgpu:** not provided because the vendored sokol headers predate the current `deps/dawn` `webgpu.h` API.
 
 For a `lyte2d`-style project, link `sokol_gfx_glcore` + `sokol_gp_glcore` on desktop and `sokol_gfx_gles3` + `sokol_gp_gles3` on Emscripten.
 
