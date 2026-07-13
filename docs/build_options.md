@@ -447,7 +447,7 @@ Per-platform variant availability:
 |---|---|---|---|
 | macOS | `metal`, `glcore` | `metal`, `glcore`, `wgpu` | `metal`, `glcore` |
 | Linux | `glcore`, `gles3`, `wgpu` | `glcore`, `gles3`, `wgpu` | `glcore`, `gles3` |
-| Windows | `d3d11`, `glcore`, `wgpu` | `d3d11`, `glcore`, `gles3`, `wgpu` | `d3d11`, `glcore`, `gles3` |
+| Windows | `d3d11`, `glcore`, `wgpu` | `d3d11`, `glcore`, `wgpu` | `d3d11`, `glcore` |
 | Emscripten | `gles3`, `wgpu` | `gles3`, `wgpu` | `gles3` |
 
 **sokol_app_wgpu on macOS:** The current `deps/sokol` (commit `3743ea6`) lists `SOKOL_WGPU` as a supported macOS backend, but the implementation is incomplete. The WGPU macOS code was committed as "work in progress" (`b5fe31b`) and currently references `_sapp.swap_interval` (should be `_sapp.desc.swap_interval`) and `_sapp_macos_mtl_is_obscured` (defined only under `SOKOL_METAL`). Therefore `sokol_app_wgpu` and `sokol_glue_wgpu` are enabled on Linux, Windows, and Emscripten only. `sokol_gfx_wgpu` is still built on macOS because `sokol_gfx.h` itself compiles cleanly.
@@ -754,7 +754,7 @@ These dependencies do not have native CMake builds (or the native build is unsui
 |---|---|---|
 | `ghostty` | Zig | `src/ghostty/CMakeLists.txt` runs `zig build` and extracts `libghostty.a` from the xcframework. **macOS arm64 only.** |
 | `lua-5.5.0` | Makefile | `src/lua/CMakeLists.txt` drives the upstream `make` rules and installs `liblua.a` + headers. |
-| `mtcc` | Makefile | `src/mtcc/CMakeLists.txt` runs `./configure` and `make libtcc.a` in the build tree. **Excluded on `wasm_emscripten`**. |
+| `mtcc` | Makefile | `src/mtcc/CMakeLists.txt` runs `./configure` and `make libtcc.a` in the build tree. **Excluded on `wasm_emscripten` and Windows**. |
 | `skribidi` | CMake | `src/skribidi/CMakeLists.txt` builds from `deps/skribidi` and links against the pinned `harfbuzz`, `SheenBidi`, `libunibreak`, and `budouxc` submodules. |
 
 ---

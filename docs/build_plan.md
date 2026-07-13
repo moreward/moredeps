@@ -249,7 +249,7 @@ Sokol headers are header-only, so the same source can be compiled multiple times
 |---|---|---|
 | `macos_arm64` | `SOKOL_METAL` | `sokol_*{_glcore, _metal}` for `app`/`gfx`/`glue`; `sokol_gfx_wgpu` |
 | `linux_x64` / `linux_arm64` | `SOKOL_GLCORE` | `sokol_*{_glcore, _gles3, _wgpu}` for `app`/`gfx`/`glue` |
-| `windows_x64` / `windows_arm64` | `SOKOL_D3D11` | `sokol_*{_glcore, _gles3, _d3d11, _wgpu}` for `app`/`gfx`/`glue` |
+| `windows_x64` / `windows_arm64` | `SOKOL_D3D11` | `sokol_*{_glcore, _d3d11, _wgpu}` for `app`/`gfx`/`glue` |
 | `wasm_emscripten` | `SOKOL_GLES3` | `sokol_*{_gles3, _wgpu}` for `app`/`gfx`/`glue` |
 
 `sokol_gp` is built against the vendored sokol headers in `deps/sokol_gp/thirdparty`, which are older than the top-level `deps/sokol` submodule. `sokol_gp` variants are therefore `*_glcore`, `*_gles3`, `*_metal`, and `*_d3d11` only, and they must not be mixed with the top-level `sokol_gfx`/`sokol_app`/`sokol_glue` libraries. This is documented in the installed `include/sokol_gp/README.txt`.
@@ -293,9 +293,13 @@ Windows builds are currently tested on an arm64 Windows VM. The host must have:
 - **Ninja** (recommended). `build_all.sh` will use Ninja if it is in PATH; otherwise it falls back to `NMake Makefiles` or `NMake Makefiles JOM` if `jom` is available.
 - **Python 3** (used by some helper scripts).
 
-Run `scripts/build_all.sh` from a **Native Tools Command Prompt** for the desired architecture (e.g., `x64 Native Tools Command Prompt` or `arm64 Native Tools Command Prompt`) so that `cl.exe` and the MSVC environment variables are available.
+Run `scripts/build_all.sh` from a **Native Tools Command Prompt** for the desired architecture (e.g., `x64 Native Tools Command Prompt` or `arm64 Native Tools Command Prompt`) so that `cl.exe` and the MSVC environment variables are available. The toolchain files set `CMAKE_SYSTEM_PROCESSOR` to `AMD64` or `ARM64`, but the actual target architecture is determined by the MSVC environment you launch.
 
 Because MSVC is not available on macOS or Linux hosts, `windows_x64` and `windows_arm64` cannot be built from this macOS development machine; they must be built on a Windows host or in a Windows CI runner.
+
+### Known Windows-specific exclusions
+
+- `mtcc` is excluded on Windows because TinyCC's build is Makefile/Unix-based and does not integrate with the MSVC toolchain.
 
 ---
 
