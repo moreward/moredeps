@@ -28,7 +28,7 @@ We must produce static libraries for every buildable dependency on the following
 - All builds go under `_b/<PLATFORM>_<ARCH>/<DEP_NAME>/` (or `wasm_emscripten/<DEP_NAME>`).
 - Some combinations are **not buildable**; these must be documented, not silently skipped.
 - Create `scripts/build_all.sh` that orchestrates everything.
-- Capture and record things that cannot build this way (e.g., `ghostty`).
+- Capture and record things that cannot build this way.
 - Later CI will produce a JSON manifest of commit hashes and artifact hashes, zip each artifact (`static lib + headers`, optional shared lib), upload to GitHub Releases, and skip unchanged dependencies.
 
 ### 1.3 Non-goals (for now)
@@ -64,7 +64,7 @@ Legend:
 | `flecs` | CMake | C | `ExternalProject_Add` | None known. |
 | `fontstash` | Header-only | H | `src/fontstash/` wrapper | None known. |
 | `freetype` | CMake | C | `ExternalProject_Add` | `FT_DISABLE_HARFBUZZ=OFF` so HarfBuzz can be used. |
-| `ghostty` | Zig build | Z | **Deferred** | Upstream cannot currently emit only `libghostty.a`; app bundle build fails. |
+| `ghostty` | Zig build | Z | `src/ghostty/` wrapper | macOS only; extracts `libghostty.a` from the xcframework produced by `zig build`. |
 | `glfw` | CMake | C | `ExternalProject_Add` | Excluded on `wasm_emscripten`. |
 | `harfbuzz` | CMake | C | `ExternalProject_Add` | `HB_HAVE_FREETYPE=ON`; built after FreeType. |
 | `libwebsockets` | CMake | C | `ExternalProject_Add` | BoringSSL; feature-detection flags forced for BoringSSL compatibility. |
@@ -236,7 +236,7 @@ For Windows cross-compilation from macOS/Linux we cannot run MSVC locally, so bu
 
 | Dependency | Issue | Resolution |
 |---|---|---|
-| `ghostty` | Uses Zig build. A clean static library build is not currently achievable without upstream changes (default install step tries to build the macOS app bundle even with `app-runtime=none`). | **Deferred** until the Zig build can be constrained to emit only `libghostty.a`. |
+| `ghostty` | Uses Zig build; upstream only emits `libghostty.a` inside an xcframework on macOS. | Built for `macos_arm64` only via `src/ghostty/CMakeLists.txt`; the source is copied to the build tree and `libghostty.a` is extracted from the xcframework. |
 | `mtcc` | Makefile-based C compiler; target-specific C/ASM cannot compile to Emscripten/WASM. | Wrapped in `src/mtcc/CMakeLists.txt`. **Exclude** from `wasm_emscripten`. Build on Windows/Linux/macOS natively. |
 | `dawn` | WebGPU; heavy. | Built via `ExternalProject_Add` with `DAWN_FETCH_DEPENDENCIES=OFF`. Dawn's third-party dependencies are pre-populated as git submodules under `deps/dawn_third_party/` and `DAWN_THIRD_PARTY_DIR` points there. On native platforms a monolithic static library is produced. On Emscripten `scripts/install_dawn.cmake` stages the `emdawnwebgpu` headers and JS files. |
 | `boringssl` | CMake-based build. | Built via `ExternalProject_Add`. Used as the TLS backend for `curl` and `libwebsockets`. `OPENSSL_NO_ASM=ON` on Emscripten. |
@@ -362,13 +362,12 @@ The following decisions have been made and are recorded here for reference.
 4. **TLS backend:** Use **BoringSSL** (`deps/boringssl`) as the single TLS backend for `curl` and `libwebsockets` on all platforms. This is consistent and removes the need for platform-specific TLS backends.
 5. **HarfBuzz ↔ FreeType:** Enable `HB_HAVE_FREETYPE=ON` and `FT_DISABLE_HARFBUZZ=OFF` for improved auto-hinting. FreeType is built before HarfBuzz.
 6. **Version pins:** Yes — pin all floating submodules to concrete tags or commits.
-6. **Ghostty:** Build `libghostty`.  Integrate via CMake by using `add_custom_command` / `add_custom_target` to invoke the patched `zig` 0.15.2 build, then expose the resulting library as an `IMPORTED` target.  Zig 0.15.2 must be installed on CI machines.
+6. **Ghostty:** Built for `macos_arm64` only. The wrapper copies the source to the build tree, runs `zig build -Dapp-runtime=none -Demit-macos-app=false -Demit-xcframework=true`, and installs `libghostty.a` from the resulting xcframework along with `include/ghostty.h` and the `include/ghostty/` directory.
 7. **Dawn scope:** WebGPU-only. Disable examples, tests, benchmarks, samples, node bindings, SwiftShader, and protobuf. Use `DAWN_BUILD_MONOLITHIC_LIBRARY=STATIC` and `DAWN_ENABLE_INSTALL=ON` on native platforms. On Emscripten, `DAWN_ENABLE_INSTALL=OFF` and `DAWN_BUILD_MONOLITHIC_LIBRARY=OFF`; `scripts/install_dawn.cmake` stages `emdawnwebgpu` headers and JS files. `DAWN_FETCH_DEPENDENCIES=OFF`; third-party dependencies are pre-populated as git submodules in `deps/dawn_third_party/` and `DAWN_THIRD_PARTY_DIR` is set to that path.
 8. **Non-CMake deps:** Create small CMake wrappers in `src/<dep>/` (one wrapper per dependency, or per module for `sokol`/`stb`). Makefile-only deps (`mtcc`) are also wrapped in `src/<dep>/` so the super-build controls them.
 9. **Emscripten SDK:** The toolchain file (`toolchain/wasm_emscripten.cmake`) locates the SDK under `libexec/` (matching Homebrew's layout) and sets `CMAKE_SYSTEM_NAME=Emscripten`.
 10. **CI matrix:** Deferred to the CI phase. Local validation is complete for `macos_arm64` and `wasm_emscripten`; `linux_x64`/`linux_arm64`/`windows_x64`/`windows_arm64` remain to be validated on appropriate hosts.
-11. **Ghostty:** Deferred until the upstream Zig build can be constrained to emit only a static library without building the macOS app bundle.
-12. **Version pins:** All `branch = ...` entries removed from `.gitmodules`; submodules are pinned to their current commits.
+11. **Version pins:** All `branch = ...` entries removed from `.gitmodules`; submodules are pinned to their current commits.
 
 ### Remaining open questions
 
@@ -381,5 +380,4 @@ The following decisions have been made and are recorded here for reference.
 
 1. Validate `linux_x64`, `linux_arm64`, `windows_x64`, and `windows_arm64` builds on appropriate hosts.
 2. Add CI matrix and artifact packaging in a future phase.
-3. Revisit `ghostty` when the upstream Zig build supports a library-only output.
 

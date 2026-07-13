@@ -246,7 +246,7 @@ BoringSSL does not expose an option to disable the `bssl` command-line tool, so 
 | `LWS_WITH_FANALYZER` | `OFF` | `OFF` | Keep off. |
 | `LWS_WITH_NO_LOGS` | `OFF` | `OFF` | Keep logs. |
 | `LWS_WITH_UDP` | `ON` | `ON` | Keep for network. |
-| `LWS_WITH_CLIENT_HTTP_PROXYING` | `ON` | `ON` | Keep proxy support. |
+| `LWS_CLIENT_HTTP_PROXYING` | `ON` | `ON` | Keep proxy support. |
 | `LWS_WITH_FILE_OPS` | `ON` | `ON` | Keep file ops. |
 | `LWS_WITH_CUSTOM_HEADERS` | `ON` | `ON` | Keep custom headers. |
 | `LWS_WITH_LWSAC` | `ON` | `ON` | Keep chunk allocator. |
@@ -494,6 +494,18 @@ Additionally, `LWS_OPENSSL_LIBRARIES` and `LWS_OPENSSL_INCLUDE_DIRS` are pointed
 
 This is a small CMake library.  We will use the upstream `CMakeLists.txt` with `BUILD_SHARED_LIBS=OFF` and no tests/examples.
 
+### `ghostty`
+
+Ghostty is built via Zig. The wrapper runs in `src/ghostty/`:
+
+| Wrapper setting | Value | Notes |
+|---|---|---|
+| Build command | `zig build -Doptimize=ReleaseFast -Dapp-runtime=none -Demit-macos-app=false -Demit-xcframework=true` | Emits the `libghostty.a` inside an xcframework. |
+| Source handling | copied to build tree | Avoids writing `macos/build` and `macos/GhosttyKit.xcframework` into the submodule. |
+| Installed artifacts | `lib/libghostty.a`, `include/ghostty.h`, `include/ghostty/` | Extracted from the build-tree xcframework. |
+
+**Platform support:** `macos_arm64` only. The upstream `build.zig` does not install a plain `libghostty.a` on Darwin; it only produces one inside the xcframework, so we extract it manually.
+
 ### `skribidi`
 
 | Option | Upstream default | Proposed default | Notes |
@@ -666,6 +678,7 @@ These dependencies do not have native CMake builds (or the native build is unsui
 
 | Dep | Build system | Wrapper / notes |
 |---|---|---|
+| `ghostty` | Zig | `src/ghostty/CMakeLists.txt` runs `zig build` and extracts `libghostty.a` from the xcframework. **macOS arm64 only.** |
 | `lua-5.5.0` | Makefile | `src/lua/CMakeLists.txt` drives the upstream `make` rules and installs `liblua.a` + headers. |
 | `mtcc` | Makefile | `src/mtcc/CMakeLists.txt` runs `./configure` and `make libtcc.a` in the build tree. **Excluded on `wasm_emscripten`**. |
 

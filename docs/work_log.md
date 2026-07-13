@@ -105,4 +105,19 @@ The macOS arm64 build now produces 66 static libraries.
 - Validate `windows_x64` and `windows_arm64` builds; fix the `libwebsockets` BoringSSL library-name issue for MSVC (`.lib` vs `.a`).
 - Commit and push the current state to origin.
 
+---
 
+## 2026-07-12 (later still) — Ghostty implemented for macOS arm64
+
+- Added `src/ghostty/CMakeLists.txt` wrapper:
+  - Copies `deps/ghostty` to the build tree to keep the submodule clean.
+  - Runs `zig build -Doptimize=ReleaseFast -Dapp-runtime=none -Demit-macos-app=false -Demit-xcframework=true`.
+  - Extracts `libghostty.a` from the resulting xcframework and installs it along with `include/ghostty.h` and `include/ghostty/`.
+- Added `moredeps_add_dep(ghostty ...)` gated to `MOREDEPS_PLATFORM == "macos_arm64"`.
+- Full clean macOS arm64 rebuild succeeded; now produces 67 static libraries.
+- Updated `docs/build_plan.md`, `docs/build_options.md`, `README.md`, and `docs/work_log.md` to reflect the new ghostty status.
+- Fixed `docs/build_options.md` libwebsockets option name: `LWS_CLIENT_HTTP_PROXYING` (not `LWS_WITH_CLIENT_HTTP_PROXYING`).
+
+### Next steps
+- Deep review of the entire build system.
+- Collect and apply user's comments/changes before moving to Linux/Windows validation.
