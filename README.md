@@ -29,4 +29,4 @@ A collection of dependencies frequently used across projects, built as static li
 
 ## Status
 
-Build infrastructure is under construction. See the plan documents for the current state and next steps.
+macOS arm64 builds and installs all configured dependencies successfully. Linux, Windows, and Emscripten builds are the next validation targets. See `docs/work_log.md` for the current state and known caveats.
