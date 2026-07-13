@@ -76,7 +76,7 @@ Legend:
 | `mimalloc` | CMake | C | `ExternalProject_Add` | None known. |
 | `miniaudio` | CMake | C | `ExternalProject_Add` | None known. |
 | `minigamepad` | Header-only | H | `src/minigamepad/` wrapper | None known. |
-| `mtcc` | Makefile | M | `src/mtcc/` wrapper | Excluded on `wasm_emscripten`. |
+| `mtcc` | Makefile | M | `src/mtcc/` wrapper | TinyCC. Windows x64 built with custom MSVC batch; excluded on `wasm_emscripten` and `windows_arm64`. |
 | `nanovg` | `.c` + header | H | `src/nanovg/` wrapper | None known. |
 | `boringssl` | CMake | C | `ExternalProject_Add` | TLS backend for `curl` and `libwebsockets`. |
 | `physfs` | CMake | C | `ExternalProject_Add` | None known. |
@@ -299,7 +299,7 @@ Because MSVC is not available on macOS or Linux hosts, `windows_x64` and `window
 
 ### Known Windows-specific exclusions
 
-- `mtcc` is excluded on Windows because TinyCC's build is Makefile/Unix-based and does not integrate with the MSVC toolchain.
+- `mtcc` is excluded on `windows_arm64` because the Windows wrapper currently only implements the x86/x64 MSVC batch build. It is supported on `windows_x64`.
 
 ---
 

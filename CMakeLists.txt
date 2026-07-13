@@ -653,8 +653,8 @@ else()
 endif()
 
 # --- mtcc ---
-# TinyCC is Makefile-only and does not support Emscripten or MSVC/Windows.
-if(NOT EMSCRIPTEN AND NOT WIN32)
+# TinyCC is Makefile-only and does not support Emscripten.
+if(NOT EMSCRIPTEN)
   moredeps_add_dep(mtcc
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/mtcc"
   )
@@ -928,10 +928,10 @@ elseif(MOREDEPS_PLATFORM STREQUAL "linux_x64" OR MOREDEPS_PLATFORM STREQUAL "lin
   )
 elseif(MOREDEPS_PLATFORM MATCHES "windows_(x64|arm64)")
   list(APPEND _sokol_variants
-    gfx:GLCORE gfx:D3D11 gfx:WGPU
+    gfx:GLCORE gfx:GLES3 gfx:D3D11 gfx:WGPU
     app:GLCORE app:D3D11 app:WGPU
     glue:GLCORE glue:D3D11 glue:WGPU
-    gp:GLCORE gp:D3D11
+    gp:GLCORE gp:GLES3 gp:D3D11
   )
 elseif(MOREDEPS_PLATFORM STREQUAL "wasm_emscripten")
   list(APPEND _sokol_variants

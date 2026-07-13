@@ -738,7 +738,7 @@ These dependencies do not have native CMake builds (or the native build is unsui
 | `microui` | `MUI_IMPLEMENTATION` | Single-source UI. |
 | `miniaudio` (fallback) | `MINIAUDIO_IMPLEMENTATION` | Only if we use the wrapper instead of upstream CMake. |
 | `minigamepad` | `MGP_IMPLEMENTATION` | Gamepad abstraction. |
-| `mtcc` | N/A (Makefile wrapper) | `src/mtcc/CMakeLists.txt` runs configure + make. |
+| `mtcc` | Makefile / MSVC batch | `src/mtcc/` wrapper runs configure + make on Unix, a custom batch with cl/lib on Windows x64. |
 | `nanovg` | `NANOVG_IMPLEMENTATION` | 2D vector graphics. |
 | `raudio` | `RAUDIO_IMPLEMENTATION` | Audio library. |
 | `sokol` | `SOKOL_IMPL` plus per-module macros | **Per-module static libraries:** `sokol_app`, `sokol_args`, `sokol_audio`, `sokol_fetch`, `sokol_gfx`, `sokol_glue`, `sokol_log`, `sokol_time`. `sokol_app`/`sokol_gfx`/`sokol_glue` use Metal on macOS. |
@@ -754,7 +754,7 @@ These dependencies do not have native CMake builds (or the native build is unsui
 |---|---|---|
 | `ghostty` | Zig | `src/ghostty/CMakeLists.txt` runs `zig build` and extracts `libghostty.a` from the xcframework. **macOS arm64 only.** |
 | `lua-5.5.0` | Makefile | `src/lua/CMakeLists.txt` drives the upstream `make` rules and installs `liblua.a` + headers. |
-| `mtcc` | Makefile | `src/mtcc/CMakeLists.txt` runs `./configure` and `make libtcc.a` in the build tree. **Excluded on `wasm_emscripten` and Windows**. |
+| `mtcc` | Makefile / MSVC batch | `src/mtcc/` wrapper runs `./configure` + `make` on Unix, a custom batch with `cl`/`lib` on Windows x64. **Excluded on `wasm_emscripten` and `windows_arm64`.** |
 | `skribidi` | CMake | `src/skribidi/CMakeLists.txt` builds from `deps/skribidi` and links against the pinned `harfbuzz`, `SheenBidi`, `libunibreak`, and `budouxc` submodules. |
 
 ---
