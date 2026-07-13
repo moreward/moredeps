@@ -72,6 +72,10 @@ case "${PLATFORM}" in
     ;;
   linux_x64)
     require_command gcc "Install GCC or Clang (e.g. apt install build-essential)."
+    echo "  [INFO] Desktop Linux also needs X11/ALSA/Vulkan dev packages for SDL3, Dawn, and sokol_audio:"
+    echo "         sudo apt install libx11-dev libx11-xcb-dev libxrandr-dev libxinerama-dev libxcursor-dev"
+    echo "                          libxi-dev libxext-dev libxss-dev libxtst-dev libxkbcommon-dev"
+    echo "                          libasound2-dev libgl1-mesa-dev libvulkan-dev"
     ;;
   linux_arm64)
     if command -v aarch64-linux-gnu-gcc &> /dev/null; then
@@ -82,6 +86,10 @@ case "${PLATFORM}" in
       echo "         On Fedora:        sudo dnf install gcc-aarch64-linux-gnu-c++"
       echo "         Also ensure the target sysroot/libraries are installed (e.g. libc6-dev-arm64-cross)."
     fi
+    echo "  [INFO] Linux also needs X11/ALSA/Vulkan dev packages for SDL3, Dawn, and sokol_audio:"
+    echo "         sudo apt install libx11-dev libx11-xcb-dev libxrandr-dev libxinerama-dev libxcursor-dev"
+    echo "                          libxi-dev libxext-dev libxss-dev libxtst-dev libxkbcommon-dev"
+    echo "                          libasound2-dev libgl1-mesa-dev libvulkan-dev"
     ;;
   windows_x64|windows_arm64)
     if command -v cl &> /dev/null; then

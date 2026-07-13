@@ -256,7 +256,33 @@ Sokol headers are header-only, so the same source can be compiled multiple times
 
 `sokol_gp_wgpu` is not provided because the vendored sokol headers predate the current `deps/dawn` `webgpu.h` API. It will become available once upstream `sokol_gp` updates its vendored sokol headers, or once we patch `sokol_gp` to match the current top-level `sokol`/`dawn` versions.
 
-### 3.8 Windows build machine requirements
+### 3.8 Linux build machine requirements
+
+A Debian/Ubuntu-style host needs the following packages in addition to `build-essential` and CMake:
+
+```sh
+sudo apt install \
+  libx11-dev libx11-xcb-dev \
+  libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev \
+  libxss-dev libxtst-dev libxkbcommon-dev \
+  libasound2-dev \
+  libgl1-mesa-dev \
+  libvulkan-dev
+```
+
+Required by:
+- **GLFW:** X11 headers/libs.
+- **SDL3:** X11 + XTest + XScreenSaver + XKBCommon headers.
+- **sokol_audio:** ALSA (`libasound2-dev`).
+- **Dawn (Linux Vulkan):** X11/XCB + Vulkan headers/loader.
+
+For `linux_arm64`, also install the cross compiler:
+
+```sh
+sudo apt install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
+```
+
+### 3.9 Windows build machine requirements
 
 Windows builds are currently tested on an arm64 Windows VM. The host must have:
 

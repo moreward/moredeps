@@ -216,3 +216,18 @@ The macOS arm64 build now produces 66 static libraries.
 - Validate `linux_x64` / `linux_arm64` on a Linux host.
 - Validate `windows_x64` / `windows_arm64` on the arm64 Windows VM.
 - Re-enable WGPU Sokol variants once Sokol/Sokol_GP/Dawn API versions align.
+
+## 2026-07-13 (latest) — Linux arm64 build green
+
+- Tested `linux_arm64` build on the `ubudev` VM (aarch64 Linux).
+- Fixed GLFW Wayland requirement by adding `-DGLFW_BUILD_WAYLAND=OFF`.
+- Reduced Dawn Linux deps by adding `-DDAWN_USE_WAYLAND=OFF` (still requires X11).
+- Installed required system dev packages on the VM:
+  - `libx11-dev`, `libx11-xcb-dev`, `libxrandr-dev`, `libxinerama-dev`, `libxcursor-dev`, `libxi-dev`, `libxext-dev`
+  - `libxss-dev`, `libxtst-dev`, `libxkbcommon-dev`
+  - `libasound2-dev`, `libgl1-mesa-dev`, `libvulkan-dev`
+- Full `linux_arm64` build succeeded with **76 static libraries**.
+- Updated `scripts/validate_dev_env.sh` and `docs/build_plan.md` with Linux package requirements.
+
+### Next steps
+- Validate `windows_x64` / `windows_arm64` on the arm64 Windows VM.
