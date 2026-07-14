@@ -2,6 +2,8 @@
 
 A collection of dependencies frequently used across projects, built as static libraries for multiple platforms from a single source tree.
 
+By @morew4rd.
+
 ## Build philosophy
 
 - **Library only.** Every dependency is configured to build only the library itself. Examples, tests, documentation, benchmarks, and tools are disabled by default.
