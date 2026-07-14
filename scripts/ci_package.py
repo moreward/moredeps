@@ -200,31 +200,26 @@ def find_header_files(dep_name: str, platform_dir: Path) -> list[Path]:
     if not include_dir.exists():
         return []
 
-    files = []
-
-    # Look for dep-specific subdirectory
-    dep_include_dir = include_dir / dep_name
-    if dep_include_dir.exists():
-        for f in dep_include_dir.rglob("*"):
-            if f.is_file():
-                files.append(f)
-
-    # Also check for headers directly in include/ that match dep name
-    # Use a more precise matching: exact name or known header names
+    # Header names/dirs that differ from the dependency name.
     known_headers = {
         "boringssl": ["openssl"],
+        "budouxc": ["budoux"],
         "cJSON": ["cjson"],
         "curl": ["curl"],
         "dawn": ["dawn", "webgpu"],
         "enet": ["enet"],
         "flecs": ["flecs"],
+        "freetype": ["freetype2"],
         "glfw": ["glfw"],
         "harfbuzz": ["harfbuzz"],
+        "libunibreak": ["linebreak", "unibreak", "wordbreak", "graphemebreak",
+                        "eastasianwidth", "emojidef", "indicconjunctbreak"],
         "libwebsockets": ["libwebsockets"],
         "lua": ["lua"],
         "mtcc": ["libtcc", "tcc"],
         "sdl3": ["SDL3"],
         "sdl3webgpu": ["sdl3webgpu"],
+        "skribidi": ["skb"],
         "sqlite-amalgamation": ["sqlite3"],
         "stb": ["stb"],
         "tracy": ["tracy"],
@@ -232,14 +227,26 @@ def find_header_files(dep_name: str, platform_dir: Path) -> list[Path]:
         "zlib": ["zlib"],
         "zstd": ["zstd"],
     }
-
     search_terms = known_headers.get(dep_name, [dep_name.lower()])
+
+    files = []
+
+    # Look for dep-specific subdirectories: include/<dep_name> and
+    # include/<term> (e.g. include/openssl, include/freetype2)
+    for subdir in [dep_name] + search_terms:
+        dep_include_dir = include_dir / subdir
+        if dep_include_dir.is_dir():
+            for f in dep_include_dir.rglob("*"):
+                if f.is_file():
+                    files.append(f)
+
+    # Also check for headers directly in include/ matching the search terms
     for f in include_dir.iterdir():
         if not f.is_file():
             continue
         stem = f.stem.lower()
         for term in search_terms:
-            if term in stem:
+            if term.lower() in stem:
                 files.append(f)
                 break
 
