@@ -79,7 +79,18 @@
         }
         .dl-toolbar button:disabled { background: #aaa; cursor: default; }
         .dl-toolbar .hint { color: #666; font-size: 0.85rem; }
-        .dl-check { cursor: pointer; }
+        .dl-check, .row-check, .col-check { cursor: pointer; }
+        .dl-commands {
+            width: 100%;
+            font-family: monospace;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        .th-check { font-weight: normal; font-size: 0.75rem; color: #666; }
         .sha {
             font-family: monospace;
             font-size: 0.75rem;
@@ -180,13 +191,17 @@
             };
 
             let html = '<div class="dl-toolbar">' +
-                '<button id="dlSelected" disabled>Download selected (0)</button>' +
-                '<button id="dlCopyLinks" disabled>Copy links</button>' +
+                '<button id="dlCopyCmds" disabled>Copy commands</button>' +
                 '<label><input type="checkbox" id="dlSelectAll"> select all</label>' +
-                '<span class="hint">if only one file downloads, allow multiple downloads for this site (address bar prompt)</span>' +
-                '</div>';
+                '<span class="hint" id="dlCount"></span>' +
+                '<span class="hint">select libraries, then paste the commands in a terminal</span>' +
+                '</div>' +
+                '<textarea id="dlCommands" class="dl-commands" rows="6" readonly style="display:none"' +
+                ' title="curl commands for the selected libraries"></textarea>';
             html += '<table>';
-            html += '<tr><th>Dependency</th>' + platforms.map(p => `<th>${platformLabels[p]}</th>`).join('') + '</tr>';
+            html += '<tr><th>Dependency</th>' + platforms.map(p =>
+                `<th>${platformLabels[p]}<br><label class="th-check"><input type="checkbox" class="col-check" data-platform="${p}"> all</label></th>`
+            ).join('') + '</tr>';
 
             const deps = Object.keys(manifest.artifacts).sort();
 
@@ -197,7 +212,7 @@
                 const depLabel = (firstInfo && firstInfo.repo_url && firstInfo.commit)
                     ? `<a href="${firstInfo.repo_url}/tree/${firstInfo.commit}" title="${firstInfo.repo_url} @ ${firstInfo.commit}">${dep}</a>`
                     : dep;
-                html += `<td><strong>${depLabel}</strong></td>`;
+                html += `<td><label class="th-check"><input type="checkbox" class="row-check" data-dep="${dep}"> all</label> <strong>${depLabel}</strong></td>`;
                 for (const platform of platforms) {
                     const info = manifest.artifacts[dep]?.[platform];
                     if (!info) {
@@ -209,7 +224,7 @@
                         const sha = info.commit ? info.commit.substring(0, 7) : '';
                         const href = info.filename ? downloadUrl(release, info.filename) : release.html_url;
                         const check = info.filename
-                            ? `<input type="checkbox" class="dl-check" data-url="${href}" data-name="${info.filename}"> `
+                            ? `<input type="checkbox" class="dl-check" data-dep="${dep}" data-platform="${platform}" data-url="${href}" data-name="${info.filename}"> `
                             : '';
                         html += `<td><label>${check}<a href="${href}" title="${info.filename || ''}">download</a></label> <span class="sha">${sha}</span></td>`;
                     } else {
@@ -227,55 +242,64 @@
             return html;
         }
 
-        // Wires up the checkbox toolbar rendered by renderTable().
+        // Wires up the checkbox UI rendered by renderTable().
         function bindDownloadUI() {
-            const btn = document.getElementById('dlSelected');
-            const copyBtn = document.getElementById('dlCopyLinks');
+            const ta = document.getElementById('dlCommands');
+            const copyBtn = document.getElementById('dlCopyCmds');
+            const count = document.getElementById('dlCount');
             const all = document.getElementById('dlSelectAll');
-            if (!btn) return;
+            if (!ta) return;
+
             const boxes = () => [...document.querySelectorAll('.dl-check')];
-            const selected = () => boxes().filter(b => b.checked);
-            const update = () => {
-                const n = selected().length;
-                btn.disabled = n === 0;
-                if (copyBtn) copyBtn.disabled = n === 0;
-                btn.textContent = `Download selected (${n})`;
+            const rowBoxes = () => [...document.querySelectorAll('.row-check')];
+            const colBoxes = () => [...document.querySelectorAll('.col-check')];
+
+            const setGroupState = (cb, group) => {
+                const n = group.filter(b => b.checked).length;
+                cb.checked = n > 0 && n === group.length;
+                cb.indeterminate = n > 0 && n < group.length;
             };
-            boxes().forEach(b => b.addEventListener('change', update));
+
+            const refresh = () => {
+                const sel = boxes().filter(b => b.checked);
+                ta.style.display = sel.length ? 'block' : 'none';
+                ta.value = sel.map(b => `curl -fLO ${b.dataset.url}`).join('\n');
+                copyBtn.disabled = sel.length === 0;
+                count.textContent = sel.length ? `${sel.length} selected` : '';
+                for (const rc of rowBoxes()) setGroupState(rc, boxes().filter(b => b.dataset.dep === rc.dataset.dep));
+                for (const cc of colBoxes()) setGroupState(cc, boxes().filter(b => b.dataset.platform === cc.dataset.platform));
+                if (all) setGroupState(all, boxes());
+            };
+
+            boxes().forEach(b => b.addEventListener('change', refresh));
+            rowBoxes().forEach(rc => rc.addEventListener('change', () => {
+                boxes().filter(b => b.dataset.dep === rc.dataset.dep)
+                    .forEach(b => { b.checked = rc.checked; });
+                refresh();
+            }));
+            colBoxes().forEach(cc => cc.addEventListener('change', () => {
+                boxes().filter(b => b.dataset.platform === cc.dataset.platform)
+                    .forEach(b => { b.checked = cc.checked; });
+                refresh();
+            }));
             if (all) {
                 all.addEventListener('change', () => {
                     boxes().forEach(b => { b.checked = all.checked; });
-                    update();
+                    refresh();
                 });
             }
-            btn.addEventListener('click', () => {
-                const items = selected().map(b => ({ url: b.dataset.url, name: b.dataset.name }));
-                // Stagger the clicks and keep the anchors alive briefly:
-                // some browsers cancel a download if the element is removed
-                // immediately, and rapid-fire clicks get silently dropped.
-                items.forEach((item, i) => setTimeout(() => {
-                    const a = document.createElement('a');
-                    a.href = item.url;
-                    a.download = item.name;
-                    a.style.display = 'none';
-                    document.body.appendChild(a);
-                    a.click();
-                    setTimeout(() => a.remove(), 10000);
-                }, i * 500));
+            copyBtn.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(ta.value);
+                    copyBtn.textContent = 'Copied!';
+                } catch (err) {
+                    ta.select();
+                    document.execCommand('copy');
+                    copyBtn.textContent = 'Copied!';
+                }
+                setTimeout(() => { copyBtn.textContent = 'Copy commands'; }, 2000);
             });
-            if (copyBtn) {
-                copyBtn.addEventListener('click', async () => {
-                    const urls = selected().map(b => b.dataset.url).join('\n');
-                    try {
-                        await navigator.clipboard.writeText(urls);
-                        copyBtn.textContent = 'Copied!';
-                        setTimeout(() => { copyBtn.textContent = 'Copy links'; }, 2000);
-                    } catch (err) {
-                        copyBtn.textContent = 'Copy failed';
-                        setTimeout(() => { copyBtn.textContent = 'Copy links'; }, 2000);
-                    }
-                });
-            }
+            refresh();
         }
 
         function renderAssetList(release) {
