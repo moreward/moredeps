@@ -5,6 +5,35 @@
 
 ---
 
+## 2026-07-14 — CI green on all platforms; caching, packaging, and site overhauled
+
+Full CI pipeline (`build.yml` → `release` → `deploy-site`) is now green for all 6 targets. Warm-cache timings: linux ~7 min, macOS ~7.5 min, wasm ~10 min, windows_x64 ~16 min, windows_arm64 ~23 min (cold: 30–70 min).
+
+### Caching fixes
+
+- **Windows sccache was never active**: the workflow installed sccache and saved/restored its directory, but never set `CMAKE_C(XX)_COMPILER_LAUNCHER=sccache`, so every Windows build compiled cold. Fixed for both Windows jobs.
+- **Windows arm64 used the emulated x64 cross-compiler**: host detection relied on `PROCESSOR_ARCHITECTURE`, but git-bash runs x64-emulated on ARM runners and reports `AMD64`. Now uses `RUNNER_ARCH` → native `vcvarsall arm64` toolset (fallback to `x64_arm64` if unavailable). boringssl alone went 48 min → cached.
+- Removed the broken `deps/` submodule cache (commit `21c379d`); fresh `git submodule update --init` (~3 min) is reliable.
+
+### Packaging fixes (`ci_package.py`)
+
+- **Dep commit SHAs were the repo SHA** (`git rev-parse HEAD` inside an empty submodule dir walks up to the superproject) — hence double-SHA artifact names. Now uses `git ls-tree` on the superproject; works with `submodules: false`.
+- **Windows zips were header-only for several deps**: MSVC library names (`SDL3-static.lib`, `physfs-static.lib`, `zs.lib`, `utf8proc_static.lib`, `websockets_static.lib`, `zstd_static.lib`, `libunibreak.lib`) didn't match `DEP_LIBRARY_NAMES`. Lib matching now tries stems with and without the `lib` prefix plus explicit variants. sdl3/libunibreak now ship Windows builds.
+- **lua was missing everywhere** (dir `lua-5.5.0` vs key `lua`); deps are now enumerated from the curated list (drops junk rows `dawn_third_party`, `imgui`), with `DIR_ALIAS` for the dir mapping.
+- **Five deps shipped no headers on any platform** (boringssl `include/openssl/`, freetype `include/freetype2/`, skribidi `skb_*.h`, budouxc `budoux.h`, libunibreak `linebreak.h` etc.) — header matcher now covers those.
+- dawn on wasm marked excluded (browser provides WebGPU; the headers-only zip was misleading).
+- Manifest entries now include `repo_url` (from `.gitmodules`).
+- Verified end-to-end: 268 built zips, 0 without libs, 0 without headers.
+
+### Download site
+
+- **CORS fix:** browsers can't fetch release assets cross-origin (302 to `release-assets.githubusercontent.com` without CORS headers). The manifest is now served same-origin from Pages: new `deploy-site` job redeploys the site with the fresh manifest after each release; `pages.yml` also fetches it on docs pushes.
+- Dep names link to `<upstream repo>/tree/<pinned commit>`.
+- Older `build-<sha>` releases show a plain asset list.
+- Multi-download replaced: scripted multi-downloads are silently browser-blocked, so the site now lists `curl -fLO <url>` commands for the selection in a copyable textarea, with per-dependency (row) and per-platform (column) select-all checkboxes.
+
+---
+
 ## 2026-07-12 — Phase 2 implementation
 
 ### What was done before this session

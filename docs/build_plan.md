@@ -12,7 +12,7 @@ We must produce static libraries for every buildable dependency on the following
 |---|---|---|
 | Windows | x64 | **Validated** |
 | Windows | arm64 | **Validated** (mtcc excluded) |
-| Linux | x64 | Toolchain provided; pending validation |
+| Linux | x64 | **Validated** |
 | Linux | arm64 | **Validated** |
 | macOS | arm64 | **Validated** |
 | Emscripten | wasm32 | **Validated** |

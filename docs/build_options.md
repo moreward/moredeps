@@ -757,5 +757,5 @@ These dependencies do not have native CMake builds (or the native build is unsui
 3. **Sokol / STB module granularity:** Resolved. Each module is a separate static library (`sokol_app`, `sokol_gfx`, `stb_image`, etc.).
 4. **TLS backend:** Resolved. BoringSSL is used everywhere for `curl` and `libwebsockets`.
 5. **Submodules:** All floating submodules are pinned by removing `branch = ...` from `.gitmodules` and committing the resolved submodule commits. `cimgui` now uses the top-level `deps/imgui` submodule instead of the nested `cimgui/imgui` submodule. `skribidi` dependencies (`harfbuzz`, `SheenBidi`, `libunibreak`, `budouxc`) are all top-level submodules.
-6. **Remaining platforms:** `linux_x64`, `linux_arm64`, `windows_x64`, and `windows_arm64` toolchains are present but not yet validated locally.
+6. **Remaining platforms:** all resolved. Every platform (`linux_x64`, `linux_arm64`, `windows_x64`, `windows_arm64`, `macos_arm64`, `wasm_emscripten`) is validated and built in CI; see `docs/ci_plan.md`.
 

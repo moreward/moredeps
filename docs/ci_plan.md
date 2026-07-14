@@ -1,375 +1,208 @@
-# CI/CD Plan for moredeps
+# CI/CD for moredeps
 
-**Status:** Draft — pending review before implementation.  
-**Purpose:** Define the GitHub Actions workflow that builds all platform targets, produces release artifacts, generates the manifest JSON, and makes everything available to the GitHub Pages download site.
+**Status:** Implemented and green (as of 2026-07-14).
+**Purpose:** GitHub Actions workflow that builds all platform targets, packages per-dependency release artifacts, generates the manifest JSON, publishes GitHub Releases, and updates the GitHub Pages download site.
 
 ---
 
-## 1. Goals
+## 1. Overview
 
 1. **Manual trigger only** (`workflow_dispatch`) — no automatic runs on push/PR. CI minutes are limited.
-2. **6 targets** across 3 parallel jobs:
-   - `linux_x64`, `linux_arm64`, `wasm_emscripten` (Ubuntu runner)
-   - `macos_arm64` (macOS runner)
-   - `windows_x64`, `windows_arm64` (Windows runner)
-3. **Incremental builds** — skip dependencies whose submodule commit hasn't changed since the last release.
+2. **6 targets, 6 parallel jobs** — all ARM64 targets build **natively** on GitHub's ARM runners; no cross-compilation in CI:
+   - `linux_x64` (`ubuntu-24.04`), `linux_arm64` (`ubuntu-24.04-arm`)
+   - `macos_arm64` (`macos-15`)
+   - `windows_x64` (`windows-2022`), `windows_arm64` (`windows-11-arm`)
+   - `wasm_emscripten` (`ubuntu-24.04`)
+3. **Compiler caching** — ccache (Unix) / sccache (Windows) via `actions/cache`. This is the only incremental mechanism; every run builds everything (see §5).
 4. **Artifact packaging** — each dependency/platform combo produces a zip with `lib/`, `include/`, `LICENSE`.
-5. **Manifest JSON** — per-release asset listing all artifacts, commit hashes, build status, durations.
+5. **Manifest JSON** — per-release asset listing all artifacts, pinned upstream commits, repo URLs, and exclusions.
 6. **GitHub Releases** — immutable `build-<sha>` tags + rolling `latest` alias.
-7. **Web integration** — Pages site (`deps.morew4rd.com`) fetches manifest from release at runtime.
+7. **Web integration** — Pages site (`deps.morew4rd.com`) serves the manifest **same-origin**; the build workflow redeploys the site after each release (see §8 for why).
+
+Measured durations (warm cache): Linux ~7 min, macOS ~7.5 min, wasm ~10 min, Windows x64 ~16 min, Windows arm64 ~23 min. Cold cache: 30–70 min per platform.
 
 ---
 
-## 2. Job Matrix
+## 2. Jobs
 
-| Job | Runner | Targets | Est. cold | Est. warm |
-|-----|--------|---------|-----------|-----------|
-| `build-linux-x64` | `ubuntu-24.04` | `linux_x64` | 35-50 min | 8-15 min |
-| `build-linux-arm64` | `ubuntu-24.04-arm` | `linux_arm64` | 35-50 min | 8-15 min |
-| `build-wasm` | `ubuntu-24.04` | `wasm_emscripten` | 20-30 min | 5-10 min |
-| `build-macos` | `macos-15` | `macos_arm64` | 25-35 min | 5-10 min |
-| `build-windows-x64` | `windows-2022` | `windows_x64` | 30-45 min | 5-10 min |
-| `build-windows-arm64` | `windows-11-arm` | `windows_arm64` | 30-45 min | 5-10 min |
+`.github/workflows/build.yml`:
 
-**Wall clock:** ~35-50 min (all parallel). Warm builds (cached submodules + ccache) drop to ~8-15 min. ARM64 platforms build natively on GitHub's ARM runners (free for public repos); no cross-compilation in CI.
+| Job | Runner | Notes |
+|-----|--------|-------|
+| `configure` | `ubuntu-latest` | Parses the `platforms` input into per-job booleans |
+| `build-linux-x64` | `ubuntu-24.04` | apt deps incl. X11/ALSA/GL dev packages, ccache |
+| `build-linux-arm64` | `ubuntu-24.04-arm` | native ARM build |
+| `build-wasm` | `ubuntu-24.04` | cached Emscripten SDK (pinned `EMSDK_VERSION`, see below) |
+| `build-macos` | `macos-15` | brew ninja + ccache |
+| `build-windows-x64` | `windows-2022` | choco ninja + sccache |
+| `build-windows-arm64` | `windows-11-arm` | native ARM64 MSVC toolset |
+| `release` | `ubuntu-24.04` | packages zips, manifest, publishes releases |
+| `deploy-site` | `ubuntu-24.04` | redeploys Pages with the fresh manifest |
 
-**Total: 6 targets, 6 jobs.**
+The `release` job runs only if every *requested* build job succeeded or was skipped — no partial releases. `deploy-site` runs only after a successful `release`.
+
+### Platform selection
+
+`workflow_dispatch` input `platforms`: `all`, `linux`, `macos`, `windows`, `wasm`, or comma-separated platform names. The `configure` job maps it to job-level `if:` conditions.
 
 ---
 
 ## 3. Submodule Checkout (CRITICAL)
 
-**DO NOT** use `actions/checkout` with `submodules: true` or `submodules: recursive`. Dawn's nested submodules include private Google repos (`chrome-internal.googlesource.com`) that require authentication and will fail the checkout.
+**DO NOT** use `actions/checkout` with `submodules: true` or `recursive`. Dawn's nested submodules include private Google repos that require authentication and will fail the checkout.
 
-**Correct approach:**
+Every build job does:
+
 ```yaml
 - uses: actions/checkout@v4
   with:
     submodules: false
-
-- run: git submodule update --init --jobs 4
+- run: |
+    git submodule update --init --jobs 4
+    cd deps/cimgui && git submodule update --init imgui   # nested, needed
 ```
 
-This initializes only the top-level submodules (56 total) and does not recurse into dawn's private submodules. The `dawn_third_party/` directory is a separate top-level submodule that provides the needed dependencies.
+A `deps/` submodule cache was tried and **removed** (2026-07-14): `actions/cache` cannot reliably preserve gitlink metadata, and restores kept producing broken submodule states. Fresh `git submodule update --init` takes ~3 min per job and is always correct.
 
 ---
 
-## 4. Caching Strategy
+## 4. Caching
 
-### 4.1 Submodule cache (Tier 1)
+### 4.1 Compiler cache (the mechanism that matters)
 
-Cache the entire `deps/` directory keyed by submodule commit hashes. Invalidates only when a submodule changes.
+All build jobs export the CMake compiler launchers so every compile — including ExternalProject sub-builds, which inherit them via `MOREDEPS_COMMON_CMAKE_ARGS` in `CMakeLists.txt` — goes through the cache:
 
-```yaml
-- uses: actions/cache@v4
-  with:
-    path: deps/
-    key: submodules-${{ hashFiles('.gitmodules') }}-${{ hashFiles('deps/*/HEAD') }}
-    restore-keys: |
-      submodules-${{ hashFiles('.gitmodules') }}-
+```bash
+# Linux / macOS / wasm
+export CMAKE_C_COMPILER_LAUNCHER=ccache
+export CMAKE_CXX_COMPILER_LAUNCHER=ccache
+# Windows
+export CMAKE_C_COMPILER_LAUNCHER=sccache
+export CMAKE_CXX_COMPILER_LAUNCHER=sccache
 ```
 
-**First run:** 3-5 min to clone all submodules.  
-**Subsequent runs:** ~30-60 seconds to verify/update changed submodules.
+> **Hard-won lesson:** merely installing sccache and caching its directory does nothing without the launcher exports. Windows built cold for weeks because of this.
 
-### 4.2 Build cache (Tier 2)
+Cache configuration:
 
-Use `ccache` (Linux/macOS) or `sccache` (Windows) to cache compiled object files. Keyed by source file hashes.
+| Platform | Dir | Key | Restore prefix |
+|----------|-----|-----|----------------|
+| linux/mac/wasm | `${{ github.workspace }}/.ccache` (`CCACHE_DIR`, 2G max) | `ccache-<platform>-${{ hashFiles('CMakeLists.txt','src/**') }}` | `ccache-<platform>-` |
+| windows | `${{ github.workspace }}/.sccache` (`SCCACHE_DIR`) | `sccache-<platform>-<same hash>` | `sccache-<platform>-` |
 
-```yaml
-- uses: actions/cache@v4
-  with:
-    path: ~/.cache/ccache
-    key: ccache-${{ runner.os }}-${{ hashFiles('CMakeLists.txt', 'src/**/*.c', 'src/**/*.h', 'src/**/*.cpp') }}
-```
+The key hashes only `CMakeLists.txt` and `src/**` — deliberately **not** `deps/**`. Dependency compile commands rarely change, so dep objects stay warm across runs via the prefix restore-key even when `src/` changes; only own sources recompile.
 
-**Impact:** Reduces rebuild time by 60-80% when only a few deps change.
+`actions/cache` only saves on **job success** (`post-if: success()`), so a platform's first cache exists only after its first green build. Cancelled/failed runs save nothing.
+
+### 4.2 Emscripten SDK cache
+
+`~/emsdk` cached as `emsdk-<os>-<EMSDK_VERSION>-<hash of toolchain/wasm_emscripten.cmake>`. `EMSDK_VERSION` is pinned (currently 5.0.7) because `latest` tracks LLVM main snapshots which have ICE'd on box3d.
 
 ---
 
-## 5. Incremental Build Logic
+## 5. No manifest-based incremental builds
 
-### 5.1 Manifest as source of truth
-
-The manifest JSON (`build_manifest.json`) lives as a **GitHub Release asset** attached to the `latest` release. It records the submodule commit hash for each dependency at the time it was built.
-
-**Per-dependency decision:**
-1. Read `deps/<name>/HEAD` → current commit
-2. Look up `<name>` → `<platform>` → `commit` in manifest
-3. If match → **skip build**, reuse artifact from previous release
-4. If mismatch or missing → **build**, create new zip, update manifest
-5. If dependency is excluded on this platform → mark `built: false` with `reason`
-
-### 5.2 Artifact naming
-
-```
-moredeps-<repo-sha>-<platform>-<dep>-<dep-commit>.zip
-```
-
-Example: `moredeps-abc1234-linux_arm64-dawn-b87a8b9.zip`
-
-This makes artifacts immutable and traceable. The manifest maps these filenames to download URLs.
-
-### 5.3 First run behavior
-
-On the first CI run, no manifest exists. All dependencies are built from scratch. The manifest is created and attached to the release.
+The original plan called for skipping dependencies whose submodule commit matches the previous release's manifest. **This was never implemented and is not needed**: warm ccache/sccache makes a full build ~7–25 min per platform, all jobs run in parallel, and correctness is trivial (no stale-artifact merging logic). `ci_package.py` always repackages everything from `_out/`.
 
 ---
 
-## 6. Release Strategy
+## 6. Windows ARM64 toolchain
 
-### 6.1 Two releases per build
+`scripts/build_all.sh windows_arm64` must choose between the native ARM64 MSVC toolset (`vcvarsall arm64`) and the x64-hosted cross-compiler (`vcvarsall x64_arm64`). The emulated x64 `cl.exe` is ~2–3× slower.
 
-| Release | Type | Purpose |
-|---------|------|---------|
-| `build-<short-sha>` | Immutable | Permanent record of what was built at this commit. Never modified. |
-| `latest` | Rolling alias | Always points to the newest build. Overwritten on each run. Web page reads from here. |
+Host detection uses `RUNNER_ARCH` (set by GitHub Actions), **not** `PROCESSOR_ARCHITECTURE`: git-bash may itself run x64-emulated on ARM Windows and then reports `AMD64`. If `vcvarsall arm64` fails (e.g. native toolset not installed), it falls back to `x64_arm64`.
 
-### 6.2 Release assets
-
-Each release contains:
-- `build_manifest.json` — the master manifest
-- `moredeps-<sha>-<platform>-<dep>-<commit>.zip` — one per built dependency/platform
-
-### 6.3 Release creation flow
-
-```
-1. All 3 build jobs finish
-2. `release` job downloads all artifacts from build jobs
-3. Generate manifest.json from build results + previous manifest (for skipped deps)
-4. Create `build-<sha>` release with all zips + manifest
-5. Update `latest` release (delete old assets, upload new ones)
-```
-
-### 6.4 Failure handling
-
-**Fail fast:** If any platform job fails, the `release` job does not run. No partial releases are created. This prevents broken artifacts from being published.
-
-Future enhancement: per-platform releases so one failure doesn't block all platforms.
+`mtcc` is excluded on Windows ARM64 (TinyCC PE backend lacks ARM64 support), and BoringSSL builds with `OPENSSL_NO_ASM=ON` there.
 
 ---
 
-## 7. Manifest JSON Format
+## 7. Packaging and manifest
+
+`scripts/ci_package.py` (run by the `release` job) creates one zip per dependency/platform from `_out/<platform>/{lib,include}` and writes `build_manifest.json`.
+
+Artifact naming:
+
+```
+moredeps-<repo-sha8>-<platform>-<dep>-<dep-commit8>.zip
+```
+
+Important implementation details (all learned the hard way):
+
+- **Upstream commit** is read with `git ls-tree HEAD -- deps/<dep>` on the superproject. `git rev-parse HEAD` inside an empty submodule directory walks up to the superproject and returns the *repo* commit — the release job checks out with `submodules: false`.
+- **Library matching** tries each `.a`/`.lib` stem with and without the `lib` prefix (`liblibunibreak.a` vs `libunibreak.lib`), plus MSVC name variants in `DEP_LIBRARY_NAMES` (`SDL3-static`, `physfs-static`, `utf8proc_static`, `websockets_static`, `zstd_static`, `zs`/`zlibstatic`). Missing entries here previously produced header-only Windows zips that looked valid on the site.
+- **Header matching** (`known_headers`) covers non-obvious layouts: `include/openssl/`, `include/freetype2/`, `skb_*.h` (skribidi), `budoux.h` (budouxc), libunibreak's `linebreak.h`/`unibreak*.h`/etc.
+- **Dependency enumeration** uses the curated `DEP_LIBRARY_NAMES` list, not a raw `deps/` scan — otherwise helper dirs (`dawn_third_party`, cimgui's nested `imgui`, `lua-5.5.0`) appear as empty rows. `DIR_ALIAS` maps `lua` → `lua-5.5.0`.
+- **Exclusions** (`EXCLUDED`) are recorded in the manifest with a human-readable reason and include dawn on wasm (browser provides WebGPU via emdawnwebgpu; no prebuilt lib).
+
+Manifest format (actual):
 
 ```json
 {
-  "repo_commit": "abc1234def5678",
-  "generated_at": "2026-07-14T12:34:56Z",
-  "build_duration_seconds": 1847,
+  "repo_commit": "<full sha>",
+  "generated_at": "<ISO 8601>",
   "artifacts": {
-    "dawn": {
-      "linux_x64": {
-        "commit": "b87a8b9b6489ef2a62094a75e0c10effdcdedb88",
-        "artifact_hash": "sha256:abc123...",
-        "filename": "moredeps-abc1234-linux_x64-dawn-b87a8b9.zip",
-        "built": true,
-        "build_duration_seconds": 420,
-        "log_url": "https://github.com/moreward/moredeps/actions/runs/1234567890"
+    "<dep>": {
+      "<platform>": {
+        "commit": "<upstream commit>",
+        "repo_url": "https://github.com/<org>/<repo>",
+        "artifact_hash": "sha256:<hex>",
+        "filename": "moredeps-....zip",
+        "built": true
       },
-      "windows_arm64": {
-        "built": false,
-        "reason": "excluded"
-      }
-    },
-    "mtcc": {
-      "windows_x64": {
-        "commit": "f6c9639...",
-        "artifact_hash": "sha256:def456...",
-        "filename": "moredeps-abc1234-windows_x64-mtcc-f6c9639.zip",
-        "built": true,
-        "build_duration_seconds": 45
-      },
-      "windows_arm64": {
-        "built": false,
-        "reason": "TinyCC PE backend lacks ARM64 support"
-      }
+      "<platform2>": { "built": false, "reason": "..." }
     }
   }
 }
 ```
 
-Fields:
-- `repo_commit` — the moredeps repo commit being built
-- `generated_at` — ISO 8601 timestamp
-- `build_duration_seconds` — total CI time
-- `artifacts.<dep>.<platform>.commit` — submodule commit hash
-- `artifacts.<dep>.<platform>.artifact_hash` — SHA-256 of the zip
-- `artifacts.<dep>.<platform>.filename` — zip filename
-- `artifacts.<dep>.<platform>.built` — `true` (built), `false` (skipped/excluded), or missing (failed)
-- `artifacts.<dep>.<platform>.reason` — human-readable reason for skip/exclusion
-- `artifacts.<dep>.<platform>.build_duration_seconds` — per-dep build time
-- `artifacts.<dep>.<platform>.log_url` — link to GitHub Actions run
+`repo_url` comes from `.gitmodules` (normalized to https). Absent for vendored deps (`lua`).
 
 ---
 
-## 8. Web Page Integration
+## 8. Releases and the download site
 
-The GitHub Pages site (`deps.morew4rd.com`) is a static `index.html` that:
+### Two releases per build
 
-1. Fetches `https://api.github.com/repos/moreward/moredeps/releases/latest`
-2. Finds the `build_manifest.json` asset in the release
-3. Downloads and parses the manifest
-4. Renders a table: rows = dependencies, columns = platforms
-5. Each cell shows: download link (if built), N/A with reason (if excluded), or failed status
+| Release | Type | Purpose |
+|---------|------|---------|
+| `build-<full-sha>` | Immutable | Permanent record for the commit |
+| `latest` | Rolling alias | Deleted and recreated each run; what the site displays |
 
-**No commits to the repo are needed.** The page is completely dynamic based on the release data.
+Both contain `build_manifest.json` + all zips. Old `build-<sha>` releases accumulate (no cleanup implemented yet).
 
-The Pages workflow uses **sparse checkout** (`docs/` only) and **no submodules**, so it completes in ~20 seconds and doesn't hit the dawn recursive submodule issue.
+### Why the manifest is served from Pages, not from the release
 
----
+Fetching a release asset from the browser does not work: `github.com/.../releases/download/...` 302-redirects to `release-assets.githubusercontent.com`, and **neither response sends CORS headers**, so `fetch()` from `deps.morew4rd.com` is blocked. The API asset endpoint has the same problem (it redirects too).
 
-## 9. Workflow Structure
+Therefore:
 
-```yaml
-name: Build All Platforms
+- The `deploy-site` job (in `build.yml`, after `release`) checks out `docs/`, downloads the fresh `build_manifest.json` server-side, and redeploys GitHub Pages. The site fetches the manifest **same-origin**.
+- `pages.yml` (push-triggered docs deploys) also fetches the latest manifest before deploying, so a docs push doesn't wipe it from the site.
+- Both use the `pages` concurrency group to serialize deployments.
 
-on:
-  workflow_dispatch:
-    inputs:
-      platforms:
-        description: 'Platforms to build (all, linux, macos, windows, or comma-separated list)'
-        default: 'all'
-        required: true
+### Site features (`docs/index.html`)
 
-jobs:
-  build-linux-x64:
-    runs-on: ubuntu-24.04
-    if: contains(inputs.platforms, 'all') || contains(inputs.platforms, 'linux_x64')
-    steps:
-      - checkout (no submodules)
-      - init submodules (--jobs 4)
-      - cache deps/
-      - cache ccache
-      - build linux_x64
-      - upload platform artifacts
-
-  build-linux-arm64:
-    runs-on: ubuntu-24.04-arm
-    if: contains(inputs.platforms, 'all') || contains(inputs.platforms, 'linux_arm64')
-    steps:
-      - checkout (no submodules)
-      - init submodules (--jobs 4)
-      - cache deps/
-      - cache ccache
-      - build linux_arm64 (native, no cross-compile)
-      - upload platform artifacts
-
-  build-wasm:
-    runs-on: ubuntu-24.04
-    if: contains(inputs.platforms, 'all') || contains(inputs.platforms, 'wasm')
-    steps:
-      - checkout (no submodules)
-      - init submodules (--jobs 4)
-      - cache deps/
-      - cache ccache
-      - cache + install emsdk
-      - build wasm_emscripten
-      - upload platform artifacts
-
-  build-macos:
-    runs-on: macos-15
-    if: contains(inputs.platforms, 'all') || contains(inputs.platforms, 'macos')
-    steps:
-      - checkout (no submodules)
-      - init submodules (--jobs 4)
-      - cache deps/
-      - cache ccache
-      - build macos_arm64
-      - upload platform artifacts
-
-  build-windows-x64:
-    runs-on: windows-2022
-    if: contains(inputs.platforms, 'all') || contains(inputs.platforms, 'windows_x64')
-    steps:
-      - checkout (no submodules)
-      - init submodules (--jobs 4)
-      - cache deps/
-      - cache sccache
-      - build windows_x64
-      - upload platform artifacts
-
-  build-windows-arm64:
-    runs-on: windows-11-arm
-    if: contains(inputs.platforms, 'all') || contains(inputs.platforms, 'windows_arm64')
-    steps:
-      - checkout (no submodules)
-      - init submodules (--jobs 4)
-      - cache deps/
-      - cache sccache
-      - build windows_arm64 (native, no cross-compile)
-      - upload platform artifacts
-
-  release:
-    needs: [build-linux-x64, build-linux-arm64, build-wasm, build-macos, build-windows-x64, build-windows-arm64]
-    runs-on: ubuntu-24.04
-    steps:
-      - checkout (no submodules)
-      - download all artifacts from build jobs
-      - fetch previous manifest from latest release
-      - generate new manifest (merge built + skipped from previous)
-      - create zips with lib/ include/ LICENSE
-      - create build-<sha> release
-      - update latest release (rolling alias)
-      - upload all zips + manifest
-```
+- Latest view: dep × platform status matrix. Dep names link to `<repo_url>/tree/<commit>`.
+- Checkboxes per artifact, per-dependency (row) and per-platform (column) select-alls, and a textarea that lists `curl -fLO <url>` for the selection (scripted multi-downloads are silently blocked by browsers; copy-paste is reliable).
+- Older `build-<sha>` releases show a plain asset list (their manifests aren't same-origin).
+- Direct asset links (`/releases/download/<tag>/<file>`) work in cells because navigation isn't subject to CORS — only `fetch()` is.
 
 ---
 
-## 10. Platform-Specific Notes
+## 9. Workflow housekeeping notes
 
-### Linux x64
-- Not yet validated locally. First CI run will be the test.
-- Expected to work identically to `linux_arm64` (same toolchain, different `CMAKE_SYSTEM_PROCESSOR`).
-
-### Linux arm64
-- Cross-compiles from x64 Ubuntu runner using `aarch64-linux-gnu-gcc`.
-- Requires cross-compiler packages (installed via `apt` in workflow).
-
-### macOS arm64
-- Native build on `macos-15` runner (Apple Silicon).
-
-### Windows x64
-- MSVC via `windows-2022` runner.
-- `setup_vcvars.sh` auto-detects VS installation and sets up environment.
-
-### Windows arm64
-- Cross-compile from x64 Windows host using MSVC arm64 compiler.
-- `mtcc` excluded (no ARM64 PE backend).
-- BoringSSL `OPENSSL_NO_ASM=ON` required.
-
-### Emscripten/WASM
-- Requires Emscripten SDK installation on Ubuntu runner.
-- Dawn produces no static library; `install_dawn.cmake` stages headers/JS files.
-- Several deps excluded: `glfw`, `mtcc`, `enet`, `libwebsockets`, `reproc`, `tinycsocket`.
+- `CMAKE_BUILD_PARALLEL_LEVEL=2` and `MOREDEPS_TOP_LEVEL_PARALLEL=1` are set globally to keep runner memory in check (dawn/boringssl are the big ones).
+- Workflow-level permissions: `contents: write` (releases), `pages: write` + `id-token: write` (deploy-site), `actions: write`.
+- The Node 20 deprecation annotations on `actions/*@v4` are GitHub-side; harmless (forced onto Node 24).
 
 ---
 
-## 11. Open Questions
+## 10. Related Files
 
-1. **Linux x64 validation:** Will it work on the first CI run? If not, what's the fix?
-2. **Emscripten SDK caching:** Should we cache the EMSDK installation (~500MB) or install fresh each time?
-3. **Windows cache:** `sccache` vs `ccache` — which works better with MSVC?
-4. **Artifact size:** Each zip is ~1-5MB. With 50+ deps × 6 platforms = ~300 zips per release. Is this acceptable?
-5. **Retention:** GitHub Releases have no storage limit for public repos, but should we clean old `build-<sha>` releases?
-
----
-
-## 12. Implementation Order
-
-1. Write `.github/workflows/build.yml` (the main CI workflow)
-2. Write `scripts/ci_build.sh` — wrapper that handles incremental logic per platform
-3. Write `scripts/ci_package.sh` — creates zips from `_out/<platform>/`
-4. Write `scripts/ci_manifest.py` — generates/merges manifest JSON
-5. Test with `workflow_dispatch` on `linux` only first
-6. Expand to all platforms once Linux works
-7. Verify web page renders correctly from `latest` release
-
----
-
-## 13. Related Files
-
-- `.github/workflows/pages.yml` — GitHub Pages deployment (sparse checkout, no submodules)
-- `docs/index.html` — Download page (fetches manifest from release at runtime)
-- `docs/CNAME` — Custom domain (`deps.morew4rd.com`)
-- `scripts/build_all.sh` — Local build entry point (used by CI)
-- `scripts/setup_vcvars.sh` — Windows MSVC environment setup
+- `.github/workflows/build.yml` — the CI workflow described here
+- `.github/workflows/pages.yml` — docs deploy (sparse checkout of `docs/`, fetches latest manifest)
+- `scripts/ci_package.py` — packaging + manifest generation
+- `scripts/build_all.sh` — build entry point (used by CI and locally)
+- `scripts/setup_vcvars.sh` — MSVC environment setup for Windows builds
+- `docs/index.html` — the download site
+- `docs/CNAME` — custom domain (`deps.morew4rd.com`)

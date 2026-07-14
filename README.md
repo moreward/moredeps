@@ -15,6 +15,13 @@ By @morew4rd.
   - Emscripten (wasm32)
 - **CMake-driven.** The top-level `CMakeLists.txt` drives all CMake-buildable dependencies. Non-CMake or header-only dependencies live under `src/<dep>/` as small, clean wrappers.
 
+## Download prebuilt libraries
+
+CI builds all platforms and publishes per-dependency zips (library + headers + license) to GitHub Releases. The status site **[deps.morew4rd.com](https://deps.morew4rd.com)** renders the build matrix from the manifest and generates copy-paste `curl` commands for batch downloads.
+
+- Releases: `build-<sha>` (immutable per commit) and `latest` (rolling alias).
+- `build_manifest.json` (attached to each release) lists every artifact with the dependency's pinned upstream commit and repo URL.
+
 ## Quick start
 
 ### 1. Clone and initialize submodules
@@ -65,6 +72,7 @@ Artifacts are staged in `_out/<platform>/lib/` and `_out/<platform>/include/`.
 
 - [`docs/build_plan.md`](docs/build_plan.md) — the overall build-infrastructure plan, targets, exclusions, and implementation phases.
 - [`docs/build_options.md`](docs/build_options.md) — per-dependency CMake options and the defaults we selected (examples/tests/docs disabled, minimal optional features).
+- [`docs/ci_plan.md`](docs/ci_plan.md) — CI/CD design: GitHub Actions workflow, caching, packaging, manifest, releases, and the download site.
 - [`docs/mobile_plan.md`](docs/mobile_plan.md) — iOS/Android support plan and dependency matrix.
 - [`docs/shared_libs.md`](docs/shared_libs.md) — how to produce shared libraries from the static artifacts.
 
@@ -81,18 +89,20 @@ Artifacts are staged in `_out/<platform>/lib/` and `_out/<platform>/include/`.
 
 ## Status
 
-| Platform | Status | Notes |
+All platforms are built in CI on every run (see [`docs/ci_plan.md`](docs/ci_plan.md)):
+
+| Platform | Status | Libraries |
 |---|---|---|
-| **macOS arm64** | ✅ Validated | 76 static libraries |
-| **Linux arm64** | ✅ Validated | 76 static libraries |
-| **Emscripten (wasm32)** | ✅ Validated | 65 static libraries (excludes desktop-only deps) |
-| **Windows x64** | ✅ Validated | MSVC via Ninja or NMake |
-| **Windows arm64** | ✅ Validated | MSVC cross-compile from x64 host; mtcc excluded (no ARM64 PE backend) |
-| **Linux x64** | ⏳ Pending | Toolchain provided; awaiting validation |
+| **Windows x64** | ✅ Validated | 77 |
+| **Windows arm64** | ✅ Validated | 75 (native ARM64 MSVC; mtcc excluded) |
+| **Linux x64** | ✅ Validated | 76 |
+| **Linux arm64** | ✅ Validated | 76 |
+| **macOS arm64** | ✅ Validated | 74 |
+| **Emscripten (wasm32)** | ✅ Validated | 65 (excludes desktop-only deps) |
 
 ### Known exclusions
 
-- **Emscripten**: `glfw`, `mtcc`, `enet`, `libwebsockets`, `reproc`, `tinycsocket` (desktop-only APIs).
+- **Emscripten**: `glfw`, `dawn` (browser provides WebGPU), `mtcc`, `enet`, `libwebsockets`, `reproc`, `tinycsocket`.
 - **Windows arm64**: `mtcc` (TinyCC's PE backend lacks ARM64 support).
 
 See `docs/work_log.md` for the current state and known caveats.
