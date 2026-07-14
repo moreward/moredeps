@@ -67,8 +67,8 @@ jobs:
       - name: Install build tools
         run: |
           sudo dpkg --add-architecture arm64
-          sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get update || true
+          sudo apt-get install -y --no-install-recommends \
             ninja-build ccache \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross \
             libx11-dev:arm64 libx11-xcb-dev:arm64 libxrandr-dev:arm64 libxinerama-dev:arm64 \
@@ -76,32 +76,12 @@ jobs:
             libxkbcommon-dev:arm64 libasound2-dev:arm64 libgl1-mesa-dev:arm64 libvulkan-dev:arm64 \
             libx11-dev libx11-xcb-dev libxrandr-dev libxinerama-dev \
             libxcursor-dev libxi-dev libxext-dev libxss-dev libxtst-dev \
-            libxkbcommon-dev libasound2-dev libgl1-mesa-dev libvulkan-dev \
-            wget
+            libxkbcommon-dev libasound2-dev libgl1-mesa-dev libvulkan-dev
 
       - name: Install Zig
-        run: |
-          if [ ! -f /usr/local/bin/zig ]; then
-            ZIG_VERSION=0.14.0
-            case "$(uname -m)" in
-              x86_64)
-                ZIG_ARCH="x86_64"
-                ;;
-              aarch64)
-                ZIG_ARCH="aarch64"
-                ;;
-              *)
-                echo "Unsupported architecture: $(uname -m)"
-                exit 1
-                ;;
-            esac
-            wget -q "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-${ZIG_ARCH}-${ZIG_VERSION}.tar.xz"
-            tar -xf "zig-linux-${ZIG_ARCH}-${ZIG_VERSION}.tar.xz"
-            sudo cp "zig-linux-${ZIG_ARCH}-${ZIG_VERSION}/zig" /usr/local/bin/
-            sudo cp -r "zig-linux-${ZIG_ARCH}-${ZIG_VERSION}/lib" /usr/local/lib/zig
-            rm -rf "zig-linux-${ZIG_ARCH}-${ZIG_VERSION}" "zig-linux-${ZIG_ARCH}-${ZIG_VERSION}.tar.xz"
-          fi
-          zig version
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
 
       - name: Cache submodules
         uses: actions/cache@v4
@@ -257,18 +237,9 @@ jobs:
           choco install ninja sccache
 
       - name: Install Zig
-        run: |
-          $ZigVersion = "0.14.0"
-          $ZigUrl = "https://ziglang.org/download/$ZigVersion/zig-windows-x86_64-$ZigVersion.zip"
-          $ZigZip = "$env:TEMP\zig.zip"
-          $ZigDir = "$env:TEMP\zig"
-          Invoke-WebRequest -Uri $ZigUrl -OutFile $ZigZip
-          Expand-Archive -Path $ZigZip -DestinationPath $ZigDir -Force
-          $ZigBin = (Get-ChildItem -Path $ZigDir -Recurse -Filter "zig.exe" | Select-Object -First 1).FullName
-          $ZigBinDir = Split-Path -Parent $ZigBin
-          Add-Content -Path $env:GITHUB_PATH -Value $ZigBinDir
-          zig version
-        shell: pwsh
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
 
       - name: Cache submodules
         uses: actions/cache@v4
