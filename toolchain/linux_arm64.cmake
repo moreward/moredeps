@@ -1,6 +1,7 @@
-# Toolchain for cross-compiling Linux arm64 from x64.
+# Toolchain for Linux arm64 builds (cross from x64, or native on aarch64).
 # This is used by the top-level CMakeLists.txt and scripts/build_all.sh.
-# Assumes a GNU cross toolchain such as aarch64-linux-gnu-gcc is installed.
+# When cross-compiling, assumes a GNU cross toolchain such as
+# aarch64-linux-gnu-gcc is installed.
 
 set(MOREDEPS_PLATFORM "linux_arm64" CACHE STRING "moredeps target platform")
 
@@ -15,16 +16,18 @@ if(NOT CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
   set(CMAKE_CXX_COMPILER "aarch64-linux-gnu-g++" CACHE STRING "C++ compiler")
 endif()
 
-# Try to discover the cross compiler's sysroot automatically. If the compiler
-# reports a sysroot, use it so that system headers and libraries are found
-# correctly. If it reports "/" or nothing, leave it unset and rely on the
-# compiler's built-in search paths.
-execute_process(
-  COMMAND ${CMAKE_C_COMPILER} -print-sysroot
-  OUTPUT_VARIABLE _LINUX_ARM64_SYSROOT
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-  ERROR_QUIET
-)
+# Try to discover the compiler's sysroot automatically (cross-compile only).
+# If the compiler reports a sysroot, use it so that system headers and
+# libraries are found correctly. If it reports "/" or nothing, leave it unset
+# and rely on the compiler's built-in search paths.
+if(CMAKE_C_COMPILER)
+  execute_process(
+    COMMAND ${CMAKE_C_COMPILER} -print-sysroot
+    OUTPUT_VARIABLE _LINUX_ARM64_SYSROOT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+  )
+endif()
 if(_LINUX_ARM64_SYSROOT AND NOT _LINUX_ARM64_SYSROOT STREQUAL "/")
   set(CMAKE_SYSROOT "${_LINUX_ARM64_SYSROOT}" CACHE PATH "Cross-compilation sysroot")
 endif()

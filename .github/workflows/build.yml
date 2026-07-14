@@ -220,7 +220,7 @@ jobs:
 
       - name: Install Emscripten
         run: |
-          if [ ! -d "$HOME/emsdk/emsdk" ]; then
+          if [ ! -f "$HOME/emsdk/emsdk" ]; then
             git clone --depth 1 https://github.com/emscripten-core/emsdk.git ~/emsdk
             ~/emsdk/emsdk install latest
             ~/emsdk/emsdk activate latest

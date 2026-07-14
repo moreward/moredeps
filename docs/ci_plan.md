@@ -24,13 +24,16 @@
 
 | Job | Runner | Targets | Est. cold | Est. warm |
 |-----|--------|---------|-----------|-----------|
-| `build-linux` | `ubuntu-24.04` | `linux_x64`, `linux_arm64`, `wasm_emscripten` | 35-50 min | 8-15 min |
+| `build-linux-x64` | `ubuntu-24.04` | `linux_x64` | 35-50 min | 8-15 min |
+| `build-linux-arm64` | `ubuntu-24.04-arm` | `linux_arm64` | 35-50 min | 8-15 min |
+| `build-wasm` | `ubuntu-24.04` | `wasm_emscripten` | 20-30 min | 5-10 min |
 | `build-macos` | `macos-15` | `macos_arm64` | 25-35 min | 5-10 min |
-| `build-windows` | `windows-2022` | `windows_x64`, `windows_arm64` | 30-45 min | 5-10 min |
+| `build-windows-x64` | `windows-2022` | `windows_x64` | 30-45 min | 5-10 min |
+| `build-windows-arm64` | `windows-11-arm` | `windows_arm64` | 30-45 min | 5-10 min |
 
-**Wall clock:** ~35-50 min (all parallel). Warm builds (cached submodules + ccache) drop to ~8-15 min.
+**Wall clock:** ~35-50 min (all parallel). Warm builds (cached submodules + ccache) drop to ~8-15 min. ARM64 platforms build natively on GitHub's ARM runners (free for public repos); no cross-compilation in CI.
 
-**Total: 6 targets.**
+**Total: 6 targets, 6 jobs.**
 
 ---
 
@@ -229,16 +232,37 @@ on:
         required: true
 
 jobs:
-  build-linux:
+  build-linux-x64:
     runs-on: ubuntu-24.04
-    if: contains(inputs.platforms, 'all') || contains(inputs.platforms, 'linux')
+    if: contains(inputs.platforms, 'all') || contains(inputs.platforms, 'linux_x64')
     steps:
       - checkout (no submodules)
       - init submodules (--jobs 4)
       - cache deps/
       - cache ccache
       - build linux_x64
-      - build linux_arm64
+      - upload platform artifacts
+
+  build-linux-arm64:
+    runs-on: ubuntu-24.04-arm
+    if: contains(inputs.platforms, 'all') || contains(inputs.platforms, 'linux_arm64')
+    steps:
+      - checkout (no submodules)
+      - init submodules (--jobs 4)
+      - cache deps/
+      - cache ccache
+      - build linux_arm64 (native, no cross-compile)
+      - upload platform artifacts
+
+  build-wasm:
+    runs-on: ubuntu-24.04
+    if: contains(inputs.platforms, 'all') || contains(inputs.platforms, 'wasm')
+    steps:
+      - checkout (no submodules)
+      - init submodules (--jobs 4)
+      - cache deps/
+      - cache ccache
+      - cache + install emsdk
       - build wasm_emscripten
       - upload platform artifacts
 
@@ -253,20 +277,30 @@ jobs:
       - build macos_arm64
       - upload platform artifacts
 
-  build-windows:
+  build-windows-x64:
     runs-on: windows-2022
-    if: contains(inputs.platforms, 'all') || contains(inputs.platforms, 'windows')
+    if: contains(inputs.platforms, 'all') || contains(inputs.platforms, 'windows_x64')
     steps:
       - checkout (no submodules)
       - init submodules (--jobs 4)
       - cache deps/
       - cache sccache
       - build windows_x64
-      - build windows_arm64
+      - upload platform artifacts
+
+  build-windows-arm64:
+    runs-on: windows-11-arm
+    if: contains(inputs.platforms, 'all') || contains(inputs.platforms, 'windows_arm64')
+    steps:
+      - checkout (no submodules)
+      - init submodules (--jobs 4)
+      - cache deps/
+      - cache sccache
+      - build windows_arm64 (native, no cross-compile)
       - upload platform artifacts
 
   release:
-    needs: [build-linux, build-macos, build-windows]
+    needs: [build-linux-x64, build-linux-arm64, build-wasm, build-macos, build-windows-x64, build-windows-arm64]
     runs-on: ubuntu-24.04
     steps:
       - checkout (no submodules)

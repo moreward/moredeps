@@ -33,10 +33,17 @@ setup_vcvars() {
   batch_file_win=$(cygpath -w "$batch_file")
 
   # 1) Locate the latest VS installation with the C++ tools.
+  # Prefer an installation that has the x86/x64 toolset (present on x64 hosts
+  # and full VS installs). ARM-only images (e.g. windows-11-arm runners) may
+  # lack that component, so fall back to any VS installation with C++.
   cat > "$batch_file" <<EOF
 @echo off
 "${VSWHERE}" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath > "${path_file_win}"
 if "%errorlevel%" neq "0" exit /b %errorlevel%
+for /f "usebackq tokens=*" %%i in ("${path_file_win}") do set _p=%%i
+if not defined _p (
+  "${VSWHERE}" -latest -products * -requires Microsoft.VisualStudio.Workload.VCTools -property installationPath > "${path_file_win}"
+)
 "${VSWHERE}" -latest -property installationVersion > "${ver_file_win}"
 EOF
   cmd //c "${batch_file_win}"
