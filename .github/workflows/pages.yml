@@ -28,6 +28,13 @@ jobs:
           sparse-checkout-cone-mode: false
           submodules: false
 
+      # Keep the build manifest on the site when redeploying after a docs
+      # push; the build workflow refreshes it after each successful build.
+      - name: Fetch latest build manifest
+        run: |
+          curl -sfL "https://github.com/${{ github.repository }}/releases/download/latest/build_manifest.json" \
+            -o docs/build_manifest.json || echo "No build manifest available yet; skipping"
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:

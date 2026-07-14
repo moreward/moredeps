@@ -116,19 +116,39 @@ EXCLUDED = {
 
 
 def get_submodule_commit(dep_name: str) -> str:
-    """Get the current commit hash of a submodule."""
+    """Get the pinned commit of a submodule from the superproject's tree.
+
+    Uses `git ls-tree` on the superproject so it works even when submodules
+    are not checked out (the CI release job checks out with
+    `submodules: false`). Running `git rev-parse HEAD` inside an empty
+    deps/<dep> directory would walk up to the superproject and wrongly
+    return the repo's own commit for every dependency.
+    """
     dep_path = Path("deps") / dep_name
     if not dep_path.exists():
         return "unknown"
     try:
         result = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            cwd=dep_path,
+            ["git", "ls-tree", "HEAD", "--", dep_path.as_posix()],
             capture_output=True,
             text=True,
             check=True,
         )
-        return result.stdout.strip()
+        # Format: "<mode> <type> <sha>\tdeps/<dep>"
+        parts = result.stdout.split()
+        if len(parts) >= 3:
+            if parts[1] == "commit":
+                # Gitlink: the recorded submodule commit.
+                return parts[2]
+            # Vendored directory (plain tree): its version is the repo commit.
+            head = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return head.stdout.strip()
+        return "unknown"
     except subprocess.CalledProcessError:
         return "unknown"
 

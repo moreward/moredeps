@@ -67,9 +67,13 @@ if [[ "${PLATFORM}" == windows_* ]]; then
       ;;
     windows_arm64)
       # vcvarsall.bat argument is host_target. On an x64 host we need the
-      # cross-compiler (x64_arm64); on an ARM64 host we need the native
-      # compiler (arm64). Detect the host architecture.
-      case "${PROCESSOR_ARCHITECTURE:-}" in
+      # cross-compiler (x64_arm64); on an ARM64 host the native compiler
+      # (arm64) which is ~2-3x faster than emulated x64 cl.exe.
+      #
+      # NOTE: PROCESSOR_ARCHITECTURE is unreliable here: git-bash may run
+      # x64-emulated on ARM64 Windows and then reports AMD64. RUNNER_ARCH
+      # (set by GitHub Actions) reflects the real host architecture.
+      case "${RUNNER_ARCH:-${PROCESSOR_ARCHITECTURE:-}}" in
         ARM64|arm64)
           VCVARS_ARCH="arm64"
           ;;
@@ -83,7 +87,14 @@ if [[ "${PLATFORM}" == windows_* ]]; then
       exit 1
       ;;
   esac
-  source "${SCRIPT_DIR}/setup_vcvars.sh" "${VCVARS_ARCH}"
+  if ! source "${SCRIPT_DIR}/setup_vcvars.sh" "${VCVARS_ARCH}"; then
+    if [[ "${VCVARS_ARCH}" == "arm64" ]]; then
+      echo "Native ARM64 MSVC toolset unavailable; falling back to x64_arm64 cross-compiler"
+      source "${SCRIPT_DIR}/setup_vcvars.sh" "x64_arm64"
+    else
+      exit 1
+    fi
+  fi
 fi
 
 # Validate the host environment.

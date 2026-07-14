@@ -306,6 +306,8 @@ jobs:
         run: |
           export SCCACHE_DIR="$GITHUB_WORKSPACE/.sccache"
           export PATH="/c/ProgramData/chocolatey/lib/sccache/tools:$PATH"
+          export CMAKE_C_COMPILER_LAUNCHER=sccache
+          export CMAKE_CXX_COMPILER_LAUNCHER=sccache
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh windows_x64
         shell: bash
@@ -354,6 +356,8 @@ jobs:
         run: |
           export SCCACHE_DIR="$GITHUB_WORKSPACE/.sccache"
           export PATH="/c/ProgramData/chocolatey/lib/sccache/tools:$PATH"
+          export CMAKE_C_COMPILER_LAUNCHER=sccache
+          export CMAKE_CXX_COMPILER_LAUNCHER=sccache
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh windows_arm64
         shell: bash
@@ -455,3 +459,48 @@ jobs:
           files: release_assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---------------------------------------------------------------------------
+  # Redeploy the Pages site with the fresh build_manifest.json.
+  # The site fetches the manifest same-origin; release asset URLs cannot be
+  # fetched from the browser (github.com redirects to
+  # release-assets.githubusercontent.com without CORS headers).
+  # ---------------------------------------------------------------------------
+  deploy-site:
+    needs: release
+    if: needs.release.result == 'success'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
+    steps:
+      - name: Checkout docs only
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: docs/
+          sparse-checkout-cone-mode: false
+          submodules: false
+
+      - name: Fetch latest build manifest
+        run: |
+          curl -sfL "https://github.com/${{ github.repository }}/releases/download/latest/build_manifest.json" \
+            -o docs/build_manifest.json
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

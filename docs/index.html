@@ -127,17 +127,25 @@
             return res.json();
         }
 
-        async function fetchManifest(release) {
-            const asset = release.assets.find(a => a.name === 'build_manifest.json');
-            if (!asset) return null;
-            const res = await fetch(asset.browser_download_url);
+        // The manifest is served same-origin with this site (the build
+        // workflow refreshes it after every successful build). Release asset
+        // URLs can't be fetched from the browser cross-origin (github.com
+        // redirects to a host without CORS headers), so the per-dependency
+        // status table is only available for the build described by this
+        // manifest; older releases show a plain asset list instead.
+        async function fetchLocalManifest() {
+            const res = await fetch('build_manifest.json');
             if (!res.ok) throw new Error(`Manifest fetch error: ${res.status}`);
             return res.json();
         }
 
+        function downloadUrl(release, filename) {
+            return `https://github.com/${REPO}/releases/download/${release.tag_name}/${filename}`;
+        }
+
         function renderTable(manifest, release) {
             if (!manifest || !manifest.artifacts) {
-                return '<p class="error">No manifest found in this release.</p>';
+                return '<p class="error">No manifest found for this release.</p>';
             }
 
             const platforms = ['macos_arm64', 'linux_x64', 'linux_arm64', 'windows_x64', 'windows_arm64', 'wasm_emscripten'];
@@ -167,7 +175,8 @@
                         html += `<td class="status-skip" title="${reason}">N/A</td>`;
                     } else if (info.built === true) {
                         const sha = info.commit ? info.commit.substring(0, 7) : '';
-                        html += `<td><a class="download" href="${release.html_url}">download</a> <span class="sha">${sha}</span></td>`;
+                        const href = info.filename ? downloadUrl(release, info.filename) : release.html_url;
+                        html += `<td><a class="download" href="${href}">download</a> <span class="sha">${sha}</span></td>`;
                     } else {
                         html += '<td class="status-fail">failed</td>';
                     }
@@ -176,23 +185,44 @@
             }
 
             html += '</table>';
-            html += `<p style="margin-top:1rem;color:#666;font-size:0.9rem;">Repo commit: <code>${manifest.repo_commit || 'unknown'}</code> · Generated: ${manifest.generated_at || 'unknown'}</p>`;
+            const commitLink = manifest.repo_commit
+                ? `<a href="https://github.com/${REPO}/commit/${manifest.repo_commit}"><code>${manifest.repo_commit.substring(0, 8)}</code></a>`
+                : 'unknown';
+            html += `<p style="margin-top:1rem;color:#666;font-size:0.9rem;">Repo commit: ${commitLink} · Generated: ${manifest.generated_at || 'unknown'}</p>`;
             return html;
         }
 
-        async function loadRelease(release) {
-            contentDiv.innerHTML = '<p class="loading">Loading manifest...</p>';
-            try {
-                const manifest = await fetchManifest(release);
-                contentDiv.innerHTML = renderTable(manifest, release);
-            } catch (err) {
-                contentDiv.innerHTML = `<p class="error">Error: ${err.message}</p>`;
+        function renderAssetList(release) {
+            const zips = release.assets.filter(a => a.name.endsWith('.zip')).sort((a, b) => a.name.localeCompare(b.name));
+            if (zips.length === 0) {
+                return `<p class="error">No downloadable artifacts in this release. <a href="${release.html_url}">View on GitHub</a></p>`;
+            }
+            let html = `<p>Per-dependency status is only shown for the latest build. ` +
+                `<a href="${release.html_url}">View this release on GitHub</a></p>`;
+            html += '<table><tr><th>Artifact</th><th>Size</th><th></th></tr>';
+            for (const asset of zips) {
+                const sizeMB = (asset.size / (1024 * 1024)).toFixed(1);
+                html += `<tr><td><code>${asset.name}</code></td><td>${sizeMB} MB</td>` +
+                    `<td><a class="download" href="${downloadUrl(release, asset.name)}">download</a></td></tr>`;
+            }
+            html += '</table>';
+            return html;
+        }
+
+        function loadRelease(release, localManifest) {
+            if (localManifest && release.tag_name === 'latest') {
+                contentDiv.innerHTML = renderTable(localManifest, release);
+            } else {
+                contentDiv.innerHTML = renderAssetList(release);
             }
         }
 
         async function init() {
             try {
-                const releases = await fetchReleases();
+                const [releases, localManifest] = await Promise.all([
+                    fetchReleases(),
+                    fetchLocalManifest().catch(() => null),
+                ]);
                 if (releases.length === 0) {
                     contentDiv.innerHTML = '<p class="error">No releases found. Run the CI workflow to create the first release.</p>';
                     return;
@@ -208,11 +238,11 @@
 
                 releaseSelect.addEventListener('change', () => {
                     const rel = releases.find(r => r.id.toString() === releaseSelect.value);
-                    if (rel) loadRelease(rel);
+                    if (rel) loadRelease(rel, localManifest);
                 });
 
                 // Load latest by default
-                await loadRelease(releases[0]);
+                loadRelease(releases[0], localManifest);
 
             } catch (err) {
                 contentDiv.innerHTML = `<p class="error">Error loading releases: ${err.message}</p>`;
