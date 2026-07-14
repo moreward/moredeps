@@ -66,9 +66,17 @@ if [[ "${PLATFORM}" == windows_* ]]; then
       VCVARS_ARCH="x64"
       ;;
     windows_arm64)
-      # On an x64 host (GitHub Actions runner) we need the cross-compiler,
-      # not the native arm64 compiler. vcvarsall.bat argument is host_target.
-      VCVARS_ARCH="x64_arm64"
+      # vcvarsall.bat argument is host_target. On an x64 host we need the
+      # cross-compiler (x64_arm64); on an ARM64 host we need the native
+      # compiler (arm64). Detect the host architecture.
+      case "${PROCESSOR_ARCHITECTURE:-}" in
+        ARM64|arm64)
+          VCVARS_ARCH="arm64"
+          ;;
+        *)
+          VCVARS_ARCH="x64_arm64"
+          ;;
+      esac
       ;;
     *)
       echo "Error: unsupported Windows platform '${PLATFORM}'"
