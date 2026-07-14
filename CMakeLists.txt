@@ -212,9 +212,10 @@ endfunction()
 # --- boringssl ---
 # Single TLS backend for curl and libwebsockets. Installs OpenSSL::Crypto/
 # OpenSSL::SSL targets into the common prefix.
-# BoringSSL's assembly for Windows/ARM64 is not supported by the CMake ARM64
-# ASM toolchain, so disable it on that platform (Emscripten already does).
-if(EMSCRIPTEN OR (WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64"))
+# BoringSSL's assembly for Windows is not supported by the CMake ASM toolchain
+# (NASM is required on x64, and ARM64 is not supported at all). Disable ASM on
+# all Windows platforms. Emscripten also disables it.
+if(EMSCRIPTEN OR WIN32)
   set(BORINGSSL_NO_ASM ON)
 else()
   set(BORINGSSL_NO_ASM OFF)
