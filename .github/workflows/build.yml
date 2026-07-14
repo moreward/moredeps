@@ -66,14 +66,26 @@ jobs:
 
       - name: Install build tools
         run: |
+          # Multiarch: Ubuntu's default mirrors (azure/security) do not carry
+          # arm64 indexes. Pin them to amd64 and add ports.ubuntu.com, which
+          # is the canonical archive for non-amd64 architectures.
           sudo dpkg --add-architecture arm64
+          sudo sed -i 's/^URIs:/Architectures: amd64\nURIs:/' /etc/apt/sources.list.d/ubuntu.sources
+          printf '%s\n' \
+            'Types: deb' \
+            'URIs: http://ports.ubuntu.com/ubuntu-ports' \
+            'Suites: noble noble-updates noble-security' \
+            'Components: main universe restricted multiverse' \
+            'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' \
+            'Architectures: arm64' \
+            | sudo tee /etc/apt/sources.list.d/ubuntu-arm64-ports.sources
           sudo apt-get update || true
           sudo apt-get install -y --no-install-recommends \
             ninja-build ccache \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross \
             libx11-dev:arm64 libx11-xcb-dev:arm64 libxrandr-dev:arm64 libxinerama-dev:arm64 \
             libxcursor-dev:arm64 libxi-dev:arm64 libxext-dev:arm64 libxss-dev:arm64 libxtst-dev:arm64 \
-            libxkbcommon-dev:arm64 \
+            libxkbcommon-dev:arm64 libasound2-dev:arm64 libgl1-mesa-dev:arm64 libvulkan-dev:arm64 \
             libx11-dev libx11-xcb-dev libxrandr-dev libxinerama-dev \
             libxcursor-dev libxi-dev libxext-dev libxss-dev libxtst-dev \
             libxkbcommon-dev libasound2-dev libgl1-mesa-dev libvulkan-dev
