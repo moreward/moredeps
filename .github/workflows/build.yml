@@ -85,7 +85,7 @@ jobs:
         run: |
           git submodule update --init --jobs 4
           # cimgui has a nested imgui submodule that we need
-          git submodule update --init deps/cimgui/imgui
+          cd deps/cimgui && git submodule update --init imgui
 
       - name: Cache ccache
         uses: actions/cache@v4
@@ -182,7 +182,7 @@ jobs:
         run: |
           git submodule update --init --jobs 4
           # cimgui has a nested imgui submodule that we need
-          git submodule update --init deps/cimgui/imgui
+          cd deps/cimgui && git submodule update --init imgui
 
       - name: Cache ccache
         uses: actions/cache@v4
@@ -234,7 +234,7 @@ jobs:
         run: |
           git submodule update --init --jobs 4
           # cimgui has a nested imgui submodule that we need
-          git submodule update --init deps/cimgui/imgui
+          cd deps/cimgui && git submodule update --init imgui
         shell: bash
 
       - name: Cache sccache
