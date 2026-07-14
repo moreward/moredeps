@@ -410,13 +410,11 @@ moredeps_add_dep(freetype
 )
 
 # --- ghostty ---
-# Zig build. On macOS it produces libghostty.a inside an xcframework. We copy
-# the source to the build tree, run zig build, and install the library + header.
-if(MOREDEPS_PLATFORM STREQUAL "macos_arm64")
-  moredeps_add_dep(ghostty
-    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/ghostty"
-  )
-endif()
+# Zig build. Produces libghostty.a (and libghostty.so on Linux).
+# On macOS it also produces an xcframework; we extract the static lib from it.
+moredeps_add_dep(ghostty
+  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/ghostty"
+)
 
 # --- glfw ---
 # GLFW is a desktop windowing library; it does not build for Emscripten.

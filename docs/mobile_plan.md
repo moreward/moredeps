@@ -75,7 +75,7 @@ Based on the matrix above, the following should be **gated** when targeting mobi
 | `glfw` | ❌ | ❌ | No mobile support. Use `sokol_app` or `sdl3`. |
 | `mtcc` | ❌ | ❌ | TCC does not target ARM mobile. |
 | `reproc` | ❌ | ⚠️ | iOS sandbox forbids process spawning; Android generally does not support it either. |
-| `ghostty` | ❌ | ❌ | macOS-only. |
+| `ghostty` | ❌ | ❌ | Desktop only (macOS, Linux, Windows). |
 
 Optional considerations:
 - `libwebsockets` / `enet` / `tinycsocket`: keep enabled for **client** networking, but document that server/listen sockets are restricted on iOS and may require permissions on Android.
