@@ -199,6 +199,7 @@ jobs:
       - name: Build macos_arm64
         run: |
           export PATH="/opt/homebrew/opt/ccache/libexec:$PATH"
+          export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh macos_arm64
 
       - name: Upload artifacts
@@ -257,6 +258,7 @@ jobs:
         run: |
           export SCCACHE_DIR="$GITHUB_WORKSPACE/.sccache"
           export PATH="/c/ProgramData/chocolatey/lib/sccache/tools:$PATH"
+          export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh windows_x64
         shell: bash
 
@@ -268,6 +270,7 @@ jobs:
         run: |
           export SCCACHE_DIR="$GITHUB_WORKSPACE/.sccache"
           export PATH="/c/ProgramData/chocolatey/lib/sccache/tools:$PATH"
+          export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh windows_arm64
         shell: bash
 
