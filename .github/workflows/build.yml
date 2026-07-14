@@ -78,14 +78,6 @@ jobs:
             libxcursor-dev libxi-dev libxext-dev libxss-dev libxtst-dev \
             libxkbcommon-dev libasound2-dev libgl1-mesa-dev libvulkan-dev
 
-      - name: Cache submodules
-        uses: actions/cache@v4
-        with:
-          path: deps/
-          key: submodules-${{ hashFiles('.gitmodules') }}-${{ hashFiles('deps/*/HEAD') }}
-          restore-keys: |
-            submodules-${{ hashFiles('.gitmodules') }}-
-
       - name: Init submodules
         run: |
           git submodule update --init --jobs 4
@@ -137,14 +129,6 @@ jobs:
             libxcursor-dev libxi-dev libxext-dev libxss-dev libxtst-dev \
             libxkbcommon-dev libasound2-dev libgl1-mesa-dev libvulkan-dev
 
-      - name: Cache submodules
-        uses: actions/cache@v4
-        with:
-          path: deps/
-          key: submodules-${{ hashFiles('.gitmodules') }}-${{ hashFiles('deps/*/HEAD') }}
-          restore-keys: |
-            submodules-${{ hashFiles('.gitmodules') }}-
-
       - name: Init submodules
         run: |
           git submodule update --init --jobs 4
@@ -192,14 +176,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             ninja-build ccache
-
-      - name: Cache submodules
-        uses: actions/cache@v4
-        with:
-          path: deps/
-          key: submodules-${{ hashFiles('.gitmodules') }}-${{ hashFiles('deps/*/HEAD') }}
-          restore-keys: |
-            submodules-${{ hashFiles('.gitmodules') }}-
 
       - name: Init submodules
         run: |
@@ -265,14 +241,6 @@ jobs:
         run: |
           brew install ninja ccache
 
-      - name: Cache submodules
-        uses: actions/cache@v4
-        with:
-          path: deps/
-          key: submodules-${{ hashFiles('.gitmodules') }}-${{ hashFiles('deps/*/HEAD') }}
-          restore-keys: |
-            submodules-${{ hashFiles('.gitmodules') }}-
-
       - name: Init submodules
         run: |
           git submodule update --init --jobs 4
@@ -318,14 +286,6 @@ jobs:
       - name: Install build tools
         run: |
           choco install ninja sccache
-
-      - name: Cache submodules
-        uses: actions/cache@v4
-        with:
-          path: deps/
-          key: submodules-${{ hashFiles('.gitmodules') }}-${{ hashFiles('deps/*/HEAD') }}
-          restore-keys: |
-            submodules-${{ hashFiles('.gitmodules') }}-
 
       - name: Init submodules
         run: |
@@ -374,14 +334,6 @@ jobs:
       - name: Install build tools
         run: |
           choco install ninja sccache
-
-      - name: Cache submodules
-        uses: actions/cache@v4
-        with:
-          path: deps/
-          key: submodules-${{ hashFiles('.gitmodules') }}-${{ hashFiles('deps/*/HEAD') }}
-          restore-keys: |
-            submodules-${{ hashFiles('.gitmodules') }}-
 
       - name: Init submodules
         run: |
