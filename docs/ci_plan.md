@@ -8,7 +8,7 @@
 ## 1. Goals
 
 1. **Manual trigger only** (`workflow_dispatch`) — no automatic runs on push/PR. CI minutes are limited.
-2. **5 targets** across 3 parallel jobs:
+2. **6 targets** across 3 parallel jobs:
    - `linux_x64`, `linux_arm64`, `wasm_emscripten` (Ubuntu runner)
    - `macos_arm64` (macOS runner)
    - `windows_x64`, `windows_arm64` (Windows runner)
@@ -29,6 +29,8 @@
 | `build-windows` | `windows-2022` | `windows_x64`, `windows_arm64` | 30-45 min | 5-10 min |
 
 **Wall clock:** ~35-50 min (all parallel). Warm builds (cached submodules + ccache) drop to ~8-15 min.
+
+**Total: 6 targets.**
 
 ---
 
@@ -314,7 +316,7 @@ jobs:
 1. **Linux x64 validation:** Will it work on the first CI run? If not, what's the fix?
 2. **Emscripten SDK caching:** Should we cache the EMSDK installation (~500MB) or install fresh each time?
 3. **Windows cache:** `sccache` vs `ccache` — which works better with MSVC?
-4. **Artifact size:** Each zip is ~1-5MB. With 50+ deps × 5 platforms = ~250 zips per release. Is this acceptable?
+4. **Artifact size:** Each zip is ~1-5MB. With 50+ deps × 6 platforms = ~300 zips per release. Is this acceptable?
 5. **Retention:** GitHub Releases have no storage limit for public repos, but should we clean old `build-<sha>` releases?
 
 ---
