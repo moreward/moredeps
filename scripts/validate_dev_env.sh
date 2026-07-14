@@ -78,7 +78,11 @@ case "${PLATFORM}" in
     echo "                          libasound2-dev libgl1-mesa-dev libvulkan-dev"
     ;;
   linux_arm64)
-    if command -v aarch64-linux-gnu-gcc &> /dev/null; then
+    # Native ARM64 hosts need no cross compiler; x64 hosts need the
+    # aarch64-linux-gnu cross toolchain.
+    if [[ "$(uname -m)" == "aarch64" ]]; then
+      require_command gcc "Install GCC or Clang (e.g. apt install build-essential)."
+    elif command -v aarch64-linux-gnu-gcc &> /dev/null; then
       ok "found aarch64-linux-gnu-gcc"
     else
       fail "missing cross compiler: aarch64-linux-gnu-gcc"

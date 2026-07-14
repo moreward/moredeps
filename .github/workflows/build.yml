@@ -25,38 +25,40 @@ jobs:
   configure:
     runs-on: ubuntu-latest
     outputs:
-      linux: ${{ steps.check.outputs.linux }}
-      macos: ${{ steps.check.outputs.macos }}
-      windows: ${{ steps.check.outputs.windows }}
+      linux_x64: ${{ steps.check.outputs.linux_x64 }}
+      linux_arm64: ${{ steps.check.outputs.linux_arm64 }}
+      wasm_emscripten: ${{ steps.check.outputs.wasm_emscripten }}
+      macos_arm64: ${{ steps.check.outputs.macos_arm64 }}
+      windows_x64: ${{ steps.check.outputs.windows_x64 }}
+      windows_arm64: ${{ steps.check.outputs.windows_arm64 }}
     steps:
       - id: check
         run: |
           INPUT="${{ inputs.platforms }}"
           # Normalize: lowercase, replace commas with spaces
           NORMALIZED=$(echo "$INPUT" | tr '[:upper:]' '[:lower:]' | tr ',' ' ')
-          
-          if echo "$NORMALIZED" | grep -qE '\b(all|linux|linux_x64|linux_arm64|wasm|wasm_emscripten)\b'; then
-            echo "linux=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "linux=false" >> "$GITHUB_OUTPUT"
-          fi
-          if echo "$NORMALIZED" | grep -qE '\b(all|macos|macos_arm64)\b'; then
-            echo "macos=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "macos=false" >> "$GITHUB_OUTPUT"
-          fi
-          if echo "$NORMALIZED" | grep -qE '\b(all|windows|windows_x64|windows_arm64)\b'; then
-            echo "windows=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "windows=false" >> "$GITHUB_OUTPUT"
-          fi
+
+          set_output() {
+            if echo "$NORMALIZED" | grep -qE "\b($1)\b"; then
+              echo "$2=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "$2=false" >> "$GITHUB_OUTPUT"
+            fi
+          }
+
+          set_output 'all|linux|linux_x64' linux_x64
+          set_output 'all|linux|linux_arm64' linux_arm64
+          set_output 'all|linux|wasm|wasm_emscripten' wasm_emscripten
+          set_output 'all|macos|macos_arm64' macos_arm64
+          set_output 'all|windows|windows_x64' windows_x64
+          set_output 'all|windows|windows_arm64' windows_arm64
 
   # ---------------------------------------------------------------------------
-  # Linux job: builds linux_x64, linux_arm64, wasm_emscripten
+  # Linux x64 (native)
   # ---------------------------------------------------------------------------
-  build-linux:
+  build-linux-x64:
     needs: configure
-    if: needs.configure.outputs.linux == 'true'
+    if: needs.configure.outputs.linux_x64 == 'true'
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -66,26 +68,9 @@ jobs:
 
       - name: Install build tools
         run: |
-          # Multiarch: Ubuntu's default mirrors (azure/security) do not carry
-          # arm64 indexes. Pin them to amd64 and add ports.ubuntu.com, which
-          # is the canonical archive for non-amd64 architectures.
-          sudo dpkg --add-architecture arm64
-          sudo sed -i 's/^URIs:/Architectures: amd64\nURIs:/' /etc/apt/sources.list.d/ubuntu.sources
-          printf '%s\n' \
-            'Types: deb' \
-            'URIs: http://ports.ubuntu.com/ubuntu-ports' \
-            'Suites: noble noble-updates noble-security' \
-            'Components: main universe restricted multiverse' \
-            'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' \
-            'Architectures: arm64' \
-            | sudo tee /etc/apt/sources.list.d/ubuntu-arm64-ports.sources
-          sudo apt-get update || true
+          sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             ninja-build ccache \
-            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross \
-            libx11-dev:arm64 libx11-xcb-dev:arm64 libxrandr-dev:arm64 libxinerama-dev:arm64 \
-            libxcursor-dev:arm64 libxi-dev:arm64 libxext-dev:arm64 libxss-dev:arm64 libxtst-dev:arm64 \
-            libxkbcommon-dev:arm64 libasound2-dev:arm64 libgl1-mesa-dev:arm64 libvulkan-dev:arm64 \
             libx11-dev libx11-xcb-dev libxrandr-dev libxinerama-dev \
             libxcursor-dev libxi-dev libxext-dev libxss-dev libxtst-dev \
             libxkbcommon-dev libasound2-dev libgl1-mesa-dev libvulkan-dev
@@ -108,29 +93,122 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-linux-${{ hashFiles('CMakeLists.txt', 'src/**/*.c', 'src/**/*.h', 'src/**/*.cpp') }}
+          key: ccache-linux_x64-${{ hashFiles('CMakeLists.txt', 'src/**/*.c', 'src/**/*.h', 'src/**/*.cpp') }}
           restore-keys: |
-            ccache-linux-
+            ccache-linux_x64-
 
       - name: Build linux_x64
-        if: |
-          contains(inputs.platforms, 'all') ||
-          contains(inputs.platforms, 'linux') ||
-          contains(inputs.platforms, 'linux_x64')
         run: |
           export PATH="/usr/lib/ccache:$PATH"
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh linux_x64
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux_x64-artifacts
+          path: _out/
+          retention-days: 1
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Linux arm64 (native on ARM runner)
+  # ---------------------------------------------------------------------------
+  build-linux-arm64:
+    needs: configure
+    if: needs.configure.outputs.linux_arm64 == 'true'
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build ccache \
+            libx11-dev libx11-xcb-dev libxrandr-dev libxinerama-dev \
+            libxcursor-dev libxi-dev libxext-dev libxss-dev libxtst-dev \
+            libxkbcommon-dev libasound2-dev libgl1-mesa-dev libvulkan-dev
+
+      - name: Cache submodules
+        uses: actions/cache@v4
+        with:
+          path: deps/
+          key: submodules-${{ hashFiles('.gitmodules') }}-${{ hashFiles('deps/*/HEAD') }}
+          restore-keys: |
+            submodules-${{ hashFiles('.gitmodules') }}-
+
+      - name: Init submodules
+        run: |
+          git submodule update --init --jobs 4
+          # cimgui has a nested imgui submodule that we need
+          cd deps/cimgui && git submodule update --init imgui
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-linux_arm64-${{ hashFiles('CMakeLists.txt', 'src/**/*.c', 'src/**/*.h', 'src/**/*.cpp') }}
+          restore-keys: |
+            ccache-linux_arm64-
+
       - name: Build linux_arm64
-        if: |
-          contains(inputs.platforms, 'all') ||
-          contains(inputs.platforms, 'linux') ||
-          contains(inputs.platforms, 'linux_arm64')
         run: |
           export PATH="/usr/lib/ccache:$PATH"
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh linux_arm64
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux_arm64-artifacts
+          path: _out/
+          retention-days: 1
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Emscripten (wasm32)
+  # ---------------------------------------------------------------------------
+  build-wasm:
+    needs: configure
+    if: needs.configure.outputs.wasm_emscripten == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build ccache
+
+      - name: Cache submodules
+        uses: actions/cache@v4
+        with:
+          path: deps/
+          key: submodules-${{ hashFiles('.gitmodules') }}-${{ hashFiles('deps/*/HEAD') }}
+          restore-keys: |
+            submodules-${{ hashFiles('.gitmodules') }}-
+
+      - name: Init submodules
+        run: |
+          git submodule update --init --jobs 4
+          # cimgui has a nested imgui submodule that we need
+          cd deps/cimgui && git submodule update --init imgui
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-wasm_emscripten-${{ hashFiles('CMakeLists.txt', 'src/**/*.c', 'src/**/*.h', 'src/**/*.cpp') }}
+          restore-keys: |
+            ccache-wasm_emscripten-
 
       - name: Cache Emscripten SDK
         uses: actions/cache@v4
@@ -141,11 +219,6 @@ jobs:
             emsdk-${{ runner.os }}-
 
       - name: Install Emscripten
-        if: |
-          contains(inputs.platforms, 'all') ||
-          contains(inputs.platforms, 'linux') ||
-          contains(inputs.platforms, 'wasm') ||
-          contains(inputs.platforms, 'wasm_emscripten')
         run: |
           if [ ! -d "$HOME/emsdk/emsdk" ]; then
             git clone --depth 1 https://github.com/emscripten-core/emsdk.git ~/emsdk
@@ -154,11 +227,6 @@ jobs:
           fi
 
       - name: Build wasm_emscripten
-        if: |
-          contains(inputs.platforms, 'all') ||
-          contains(inputs.platforms, 'linux') ||
-          contains(inputs.platforms, 'wasm') ||
-          contains(inputs.platforms, 'wasm_emscripten')
         run: |
           source ~/emsdk/emsdk_env.sh
           export PATH="/usr/lib/ccache:$PATH"
@@ -168,17 +236,17 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: linux-artifacts
+          name: wasm_emscripten-artifacts
           path: _out/
           retention-days: 1
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
-  # macOS job: builds macos_arm64
+  # macOS arm64 (native)
   # ---------------------------------------------------------------------------
   build-macos:
     needs: configure
-    if: needs.configure.outputs.macos == 'true'
+    if: needs.configure.outputs.macos_arm64 == 'true'
     runs-on: macos-15
     steps:
       - name: Checkout
@@ -227,11 +295,11 @@ jobs:
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
-  # Windows job: builds windows_x64, windows_arm64
+  # Windows x64 (native)
   # ---------------------------------------------------------------------------
-  build-windows:
+  build-windows-x64:
     needs: configure
-    if: needs.configure.outputs.windows == 'true'
+    if: needs.configure.outputs.windows_x64 == 'true'
     runs-on: windows-2022
     steps:
       - name: Checkout
@@ -262,15 +330,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.sccache
-          key: sccache-windows-${{ hashFiles('CMakeLists.txt', 'src/**/*.c', 'src/**/*.h', 'src/**/*.cpp') }}
+          key: sccache-windows_x64-${{ hashFiles('CMakeLists.txt', 'src/**/*.c', 'src/**/*.h', 'src/**/*.cpp') }}
           restore-keys: |
-            sccache-windows-
+            sccache-windows_x64-
 
       - name: Build windows_x64
-        if: |
-          contains(inputs.platforms, 'all') ||
-          contains(inputs.platforms, 'windows') ||
-          contains(inputs.platforms, 'windows_x64')
         run: |
           export SCCACHE_DIR="$GITHUB_WORKSPACE/.sccache"
           export PATH="/c/ProgramData/chocolatey/lib/sccache/tools:$PATH"
@@ -278,11 +342,55 @@ jobs:
           ./scripts/build_all.sh windows_x64
         shell: bash
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows_x64-artifacts
+          path: _out/
+          retention-days: 1
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Windows arm64 (native on ARM runner)
+  # ---------------------------------------------------------------------------
+  build-windows-arm64:
+    needs: configure
+    if: needs.configure.outputs.windows_arm64 == 'true'
+    runs-on: windows-11-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Install build tools
+        run: |
+          choco install ninja sccache
+
+      - name: Cache submodules
+        uses: actions/cache@v4
+        with:
+          path: deps/
+          key: submodules-${{ hashFiles('.gitmodules') }}-${{ hashFiles('deps/*/HEAD') }}
+          restore-keys: |
+            submodules-${{ hashFiles('.gitmodules') }}-
+
+      - name: Init submodules
+        run: |
+          git submodule update --init --jobs 4
+          # cimgui has a nested imgui submodule that we need
+          cd deps/cimgui && git submodule update --init imgui
+        shell: bash
+
+      - name: Cache sccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.sccache
+          key: sccache-windows_arm64-${{ hashFiles('CMakeLists.txt', 'src/**/*.c', 'src/**/*.h', 'src/**/*.cpp') }}
+          restore-keys: |
+            sccache-windows_arm64-
+
       - name: Build windows_arm64
-        if: |
-          contains(inputs.platforms, 'all') ||
-          contains(inputs.platforms, 'windows') ||
-          contains(inputs.platforms, 'windows_arm64')
         run: |
           export SCCACHE_DIR="$GITHUB_WORKSPACE/.sccache"
           export PATH="/c/ProgramData/chocolatey/lib/sccache/tools:$PATH"
@@ -293,7 +401,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: windows-artifacts
+          name: windows_arm64-artifacts
           path: _out/
           retention-days: 1
           if-no-files-found: error
@@ -302,14 +410,17 @@ jobs:
   # Release job: packages artifacts, creates manifest, uploads to GitHub Releases
   # ---------------------------------------------------------------------------
   release:
-    needs: [configure, build-linux, build-macos, build-windows]
+    needs: [configure, build-linux-x64, build-linux-arm64, build-wasm, build-macos, build-windows-x64, build-windows-arm64]
     runs-on: ubuntu-24.04
     # Only run release if all requested builds succeeded (not failed or cancelled)
     if: |
       always() &&
-      (needs.build-linux.result == 'success' || needs.build-linux.result == 'skipped') &&
+      (needs.build-linux-x64.result == 'success' || needs.build-linux-x64.result == 'skipped') &&
+      (needs.build-linux-arm64.result == 'success' || needs.build-linux-arm64.result == 'skipped') &&
+      (needs.build-wasm.result == 'success' || needs.build-wasm.result == 'skipped') &&
       (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') &&
-      (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped')
+      (needs.build-windows-x64.result == 'success' || needs.build-windows-x64.result == 'skipped') &&
+      (needs.build-windows-arm64.result == 'success' || needs.build-windows-arm64.result == 'skipped')
     steps:
       - name: Checkout
         uses: actions/checkout@v4

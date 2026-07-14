@@ -7,8 +7,13 @@ set(MOREDEPS_PLATFORM "linux_arm64" CACHE STRING "moredeps target platform")
 set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR aarch64)
 
-set(CMAKE_C_COMPILER "aarch64-linux-gnu-gcc" CACHE STRING "C compiler")
-set(CMAKE_CXX_COMPILER "aarch64-linux-gnu-g++" CACHE STRING "C++ compiler")
+# Only force the cross compilers when the host is not already aarch64.
+# On native ARM64 hosts (e.g. GitHub's ubuntu-24.04-arm runners) the system
+# gcc/clang is used as-is.
+if(NOT CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
+  set(CMAKE_C_COMPILER "aarch64-linux-gnu-gcc" CACHE STRING "C compiler")
+  set(CMAKE_CXX_COMPILER "aarch64-linux-gnu-g++" CACHE STRING "C++ compiler")
+endif()
 
 # Try to discover the cross compiler's sysroot automatically. If the compiler
 # reports a sysroot, use it so that system headers and libraries are found
