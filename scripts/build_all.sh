@@ -58,12 +58,8 @@ if [[ ! -f "${TOOLCHAIN}" ]]; then
   exit 1
 fi
 
-# Validate the host environment.
-"${SCRIPT_DIR}/validate_dev_env.sh" "${PLATFORM}"
-
-# For Windows targets, ensure the MSVC environment is initialized for the
-# requested architecture. This makes the build robust regardless of which
-# Visual Studio command prompt the user started.
+# For Windows targets, ensure the MSVC environment is initialized BEFORE
+# validation so that cl.exe is available when validate_dev_env.sh checks.
 if [[ "${PLATFORM}" == windows_* ]]; then
   case "${PLATFORM}" in
     windows_x64)
@@ -79,6 +75,9 @@ if [[ "${PLATFORM}" == windows_* ]]; then
   esac
   source "${SCRIPT_DIR}/setup_vcvars.sh" "${VCVARS_ARCH}"
 fi
+
+# Validate the host environment.
+"${SCRIPT_DIR}/validate_dev_env.sh" "${PLATFORM}"
 
 BUILD_DIR="${REPO_ROOT}/_b/${PLATFORM}"
 OUT_DIR="${REPO_ROOT}/_out/${PLATFORM}"
