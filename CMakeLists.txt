@@ -103,6 +103,16 @@ if(CMAKE_CXX_COMPILER)
   list(APPEND MOREDEPS_COMMON_CMAKE_ARGS "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}")
 endif()
 
+# Propagate compiler launchers (ccache/sccache) so sub-builds are cached too.
+# Using launchers instead of shim directories keeps CMAKE_C_COMPILER pointing
+# at the real compiler, which some configure scripts (e.g. TinyCC) require.
+if(CMAKE_C_COMPILER_LAUNCHER)
+  list(APPEND MOREDEPS_COMMON_CMAKE_ARGS "-DCMAKE_C_COMPILER_LAUNCHER=${CMAKE_C_COMPILER_LAUNCHER}")
+endif()
+if(CMAKE_CXX_COMPILER_LAUNCHER)
+  list(APPEND MOREDEPS_COMMON_CMAKE_ARGS "-DCMAKE_CXX_COMPILER_LAUNCHER=${CMAKE_CXX_COMPILER_LAUNCHER}")
+endif()
+
 # -----------------------------------------------------------------------------
 # Helper for adding dependency subprojects
 # -----------------------------------------------------------------------------

@@ -12,6 +12,9 @@ env:
   CCACHE_DIR: ${{ github.workspace }}/.ccache
   CCACHE_MAXSIZE: 2G
   CMAKE_BUILD_PARALLEL_LEVEL: 2
+  # Pinned Emscripten version. Do NOT use "latest": it tracks LLVM main
+  # snapshots which have ICE'd on box3d (clang SIGSEGV on shape.c).
+  EMSDK_VERSION: "5.0.7"
 
 permissions:
   contents: write
@@ -99,7 +102,8 @@ jobs:
 
       - name: Build linux_x64
         run: |
-          export PATH="/usr/lib/ccache:$PATH"
+          export CMAKE_C_COMPILER_LAUNCHER=ccache
+          export CMAKE_CXX_COMPILER_LAUNCHER=ccache
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh linux_x64
 
@@ -157,7 +161,8 @@ jobs:
 
       - name: Build linux_arm64
         run: |
-          export PATH="/usr/lib/ccache:$PATH"
+          export CMAKE_C_COMPILER_LAUNCHER=ccache
+          export CMAKE_CXX_COMPILER_LAUNCHER=ccache
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh linux_arm64
 
@@ -214,22 +219,24 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/emsdk
-          key: emsdk-${{ runner.os }}-${{ hashFiles('toolchain/wasm_emscripten.cmake') }}
+          key: emsdk-${{ runner.os }}-${{ env.EMSDK_VERSION }}-${{ hashFiles('toolchain/wasm_emscripten.cmake') }}
           restore-keys: |
-            emsdk-${{ runner.os }}-
+            emsdk-${{ runner.os }}-${{ env.EMSDK_VERSION }}-
 
       - name: Install Emscripten
         run: |
           if [ ! -f "$HOME/emsdk/emsdk" ]; then
             git clone --depth 1 https://github.com/emscripten-core/emsdk.git ~/emsdk
-            ~/emsdk/emsdk install latest
-            ~/emsdk/emsdk activate latest
           fi
+          ~/emsdk/emsdk install "$EMSDK_VERSION"
+          ~/emsdk/emsdk activate "$EMSDK_VERSION"
+          ~/emsdk/upstream/emscripten/emcc --version | head -1
 
       - name: Build wasm_emscripten
         run: |
           source ~/emsdk/emsdk_env.sh
-          export PATH="/usr/lib/ccache:$PATH"
+          export CMAKE_C_COMPILER_LAUNCHER=ccache
+          export CMAKE_CXX_COMPILER_LAUNCHER=ccache
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh wasm_emscripten
 
@@ -282,7 +289,8 @@ jobs:
 
       - name: Build macos_arm64
         run: |
-          export PATH="/opt/homebrew/opt/ccache/libexec:$PATH"
+          export CMAKE_C_COMPILER_LAUNCHER=ccache
+          export CMAKE_CXX_COMPILER_LAUNCHER=ccache
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh macos_arm64
 
