@@ -10,12 +10,12 @@ We must produce static libraries for every buildable dependency on the following
 
 | Platform | Arch | Status |
 |---|---|---|
-| Windows | x64 | Toolchain provided; pending VM validation |
-| Windows | arm64 | Toolchain provided; pending VM validation |
-| Linux | x64 | Toolchain provided; pending VM validation |
-| Linux | arm64 | Toolchain provided; pending VM validation |
-| macOS | arm64 | **Validated locally** |
-| Emscripten | wasm32 | **Validated locally** |
+| Windows | x64 | **Validated** |
+| Windows | arm64 | **Validated** (mtcc excluded) |
+| Linux | x64 | Toolchain provided; pending validation |
+| Linux | arm64 | **Validated** |
+| macOS | arm64 | **Validated** |
+| Emscripten | wasm32 | **Validated** |
 
 > **Mobile** (iOS/Android) is explicitly out of scope for the first phase but must be addable later without redesigning the layout.
 
@@ -293,13 +293,13 @@ Windows builds are currently tested on an arm64 Windows VM. The host must have:
 - **Ninja** (recommended). `build_all.sh` will use Ninja if it is in PATH; otherwise it falls back to `NMake Makefiles` or `NMake Makefiles JOM` if `jom` is available.
 - **Python 3** (used by some helper scripts).
 
-Run `scripts/build_all.sh` from a **Native Tools Command Prompt** for the desired architecture (e.g., `x64 Native Tools Command Prompt` or `arm64 Native Tools Command Prompt`) so that `cl.exe` and the MSVC environment variables are available. The toolchain files set `CMAKE_SYSTEM_PROCESSOR` to `AMD64` or `ARM64`, but the actual target architecture is determined by the MSVC environment you launch.
+Run `scripts/build_all.sh` from any shell (cmd, PowerShell, or Git Bash) on a Windows host with Visual Studio installed. The script auto-detects `vswhere.exe`, locates the latest VS installation, and runs `vcvarsall.bat` for the requested architecture so you do not need to manually launch a Native Tools Command Prompt. Ninja is recommended for parallel builds; NMake Makefiles is used as a fallback.
 
 Because MSVC is not available on macOS or Linux hosts, `windows_x64` and `windows_arm64` cannot be built from this macOS development machine; they must be built on a Windows host or in a Windows CI runner.
 
 ### Known Windows-specific exclusions
 
-- `mtcc` is excluded on `windows_arm64` because the Windows wrapper currently only implements the x86/x64 MSVC batch build. It is supported on `windows_x64`.
+- `mtcc` is excluded on `windows_arm64` because TinyCC's PE backend (`tccpe.c`) does not support the ARM64 architecture. It builds fine on `windows_x64`.
 
 ---
 
@@ -308,7 +308,7 @@ Because MSVC is not available on macOS or Linux hosts, `windows_x64` and `window
 | Dependency | Issue | Resolution |
 |---|---|---|
 | `ghostty` | Uses Zig build; upstream only emits `libghostty.a` inside an xcframework on macOS. | Built for `macos_arm64` only via `src/ghostty/CMakeLists.txt`; the source is copied to the build tree and `libghostty.a` is extracted from the xcframework. |
-| `mtcc` | Makefile-based C compiler; target-specific C/ASM cannot compile to Emscripten/WASM. | Wrapped in `src/mtcc/CMakeLists.txt`. **Exclude** from `wasm_emscripten`. Build on Windows/Linux/macOS natively. |
+| `mtcc` | Makefile-based C compiler; target-specific C/ASM cannot compile to Emscripten/WASM. PE backend lacks ARM64 support. | Wrapped in `src/mtcc/CMakeLists.txt`. **Exclude** from `wasm_emscripten` and `windows_arm64`. Builds on `windows_x64`, `linux_*`, and `macos_arm64`. |
 | `dawn` | WebGPU; heavy. | Built via `ExternalProject_Add` with `DAWN_FETCH_DEPENDENCIES=OFF`. Dawn's third-party dependencies are pre-populated as git submodules under `deps/dawn_third_party/` and `DAWN_THIRD_PARTY_DIR` points there. On native platforms a monolithic static library is produced. On Emscripten `scripts/install_dawn.cmake` stages the `emdawnwebgpu` headers and JS files. |
 | `boringssl` | CMake-based build. | Built via `ExternalProject_Add`. Used as the TLS backend for `curl` and `libwebsockets`. `OPENSSL_NO_ASM=ON` on Emscripten. |
 | `lua` | Makefile only, no CMake. | Wrapped in `src/lua/CMakeLists.txt` so the build is driven by CMake. |
@@ -440,7 +440,7 @@ The following decisions have been made and are recorded here for reference.
 7. **Dawn scope:** WebGPU-only. Disable examples, tests, benchmarks, samples, node bindings, SwiftShader, and protobuf. Use `DAWN_BUILD_MONOLITHIC_LIBRARY=STATIC` and `DAWN_ENABLE_INSTALL=ON` on native platforms. On Emscripten, `DAWN_ENABLE_INSTALL=OFF` and `DAWN_BUILD_MONOLITHIC_LIBRARY=OFF`; `scripts/install_dawn.cmake` stages `emdawnwebgpu` headers and JS files. `DAWN_FETCH_DEPENDENCIES=OFF`; third-party dependencies are pre-populated as git submodules in `deps/dawn_third_party/` and `DAWN_THIRD_PARTY_DIR` is set to that path.
 8. **Non-CMake deps:** Create small CMake wrappers in `src/<dep>/` (one wrapper per dependency, or per module for `sokol`/`stb`). Makefile-only deps (`mtcc`) are also wrapped in `src/<dep>/` so the super-build controls them.
 9. **Emscripten SDK:** The toolchain file (`toolchain/wasm_emscripten.cmake`) locates the SDK under `libexec/` (matching Homebrew's layout) and sets `CMAKE_SYSTEM_NAME=Emscripten`.
-10. **CI matrix:** Deferred to the CI phase. Local validation is complete for `macos_arm64` and `wasm_emscripten`; `linux_x64`/`linux_arm64`/`windows_x64`/`windows_arm64` remain to be validated on appropriate hosts.
+10. **CI matrix:** Deferred to the CI phase. Local validation is complete for `macos_arm64`, `linux_arm64`, `windows_x64`, `windows_arm64`, and `wasm_emscripten`. `linux_x64` remains to be validated on an appropriate host.
 11. **Version pins:** All `branch = ...` entries removed from `.gitmodules`; submodules are pinned to their current commits.
 
 ### Remaining open questions
@@ -452,6 +452,7 @@ The following decisions have been made and are recorded here for reference.
 
 ## 9. Immediate Next Steps
 
-1. Validate `linux_x64`, `linux_arm64`, `windows_x64`, and `windows_arm64` builds on appropriate hosts.
-2. Add CI matrix and artifact packaging in a future phase.
+1. Validate `linux_x64` on a Linux host.
+2. Set up CI (GitHub Actions) with caching and incremental builds.
+3. Implement the manifest JSON + GitHub Releases + GitHub Pages workflow described in section 5.
 

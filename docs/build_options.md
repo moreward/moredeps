@@ -71,6 +71,8 @@ The ImGui sources come from the top-level `deps/imgui` submodule (pinned to the 
 | `ENABLE_CJSON_UTILS` | `OFF` | `OFF` | Keep off unless required. |
 | `ENABLE_LOCALES` | `ON` | `ON` | Keep default. |
 
+**Windows note:** cJSON's CMakeLists adds `/Za` (disable language extensions) on MSVC, which conflicts with the `/std:c11` flag we pass globally. On Windows we set `ENABLE_CUSTOM_COMPILER_FLAGS=OFF` to prevent this.
+
 ### `boringssl`
 
 BoringSSL replaces OpenSSL as the single TLS backend for `curl` and `libwebsockets`.
@@ -82,7 +84,9 @@ BoringSSL replaces OpenSSL as the single TLS backend for `curl` and `libwebsocke
 | `FIPS` | `OFF` | `OFF` | Keep off. |
 | `INSTALL_ENABLED` | `1` | `1` | Keep install enabled for `crypto`/`ssl` targets and headers. |
 
-BoringSSL does not expose an option to disable the `bssl` command-line tool, so it will be built but **not** included in the packaged artifact. Only `libcrypto.a`, `libssl.a`, and the public headers are packaged.
+**Platform notes:**
+- **Emscripten:** `OPENSSL_NO_ASM=ON` is required because the Emscripten assembler does not support `-Wa,-g`.
+- **Windows ARM64:** `OPENSSL_NO_ASM=ON` is required because the MSVC ARM64 toolchain does not support BoringSSL's assembly files.
 
 ### `budouxc`
 

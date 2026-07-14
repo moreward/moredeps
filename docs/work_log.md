@@ -229,5 +229,36 @@ The macOS arm64 build now produces 66 static libraries.
 - Full `linux_arm64` build succeeded with **76 static libraries**.
 - Updated `scripts/validate_dev_env.sh` and `docs/build_plan.md` with Linux package requirements.
 
+---
+
+## 2026-07-13 — Windows x64 and arm64 builds validated
+
+### Windows x64
+
+- Built on an arm64 Windows VM using the x64 Native Tools Command Prompt.
+- Added `scripts/setup_vcvars.sh` to auto-detect Visual Studio via `vswhere.exe` and run `vcvarsall.bat` for the correct architecture, so builds work from any shell (cmd, PowerShell, Git Bash).
+- Fixed cJSON `/Za` conflict with MSVC by setting `ENABLE_CUSTOM_COMPILER_FLAGS=OFF` on Windows.
+- Fixed `fontstash` and `minigamepad` wrappers to include `windows.h` with `NOMINMAX` and `WIN32_LEAN_AND_MEAN` to avoid macro pollution.
+- Fixed `cimgui` `IMGUI_IMPL_API` definition for MSVC (multi-token `extern "C" __declspec(dllexport)` does not survive CMake's compile-definition handling); now uses `CIMGUI_NO_EXPORT` and `IMGUI_IMPL_API=` for static builds.
+- Fixed libwebsockets `/WX` (warnings-as-errors) on MSVC by creating `src/libwebsockets/` wrapper that copies upstream source and applies `patches/libwebsockets_disable_wx.patch`.
+- Full `windows_x64` build succeeded.
+
+### Windows arm64
+
+- Built on the same arm64 Windows VM using the arm64 Native Tools Command Prompt (cross-compiled from x64 host also works via `setup_vcvars.sh`).
+- **BoringSSL:** disabled ASM on Windows ARM64 (`OPENSSL_NO_ASM=ON`) because MSVC ARM64 does not support BoringSSL's assembly files.
+- **mtcc:** excluded on Windows ARM64 because TinyCC's PE backend (`tccpe.c`) does not support the ARM64 architecture. The `CMakeLists.txt` now gates mtcc with `NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64")`.
+- **Sokol variants:** removed `gfx:GLES3` and `gp:GLES3` from the Windows variant list (OpenGL ES is not typically used on Windows desktop).
+- Full `windows_arm64` build succeeded (all deps except mtcc).
+
+### Updated docs
+
+- Updated `README.md` with a "Quick start" section showing `git submodule update --init --jobs 4` (explicitly noting **do not use `--recursive`**).
+- Updated status table in `README.md` and `docs/build_plan.md` to show all validated platforms.
+- Added Windows-specific notes to `docs/build_options.md` for BoringSSL and cJSON.
+- Updated `docs/build_plan.md` Windows section to describe the auto-detected MSVC environment via `setup_vcvars.sh`.
+
 ### Next steps
-- Validate `windows_x64` / `windows_arm64` on the arm64 Windows VM.
+- Validate `linux_x64` on a Linux host.
+- Set up CI (GitHub Actions) with caching and incremental builds.
+- Implement the manifest JSON + GitHub Releases + GitHub Pages workflow described in `docs/build_plan.md` section 5.
