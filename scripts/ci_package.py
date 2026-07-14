@@ -121,6 +121,36 @@ EXCLUDED = {
 }
 
 
+def get_submodule_urls() -> dict[str, str]:
+    """Map deps/<dir> -> remote URL from .gitmodules (normalized to https)."""
+    try:
+        result = subprocess.run(
+            ["git", "config", "-f", ".gitmodules", "--get-regexp", r"^submodule\..*\.(path|url)$"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError:
+        return {}
+    paths: dict[str, str] = {}
+    urls: dict[str, str] = {}
+    for line in result.stdout.splitlines():
+        key, _, value = line.partition(" ")
+        # key = submodule.<name>.path / submodule.<name>.url
+        parts = key.split(".")
+        if len(parts) < 3:
+            continue
+        name, field = parts[1], parts[-1]
+        if field == "path":
+            paths[name] = value
+        elif field == "url":
+            url = value.strip()
+            if url.startswith("git@"):
+                url = "https://" + url[4:].replace(":", "/", 1)
+            urls[name] = url.removesuffix(".git")
+    return {paths[n]: urls[n] for n in paths if n in urls}
+
+
 def get_submodule_commit(dep_name: str) -> str:
     """Get the pinned commit of a submodule from the superproject's tree.
 
@@ -253,10 +283,13 @@ def find_header_files(dep_name: str, platform_dir: Path) -> list[Path]:
     return files
 
 
-def package_dependency(dep_name: str, platform: str, out_dir: Path, repo_sha: str) -> dict | None:
+def package_dependency(dep_name: str, platform: str, out_dir: Path, repo_sha: str,
+                       submodule_urls: dict[str, str]) -> dict | None:
     """Create a zip for a dependency/platform and return manifest entry."""
     platform_dir = out_dir / platform
     dep_commit = get_submodule_commit(dep_name)
+    dep_dir = f"deps/{DIR_ALIAS.get(dep_name, dep_name)}"
+    repo_url = submodule_urls.get(dep_dir)
 
     # Check exclusion first
     reason = EXCLUDED.get((dep_name, platform))
@@ -301,6 +334,7 @@ def package_dependency(dep_name: str, platform: str, out_dir: Path, repo_sha: st
         "artifact_hash": sha256_file(zip_path),
         "filename": zip_name,
         "built": True,
+        **({"repo_url": repo_url} if repo_url else {}),
     }
 
 
@@ -316,11 +350,12 @@ def generate_manifest(out_dir: Path, repo_sha: str) -> dict:
     # would pick up helper directories (dawn_third_party, cimgui's nested
     # imgui checkout) as empty, non-shippable rows.
     deps = sorted(DEP_LIBRARY_NAMES.keys())
+    submodule_urls = get_submodule_urls()
 
     for dep in deps:
         manifest["artifacts"][dep] = {}
         for platform in PLATFORMS:
-            entry = package_dependency(dep, platform, out_dir, repo_sha)
+            entry = package_dependency(dep, platform, out_dir, repo_sha, submodule_urls)
             if entry:
                 manifest["artifacts"][dep][platform] = entry
 

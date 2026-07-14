@@ -181,8 +181,9 @@
 
             let html = '<div class="dl-toolbar">' +
                 '<button id="dlSelected" disabled>Download selected (0)</button>' +
+                '<button id="dlCopyLinks" disabled>Copy links</button>' +
                 '<label><input type="checkbox" id="dlSelectAll"> select all</label>' +
-                '<span class="hint">tick libraries to download several at once</span>' +
+                '<span class="hint">if only one file downloads, allow multiple downloads for this site (address bar prompt)</span>' +
                 '</div>';
             html += '<table>';
             html += '<tr><th>Dependency</th>' + platforms.map(p => `<th>${platformLabels[p]}</th>`).join('') + '</tr>';
@@ -191,7 +192,12 @@
 
             for (const dep of deps) {
                 html += '<tr>';
-                html += `<td><strong>${dep}</strong></td>`;
+                // Link the dependency name to its upstream repo at the pinned commit
+                const firstInfo = Object.values(manifest.artifacts[dep]).find(e => e && e.commit);
+                const depLabel = (firstInfo && firstInfo.repo_url && firstInfo.commit)
+                    ? `<a href="${firstInfo.repo_url}/tree/${firstInfo.commit}" title="${firstInfo.repo_url} @ ${firstInfo.commit}">${dep}</a>`
+                    : dep;
+                html += `<td><strong>${depLabel}</strong></td>`;
                 for (const platform of platforms) {
                     const info = manifest.artifacts[dep]?.[platform];
                     if (!info) {
@@ -224,12 +230,15 @@
         // Wires up the checkbox toolbar rendered by renderTable().
         function bindDownloadUI() {
             const btn = document.getElementById('dlSelected');
+            const copyBtn = document.getElementById('dlCopyLinks');
             const all = document.getElementById('dlSelectAll');
             if (!btn) return;
             const boxes = () => [...document.querySelectorAll('.dl-check')];
+            const selected = () => boxes().filter(b => b.checked);
             const update = () => {
-                const n = boxes().filter(b => b.checked).length;
+                const n = selected().length;
                 btn.disabled = n === 0;
+                if (copyBtn) copyBtn.disabled = n === 0;
                 btn.textContent = `Download selected (${n})`;
             };
             boxes().forEach(b => b.addEventListener('change', update));
@@ -240,18 +249,33 @@
                 });
             }
             btn.addEventListener('click', () => {
-                const items = boxes().filter(b => b.checked)
-                    .map(b => ({ url: b.dataset.url, name: b.dataset.name }));
-                // Stagger the clicks: browsers may block rapid multi-downloads.
+                const items = selected().map(b => ({ url: b.dataset.url, name: b.dataset.name }));
+                // Stagger the clicks and keep the anchors alive briefly:
+                // some browsers cancel a download if the element is removed
+                // immediately, and rapid-fire clicks get silently dropped.
                 items.forEach((item, i) => setTimeout(() => {
                     const a = document.createElement('a');
                     a.href = item.url;
                     a.download = item.name;
+                    a.style.display = 'none';
                     document.body.appendChild(a);
                     a.click();
-                    a.remove();
-                }, i * 300));
+                    setTimeout(() => a.remove(), 10000);
+                }, i * 500));
             });
+            if (copyBtn) {
+                copyBtn.addEventListener('click', async () => {
+                    const urls = selected().map(b => b.dataset.url).join('\n');
+                    try {
+                        await navigator.clipboard.writeText(urls);
+                        copyBtn.textContent = 'Copied!';
+                        setTimeout(() => { copyBtn.textContent = 'Copy links'; }, 2000);
+                    } catch (err) {
+                        copyBtn.textContent = 'Copy failed';
+                        setTimeout(() => { copyBtn.textContent = 'Copy links'; }, 2000);
+                    }
+                });
+            }
         }
 
         function renderAssetList(release) {
