@@ -40,6 +40,11 @@ PLATFORMS = [
     "wasm_emscripten",
 ]
 
+# Dependencies whose deps/ directory name differs from the dependency name.
+DIR_ALIAS = {
+    "lua": "lua-5.5.0",
+}
+
 # Mapping of dependency name to the library file stems (without lib prefix and .a/.lib suffix)
 # that belong to that dependency. This is derived from the actual build outputs.
 DEP_LIBRARY_NAMES = {
@@ -59,8 +64,8 @@ DEP_LIBRARY_NAMES = {
     "freetype": ["freetype"],
     "glfw": ["glfw3"],
     "harfbuzz": ["harfbuzz", "harfbuzz-subset"],
-    "libunibreak": ["libunibreak"],  # installed as libunibreak.a
-    "libwebsockets": ["websockets"],
+    "libunibreak": ["libunibreak"],  # liblibunibreak.a / libunibreak.lib
+    "libwebsockets": ["websockets", "websockets_static"],
     "lua": ["lua"],
     "lz4": ["lz4"],
     "microui": ["microui"],
@@ -71,11 +76,11 @@ DEP_LIBRARY_NAMES = {
     "minigamepad": ["minigamepad"],
     "mtcc": ["tcc"],  # libtcc.a
     "nanovg": ["nanovg"],
-    "physfs": ["physfs"],
+    "physfs": ["physfs", "physfs-static"],
     "raudio": ["raudio"],
     "raylib": ["raylib"],
     "reproc": ["reproc"],
-    "sdl3": ["SDL3"],
+    "sdl3": ["SDL3", "SDL3-static"],
     "sdl3webgpu": ["sdl3webgpu"],
     "SheenBidi": ["SheenBidi"],
     "skribidi": ["skribidi"],
@@ -95,10 +100,10 @@ DEP_LIBRARY_NAMES = {
     "tracy": ["TracyClient"],
     "ubench": ["ubench"],
     "utest": ["utest"],
-    "utf8proc": ["utf8proc"],
+    "utf8proc": ["utf8proc", "utf8proc_static"],
     "xxhash": ["xxhash"],
-    "zlib": ["z"],
-    "zstd": ["zstd"],
+    "zlib": ["z", "zs", "zlibstatic"],
+    "zstd": ["zstd", "zstd_static"],
 }
 
 # Dependencies that are excluded on specific platforms
@@ -124,7 +129,7 @@ def get_submodule_commit(dep_name: str) -> str:
     deps/<dep> directory would walk up to the superproject and wrongly
     return the repo's own commit for every dependency.
     """
-    dep_path = Path("deps") / dep_name
+    dep_path = Path("deps") / DIR_ALIAS.get(dep_name, dep_name)
     if not dep_path.exists():
         return "unknown"
     try:
@@ -176,11 +181,13 @@ def find_lib_files(dep_name: str, platform_dir: Path) -> list[Path]:
             continue
         if f.suffix not in (".a", ".lib"):
             continue
-        # Strip lib prefix and suffix to get stem
+        # Match both the raw stem and the stem without a "lib" prefix:
+        # libSDL3.a vs SDL3-static.lib, liblibunibreak.a vs libunibreak.lib
         stem = f.stem
+        candidates = [stem]
         if stem.startswith("lib"):
-            stem = stem[3:]
-        if stem in expected_names:
+            candidates.append(stem[3:])
+        if any(c in expected_names for c in candidates):
             files.append(f)
 
     return files
@@ -277,7 +284,7 @@ def package_dependency(dep_name: str, platform: str, out_dir: Path, repo_sha: st
             zf.write(f, arcname)
 
         # Add LICENSE if available
-        license_file = Path("deps") / dep_name / "LICENSE"
+        license_file = Path("deps") / DIR_ALIAS.get(dep_name, dep_name) / "LICENSE"
         if license_file.exists():
             zf.write(license_file, "LICENSE")
 
@@ -297,12 +304,10 @@ def generate_manifest(out_dir: Path, repo_sha: str) -> dict:
         "artifacts": {},
     }
 
-    # Find all dependencies that have submodules
-    deps_dir = Path("deps")
-    if deps_dir.exists():
-        deps = sorted([d.name for d in deps_dir.iterdir() if d.is_dir() and not d.name.startswith(".")])
-    else:
-        deps = sorted(DEP_LIBRARY_NAMES.keys())
+    # Enumerate dependencies from the curated list. Scanning deps/ directly
+    # would pick up helper directories (dawn_third_party, cimgui's nested
+    # imgui checkout) as empty, non-shippable rows.
+    deps = sorted(DEP_LIBRARY_NAMES.keys())
 
     for dep in deps:
         manifest["artifacts"][dep] = {}

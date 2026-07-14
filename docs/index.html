@@ -59,6 +59,27 @@
             font-size: 0.85rem;
         }
         a.download:hover { background: #0256c7; }
+        .dl-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+            margin-top: 1rem;
+            padding: 0.5rem 0.75rem;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+        .dl-toolbar button {
+            padding: 0.35rem 0.9rem;
+            background: #0366d6;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .dl-toolbar button:disabled { background: #aaa; cursor: default; }
+        .dl-toolbar .hint { color: #666; font-size: 0.85rem; }
+        .dl-check { cursor: pointer; }
         .sha {
             font-family: monospace;
             font-size: 0.75rem;
@@ -158,7 +179,12 @@
                 'wasm_emscripten': 'Emscripten/WASM'
             };
 
-            let html = '<table>';
+            let html = '<div class="dl-toolbar">' +
+                '<button id="dlSelected" disabled>Download selected (0)</button>' +
+                '<label><input type="checkbox" id="dlSelectAll"> select all</label>' +
+                '<span class="hint">tick libraries to download several at once</span>' +
+                '</div>';
+            html += '<table>';
             html += '<tr><th>Dependency</th>' + platforms.map(p => `<th>${platformLabels[p]}</th>`).join('') + '</tr>';
 
             const deps = Object.keys(manifest.artifacts).sort();
@@ -176,7 +202,10 @@
                     } else if (info.built === true) {
                         const sha = info.commit ? info.commit.substring(0, 7) : '';
                         const href = info.filename ? downloadUrl(release, info.filename) : release.html_url;
-                        html += `<td><a class="download" href="${href}">download</a> <span class="sha">${sha}</span></td>`;
+                        const check = info.filename
+                            ? `<input type="checkbox" class="dl-check" data-url="${href}" data-name="${info.filename}"> `
+                            : '';
+                        html += `<td><label>${check}<a href="${href}" title="${info.filename || ''}">download</a></label> <span class="sha">${sha}</span></td>`;
                     } else {
                         html += '<td class="status-fail">failed</td>';
                     }
@@ -190,6 +219,39 @@
                 : 'unknown';
             html += `<p style="margin-top:1rem;color:#666;font-size:0.9rem;">Repo commit: ${commitLink} · Generated: ${manifest.generated_at || 'unknown'}</p>`;
             return html;
+        }
+
+        // Wires up the checkbox toolbar rendered by renderTable().
+        function bindDownloadUI() {
+            const btn = document.getElementById('dlSelected');
+            const all = document.getElementById('dlSelectAll');
+            if (!btn) return;
+            const boxes = () => [...document.querySelectorAll('.dl-check')];
+            const update = () => {
+                const n = boxes().filter(b => b.checked).length;
+                btn.disabled = n === 0;
+                btn.textContent = `Download selected (${n})`;
+            };
+            boxes().forEach(b => b.addEventListener('change', update));
+            if (all) {
+                all.addEventListener('change', () => {
+                    boxes().forEach(b => { b.checked = all.checked; });
+                    update();
+                });
+            }
+            btn.addEventListener('click', () => {
+                const items = boxes().filter(b => b.checked)
+                    .map(b => ({ url: b.dataset.url, name: b.dataset.name }));
+                // Stagger the clicks: browsers may block rapid multi-downloads.
+                items.forEach((item, i) => setTimeout(() => {
+                    const a = document.createElement('a');
+                    a.href = item.url;
+                    a.download = item.name;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                }, i * 300));
+            });
         }
 
         function renderAssetList(release) {
@@ -212,6 +274,7 @@
         function loadRelease(release, localManifest) {
             if (localManifest && release.tag_name === 'latest') {
                 contentDiv.innerHTML = renderTable(localManifest, release);
+                bindDownloadUI();
             } else {
                 contentDiv.innerHTML = renderAssetList(release);
             }
