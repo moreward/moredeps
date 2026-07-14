@@ -112,8 +112,12 @@ if [[ ! -f "${BUILD_DIR}/CMakeCache.txt" ]]; then
         -DCMAKE_BUILD_TYPE=Release
 fi
 
-# Build all targets.
-cmake --build "${BUILD_DIR}" --parallel
+# Build all targets. Respect MOREDEPS_TOP_LEVEL_PARALLEL to limit top-level parallelism.
+BUILD_PARALLEL=""
+if [[ -n "${MOREDEPS_TOP_LEVEL_PARALLEL:-}" ]]; then
+  BUILD_PARALLEL="--parallel ${MOREDEPS_TOP_LEVEL_PARALLEL}"
+fi
+cmake --build "${BUILD_DIR}" ${BUILD_PARALLEL}
 
 if [[ "${PLATFORM}" == "wasm_emscripten" ]]; then
   echo ""

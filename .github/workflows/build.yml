@@ -103,6 +103,7 @@ jobs:
           contains(inputs.platforms, 'linux_x64')
         run: |
           export PATH="/usr/lib/ccache:$PATH"
+          export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh linux_x64
 
       - name: Build linux_arm64
@@ -112,6 +113,7 @@ jobs:
           contains(inputs.platforms, 'linux_arm64')
         run: |
           export PATH="/usr/lib/ccache:$PATH"
+          export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh linux_arm64
 
       - name: Cache Emscripten SDK
@@ -144,6 +146,7 @@ jobs:
         run: |
           source ~/emsdk/emsdk_env.sh
           export PATH="/usr/lib/ccache:$PATH"
+          export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh wasm_emscripten
 
       - name: Upload artifacts
