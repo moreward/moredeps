@@ -82,7 +82,10 @@ jobs:
             submodules-${{ hashFiles('.gitmodules') }}-
 
       - name: Init submodules
-        run: git submodule update --init --jobs 4
+        run: |
+          git submodule update --init --jobs 4
+          # cimgui has a nested imgui submodule that we need
+          git submodule update --init deps/cimgui/imgui
 
       - name: Cache ccache
         uses: actions/cache@v4
@@ -176,7 +179,10 @@ jobs:
             submodules-${{ hashFiles('.gitmodules') }}-
 
       - name: Init submodules
-        run: git submodule update --init --jobs 4
+        run: |
+          git submodule update --init --jobs 4
+          # cimgui has a nested imgui submodule that we need
+          git submodule update --init deps/cimgui/imgui
 
       - name: Cache ccache
         uses: actions/cache@v4
@@ -225,7 +231,10 @@ jobs:
             submodules-${{ hashFiles('.gitmodules') }}-
 
       - name: Init submodules
-        run: git submodule update --init --jobs 4
+        run: |
+          git submodule update --init --jobs 4
+          # cimgui has a nested imgui submodule that we need
+          git submodule update --init deps/cimgui/imgui
         shell: bash
 
       - name: Cache sccache
