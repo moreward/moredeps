@@ -52,7 +52,7 @@ cl /O2 /W2 /Zi /MT /GS- /nologo %D% -DONE_SOURCE=0 tcc.c win32\libtcc.lib /Fe:wi
 if errorlevel 1 exit /b 1
 
 echo Building libtcc1.a...
-copy /Y win32\include\*.h include\ > nul 2>&1
+xcopy /E /Y /I win32\include include\ > nul 2>&1
 copy /Y tcclib.h include\ > nul 2>&1
 
 set WIN32_O=
@@ -60,10 +60,10 @@ for %%f in (%RT_WIN32%) do (
     set FNAME=%%~nxf
     set EXT=%%~xf
     if "!EXT!"==".S" (
-        win32\tcc.exe -Bwin32 %MFLAG% -c %%f
+        win32\tcc.exe -B. %MFLAG% -c %%f
         set WIN32_O=!WIN32_O! !FNAME:.S=.o!
     ) else (
-        win32\tcc.exe -Bwin32 %MFLAG% -c %%f
+        win32\tcc.exe -B. %MFLAG% -c %%f
         set WIN32_O=!WIN32_O! !FNAME:.c=.o!
     )
     if errorlevel 1 exit /b 1
@@ -74,16 +74,16 @@ for %%f in (%RT_TOP%) do (
     set FNAME=%%~nxf
     set EXT=%%~xf
     if "!EXT!"==".S" (
-        win32\tcc.exe -Bwin32 %MFLAG% -c %%f
+        win32\tcc.exe -B. %MFLAG% -c %%f
         set TOP_O=!TOP_O! !FNAME:.S=.o!
     ) else (
-        win32\tcc.exe -Bwin32 %MFLAG% -c %%f
+        win32\tcc.exe -B. %MFLAG% -c %%f
         set TOP_O=!TOP_O! !FNAME:.c=.o!
     )
     if errorlevel 1 exit /b 1
 )
 
-win32\tcc.exe -Bwin32 %MFLAG% -ar lib\libtcc1.a %WIN32_O% %TOP_O%
+win32\tcc.exe -B. %MFLAG% -ar lib\libtcc1.a %WIN32_O% %TOP_O%
 if errorlevel 1 exit /b 1
 
 echo mtcc Windows @MTCC_ARCH@ build complete.

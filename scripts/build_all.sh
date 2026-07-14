@@ -61,6 +61,25 @@ fi
 # Validate the host environment.
 "${SCRIPT_DIR}/validate_dev_env.sh" "${PLATFORM}"
 
+# For Windows targets, ensure the MSVC environment is initialized for the
+# requested architecture. This makes the build robust regardless of which
+# Visual Studio command prompt the user started.
+if [[ "${PLATFORM}" == windows_* ]]; then
+  case "${PLATFORM}" in
+    windows_x64)
+      VCVARS_ARCH="x64"
+      ;;
+    windows_arm64)
+      VCVARS_ARCH="arm64"
+      ;;
+    *)
+      echo "Error: unsupported Windows platform '${PLATFORM}'"
+      exit 1
+      ;;
+  esac
+  source "${SCRIPT_DIR}/setup_vcvars.sh" "${VCVARS_ARCH}"
+fi
+
 BUILD_DIR="${REPO_ROOT}/_b/${PLATFORM}"
 OUT_DIR="${REPO_ROOT}/_out/${PLATFORM}"
 

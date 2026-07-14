@@ -22,11 +22,11 @@ if(WIN32)
       x86_64-gen.c x86_64-link.c i386-asm.c tccpe.c
     )
     set(MTCC_RT_WIN32
-      win32/lib/libtcc1.c win32/lib/crt1.c win32/lib/crt1w.c win32/lib/wincrt1.c win32/lib/wincrt1w.c
+      win32/lib/crt1.c win32/lib/crt1w.c win32/lib/wincrt1.c win32/lib/wincrt1w.c
       win32/lib/dllcrt1.c win32/lib/dllmain.c win32/lib/chkstk.S
     )
     set(MTCC_RT_TOP
-      lib/alloca.S lib/alloca-bt.S lib/stdatomic.c lib/atomic.S lib/builtin.c
+      lib/libtcc1.c lib/alloca.S lib/alloca-bt.S lib/stdatomic.c lib/atomic.S lib/builtin.c
     )
   elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64|AARCH64")
     set(MTCC_ARCH "arm64")
@@ -39,11 +39,11 @@ if(WIN32)
     )
     # ARM64 Windows runtime: no chkstk.S (Windows ARM64 has built-in stack probing)
     set(MTCC_RT_WIN32
-      win32/lib/libtcc1.c win32/lib/crt1.c win32/lib/crt1w.c win32/lib/wincrt1.c win32/lib/wincrt1w.c
+      win32/lib/crt1.c win32/lib/crt1w.c win32/lib/wincrt1.c win32/lib/wincrt1w.c
       win32/lib/dllcrt1.c win32/lib/dllmain.c
     )
     set(MTCC_RT_TOP
-      lib/alloca.S lib/alloca-bt.S lib/stdatomic.c lib/atomic.S lib/builtin.c
+      lib/libtcc1.c lib/alloca.S lib/alloca-bt.S lib/stdatomic.c lib/atomic.S lib/builtin.c
     )
   else()
     message(FATAL_ERROR "mtcc Windows wrapper: unsupported architecture ${CMAKE_SYSTEM_PROCESSOR}")
@@ -80,7 +80,9 @@ if(WIN32)
     ${MTCC_BUILD_DIR}/tcc.h
     DESTINATION include
   )
-  install(DIRECTORY ${MTCC_BUILD_DIR}/include/ DESTINATION include)
+  # Keep mtcc's MinGW-style standard headers away from the shared include root
+  # so they don't shadow MSVC system headers for other dependencies.
+  install(DIRECTORY ${MTCC_BUILD_DIR}/include/ DESTINATION include/mtcc)
 else()
   # Run mtcc's configure script in the build directory.
   execute_process(

@@ -212,11 +212,19 @@ endfunction()
 # --- boringssl ---
 # Single TLS backend for curl and libwebsockets. Installs OpenSSL::Crypto/
 # OpenSSL::SSL targets into the common prefix.
+# BoringSSL's assembly for Windows/ARM64 is not supported by the CMake ARM64
+# ASM toolchain, so disable it on that platform (Emscripten already does).
+if(EMSCRIPTEN OR (WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64"))
+  set(BORINGSSL_NO_ASM ON)
+else()
+  set(BORINGSSL_NO_ASM OFF)
+endif()
+
 moredeps_add_dep(boringssl
   CMAKE_ARGS
     "-DBUILD_TESTING=OFF"
     "-DFIPS=OFF"
-    "-DOPENSSL_NO_ASM=$<IF:$<PLATFORM_ID:Emscripten>,ON,OFF>"
+    "-DOPENSSL_NO_ASM=${BORINGSSL_NO_ASM}"
 )
 
 # --- box3d ---
@@ -255,12 +263,19 @@ moredeps_add_dep(budouxc
 )
 
 # --- cJSON ---
+# cJSON adds /Za on MSVC, which conflicts with the /std:c11 we pass globally.
+if(WIN32)
+  set(_CJSON_EXTRA_ARGS "-DENABLE_CUSTOM_COMPILER_FLAGS=OFF")
+else()
+  set(_CJSON_EXTRA_ARGS "")
+endif()
 moredeps_add_dep(cJSON
   CMAKE_ARGS
     "-DENABLE_CJSON_TEST=OFF"
     "-DENABLE_CJSON_UNINSTALL=OFF"
     "-DENABLE_CJSON_UTILS=OFF"
     "-DENABLE_LOCALES=ON"
+    ${_CJSON_EXTRA_ARGS}
 )
 
 # --- curl ---
@@ -439,6 +454,7 @@ if(NOT EMSCRIPTEN)
   endif()
   moredeps_add_dep(libwebsockets
     DEPENDS boringssl
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/libwebsockets"
     CMAKE_ARGS
       "-DLWS_WITH_STATIC=ON"
       "-DLWS_WITH_SHARED=OFF"
@@ -654,7 +670,9 @@ endif()
 
 # --- mtcc ---
 # TinyCC is Makefile-only and does not support Emscripten.
-if(NOT EMSCRIPTEN)
+# TinyCC's Windows PE backend (tccpe.c) does not have ARM64 support, so skip
+# it on Windows/ARM64 as well.
+if(NOT EMSCRIPTEN AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64"))
   moredeps_add_dep(mtcc
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/mtcc"
   )
@@ -928,10 +946,10 @@ elseif(MOREDEPS_PLATFORM STREQUAL "linux_x64" OR MOREDEPS_PLATFORM STREQUAL "lin
   )
 elseif(MOREDEPS_PLATFORM MATCHES "windows_(x64|arm64)")
   list(APPEND _sokol_variants
-    gfx:GLCORE gfx:GLES3 gfx:D3D11 gfx:WGPU
+    gfx:GLCORE gfx:D3D11 gfx:WGPU
     app:GLCORE app:D3D11 app:WGPU
     glue:GLCORE glue:D3D11 glue:WGPU
-    gp:GLCORE gp:GLES3 gp:D3D11
+    gp:GLCORE gp:D3D11
   )
 elseif(MOREDEPS_PLATFORM STREQUAL "wasm_emscripten")
   list(APPEND _sokol_variants

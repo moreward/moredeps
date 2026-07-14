@@ -1,0 +1,14 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -978,7 +978,10 @@ if (MSVC)
+ 	# Turn off pointless microsoft security warnings.
+ 	add_definitions(-D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE)
+ 	# Fail the build if any warnings
+-	add_compile_options(/W3 /WX)
++	add_compile_options(/W3)
++	if(NOT DISABLE_WERROR)
++		add_compile_options(/WX)
++	endif()
+ 	# Unbreak MSVC broken preprocessor __VA_ARGS__ behaviour
+ 	if (MSVC_VERSION GREATER 1925)
+ 		add_compile_options(/Zc:preprocessor /wd5105)

@@ -26,7 +26,11 @@ target_compile_definitions(cimgui PUBLIC
   IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
 )
 if(WIN32)
-  target_compile_definitions(cimgui PRIVATE IMGUI_IMPL_API=extern "C" __declspec\(dllexport\))
+  # cimgui.h defaults to __declspec(dllexport) on Windows. For a static library
+  # this is unnecessary and the multi-token IMGUI_IMPL_API definition does not
+  # survive CMake's compile-definition handling, so keep the macros simple.
+  target_compile_definitions(cimgui PRIVATE CIMGUI_NO_EXPORT)
+  target_compile_definitions(cimgui PRIVATE IMGUI_IMPL_API=)
 else()
   target_compile_definitions(cimgui PRIVATE IMGUI_IMPL_API=extern "C")
 endif()
