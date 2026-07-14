@@ -110,6 +110,7 @@ DEP_LIBRARY_NAMES = {
 EXCLUDED = {
     # Emscripten exclusions
     ("glfw", "wasm_emscripten"): "No desktop windowing on the web",
+    ("dawn", "wasm_emscripten"): "Browser provides WebGPU (emdawnwebgpu; no prebuilt lib)",
     ("mtcc", "wasm_emscripten"): "Target-specific C/ASM cannot compile to WASM",
     ("enet", "wasm_emscripten"): "UDP sockets not available in the browser",
     ("libwebsockets", "wasm_emscripten"): "BSD sockets not available in the browser",
