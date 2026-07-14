@@ -566,18 +566,6 @@ Upstream has a native CMake build with install rules. We disable testing.
 | `BUILD_TESTING` | `ON` | `OFF` | No tests. |
 | `SB_CONFIG_UNITY` | `ON` | `ON` | Keep unity build. |
 
-### `ghostty`
-
-Ghostty is built via Zig. The wrapper runs in `src/ghostty/`:
-
-| Wrapper setting | Value | Notes |
-|---|---|---|
-| Build command | `zig build -Doptimize=ReleaseFast -Dapp-runtime=none -Demit-macos-app=false -Demit-xcframework=true` | Emits the `libghostty.a` inside an xcframework. |
-| Source handling | copied to build tree | Avoids writing `macos/build` and `macos/GhosttyKit.xcframework` into the submodule. |
-| Installed artifacts | `lib/libghostty.a`, `include/ghostty.h`, `include/ghostty/` | Extracted from the build-tree xcframework. |
-
-**Platform support:** `macos_arm64` only. The upstream `build.zig` does not install a plain `libghostty.a` on Darwin; it only produces one inside the xcframework, so we extract it manually.
-
 ### `skribidi`
 
 Upstream `CMakeLists.txt` fetches its own `harfbuzz`, `SheenBidi`, `libunibreak`, and `budouxc` at build time. We instead build `skribidi` from `src/skribidi/` and link against the pinned submodules under `deps/`.
@@ -756,7 +744,6 @@ These dependencies do not have native CMake builds (or the native build is unsui
 
 | Dep | Build system | Wrapper / notes |
 |---|---|---|
-| `ghostty` | Zig | `src/ghostty/CMakeLists.txt` runs `zig build` and extracts `libghostty.a` from the xcframework. **macOS arm64 only.** |
 | `lua-5.5.0` | Makefile | `src/lua/CMakeLists.txt` drives the upstream `make` rules and installs `liblua.a` + headers. |
 | `mtcc` | Makefile / MSVC batch | `src/mtcc/` wrapper runs `./configure` + `make` on Unix, a custom batch with `cl`/`lib` on Windows x64. **Excluded on `wasm_emscripten` and `windows_arm64`.** |
 | `skribidi` | CMake | `src/skribidi/CMakeLists.txt` builds from `deps/skribidi` and links against the pinned `harfbuzz`, `SheenBidi`, `libunibreak`, and `budouxc` submodules. |

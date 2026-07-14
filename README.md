@@ -94,6 +94,5 @@ Artifacts are staged in `_out/<platform>/lib/` and `_out/<platform>/include/`.
 
 - **Emscripten**: `glfw`, `mtcc`, `enet`, `libwebsockets`, `reproc`, `tinycsocket` (desktop-only APIs).
 - **Windows arm64**: `mtcc` (TinyCC's PE backend lacks ARM64 support).
-- **All platforms**: `ghostty` is macOS-only (Zig build, library extraction from xcframework).
 
 See `docs/work_log.md` for the current state and known caveats.

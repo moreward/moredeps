@@ -4,9 +4,6 @@
 [submodule "deps/dawn"]
 	path = deps/dawn
 	url = https://github.com/google/dawn.git
-[submodule "deps/ghostty"]
-	path = deps/ghostty
-	url = https://github.com/ghostty-org/ghostty.git
 [submodule "deps/sdl3webgpu"]
 	path = deps/sdl3webgpu
 	url = https://github.com/eliemichel/sdl3webgpu.git

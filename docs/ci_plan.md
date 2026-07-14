@@ -293,7 +293,6 @@ jobs:
 
 ### macOS arm64
 - Native build on `macos-15` runner (Apple Silicon).
-- `ghostty` builds here (Zig + xcframework extraction).
 
 ### Windows x64
 - MSVC via `windows-2022` runner.

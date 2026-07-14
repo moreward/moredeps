@@ -57,7 +57,6 @@ DEP_LIBRARY_NAMES = {
     "flecs": ["flecs_static"],
     "fontstash": ["fontstash"],
     "freetype": ["freetype"],
-    "ghostty": ["ghostty"],
     "glfw": ["glfw3"],
     "harfbuzz": ["harfbuzz", "harfbuzz-subset"],
     "libunibreak": ["libunibreak"],  # installed as libunibreak.a
@@ -113,12 +112,6 @@ EXCLUDED = {
     ("tinycsocket", "wasm_emscripten"): "No BSD sockets",
     # Windows ARM64 exclusions
     ("mtcc", "windows_arm64"): "TinyCC PE backend lacks ARM64 support",
-    # macOS-only
-    ("ghostty", "linux_x64"): "macOS only (Zig build)",
-    ("ghostty", "linux_arm64"): "macOS only (Zig build)",
-    ("ghostty", "windows_x64"): "macOS only (Zig build)",
-    ("ghostty", "windows_arm64"): "macOS only (Zig build)",
-    ("ghostty", "wasm_emscripten"): "macOS only (Zig build)",
 }
 
 

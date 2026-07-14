@@ -75,7 +75,6 @@ Based on the matrix above, the following should be **gated** when targeting mobi
 | `glfw` | ❌ | ❌ | No mobile support. Use `sokol_app` or `sdl3`. |
 | `mtcc` | ❌ | ❌ | TCC does not target ARM mobile. |
 | `reproc` | ❌ | ⚠️ | iOS sandbox forbids process spawning; Android generally does not support it either. |
-| `ghostty` | ❌ | ❌ | Desktop only (macOS, Linux, Windows). |
 
 Optional considerations:
 - `libwebsockets` / `enet` / `tinycsocket`: keep enabled for **client** networking, but document that server/listen sockets are restricted on iOS and may require permissions on Android.
@@ -109,7 +108,7 @@ Notes:
 
 1. Add toolchain files under `toolchain/`.
 2. Add platform detection in `CMakeLists.txt` for `iOS` and `Android`.
-3. Gate `glfw`, `mtcc`, `reproc`, and `ghostty` on mobile.
+3. Gate `glfw`, `mtcc`, and `reproc` on mobile.
 4. Adjust Sokol variant lists to include mobile variants.
 5. For Android, ensure `BUILD_SHARED_LIBS=OFF` and `POSITION_INDEPENDENT_CODE=ON` (already set).
 6. For iOS, ensure bitcode is disabled unless needed, and code signing is handled by the downstream app.
