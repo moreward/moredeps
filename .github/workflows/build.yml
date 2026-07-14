@@ -172,7 +172,7 @@ jobs:
 
       - name: Install build tools
         run: |
-          brew install ninja ccache
+          brew install ninja ccache zig
 
       - name: Cache submodules
         uses: actions/cache@v4

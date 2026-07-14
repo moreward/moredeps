@@ -367,6 +367,9 @@ moredeps_add_dep(dawn
     "-DDAWN_USE_WAYLAND=OFF"
     "-DDAWN_ENABLE_DESKTOP_GL=OFF"
     "-DDAWN_ENABLE_OPENGLES=OFF"
+    # When cross-compiling Linux arm64 from x64, the x64 X11 dev packages
+    # are not linkable by the arm64 cross-compiler. Disable X11 probing.
+    "$<IF:$<STREQUAL:${MOREDEPS_PLATFORM},linux_arm64>,-DCMAKE_DISABLE_FIND_PACKAGE_X11=TRUE,>"
   INSTALL_COMMAND
     ${CMAKE_COMMAND} -DDAWN_BUILD_DIR=<BINARY_DIR>
                      -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
