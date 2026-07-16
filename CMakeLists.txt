@@ -285,6 +285,9 @@ moredeps_add_dep(cglm
     "-DCGLM_SHARED=OFF"
     "-DCGLM_USE_TEST=OFF"
     "-DCGLM_USE_C99=OFF"
+  SHARED_CMAKE_ARGS
+    "-DCGLM_STATIC=OFF"
+    "-DCGLM_SHARED=ON"
 )
 
 # --- cimgui ---
@@ -327,6 +330,8 @@ moredeps_add_dep(curl
     "-DBUILD_CURL_EXE=OFF"
     "-DBUILD_STATIC_LIBS=ON"
     "-DBUILD_TESTING=OFF"
+  SHARED_CMAKE_ARGS
+    "-DBUILD_STATIC_LIBS=OFF"
     "-DBUILD_EXAMPLES=OFF"
     "-DBUILD_LIBCURL_DOCS=OFF"
     "-DBUILD_MISC_DOCS=OFF"
@@ -382,6 +387,7 @@ moredeps_add_dep(curl
 # Emscripten options). Dependencies are pre-populated as git submodules in
 # deps/dawn_third_party (they cannot be nested inside the deps/dawn submodule).
 moredeps_add_dep(dawn
+  STATIC_ONLY
   CMAKE_ARGS
     "-DDAWN_THIRD_PARTY_DIR=${CMAKE_CURRENT_SOURCE_DIR}/deps/dawn_third_party"
     "-DDAWN_EMDAWNWEBGPU_DIR=${CMAKE_CURRENT_SOURCE_DIR}/deps/dawn/third_party/emdawnwebgpu"
@@ -421,6 +427,8 @@ if(NOT EMSCRIPTEN)
       "-DENET_STATIC=ON"
       "-DENET_SHARED=OFF"
       "-DENET_TEST=OFF"
+    SHARED_CMAKE_ARGS
+      "-DENET_SHARED=ON"
       "-DENET_USE_MORE_PEERS=OFF"
       "-DENET_IPV4_ONLY=OFF"
   )
@@ -433,6 +441,8 @@ moredeps_add_dep(flecs
     "-DFLECS_SHARED=OFF"
     "-DFLECS_TESTS=OFF"
     "-DFLECS_PIC=ON"
+  SHARED_CMAKE_ARGS
+    "-DFLECS_SHARED=ON"
 )
 
 # --- freetype ---
@@ -627,6 +637,8 @@ moredeps_add_dep(mimalloc
   CMAKE_ARGS
     "-DMI_BUILD_STATIC=ON"
     "-DMI_BUILD_SHARED=OFF"
+  SHARED_CMAKE_ARGS
+    "-DMI_BUILD_SHARED=ON"
     "-DMI_BUILD_OBJECT=OFF"
     "-DMI_BUILD_TESTS=OFF"
     "-DMI_OVERRIDE=ON"
@@ -668,6 +680,8 @@ moredeps_add_dep(physfs
   CMAKE_ARGS
     "-DPHYSFS_BUILD_STATIC=ON"
     "-DPHYSFS_BUILD_SHARED=OFF"
+  SHARED_CMAKE_ARGS
+    "-DPHYSFS_BUILD_SHARED=ON"
     "-DPHYSFS_BUILD_TEST=OFF"
     "-DPHYSFS_BUILD_DOCS=OFF"
     "-DPHYSFS_ARCHIVE_ZIP=ON"
@@ -726,6 +740,9 @@ moredeps_add_dep(sdl3
   CMAKE_ARGS
     "-DSDL_SHARED=OFF"
     "-DSDL_STATIC=ON"
+  SHARED_CMAKE_ARGS
+    "-DSDL_SHARED=ON"
+    "-DSDL_STATIC=OFF"
     "-DSDL_TEST_LIBRARY=OFF"
     "-DSDL_TESTS=OFF"
     "-DSDL_EXAMPLES=OFF"
@@ -870,6 +887,8 @@ moredeps_add_dep(zlib
   CMAKE_ARGS
     "-DZLIB_BUILD_STATIC=ON"
     "-DZLIB_BUILD_SHARED=OFF"
+  SHARED_CMAKE_ARGS
+    "-DZLIB_BUILD_SHARED=ON"
     "-DZLIB_BUILD_TESTING=OFF"
     "-DZLIB_INSTALL=ON"
     "-DZLIB_PREFIX=OFF"
@@ -882,6 +901,8 @@ moredeps_add_dep(lz4
     "-DLZ4_BUILD_CLI=OFF"
     "-DLZ4_POSITION_INDEPENDENT_LIB=ON"
     "-DBUILD_STATIC_LIBS=ON"
+  SHARED_CMAKE_ARGS
+    "-DBUILD_STATIC_LIBS=OFF"
 )
 
 # --- xxhash ---
@@ -898,6 +919,8 @@ moredeps_add_dep(zstd
   CMAKE_ARGS
     "-DZSTD_BUILD_STATIC=ON"
     "-DZSTD_BUILD_SHARED=OFF"
+  SHARED_CMAKE_ARGS
+    "-DZSTD_BUILD_SHARED=ON"
     "-DZSTD_BUILD_COMPRESSION=ON"
     "-DZSTD_BUILD_DECOMPRESSION=ON"
     "-DZSTD_BUILD_DICTBUILDER=OFF"
