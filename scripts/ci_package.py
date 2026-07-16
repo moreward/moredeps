@@ -349,9 +349,12 @@ def package_dependency(dep_name: str, platform: str, out_dir: Path, repo_sha: st
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         # Add libraries
         for f in lib_files:
-            arcname = f"lib/{f.name}"
+            # .dll files live in bin/ on disk but ship in lib/ in the zip
+            subdir = "bin" if f.parent.name == "bin" else "lib"
+            arcname = f"{subdir}/{f.name}"
             zf.write(f, arcname)
-            zip_files.append({"path": arcname, "kind": "lib"})
+            kind = "shared" if f.suffix in (".so", ".dylib", ".dll") else "static"
+            zip_files.append({"path": arcname, "kind": kind})
 
         # Add headers
         for f in header_files:

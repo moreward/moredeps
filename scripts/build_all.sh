@@ -196,11 +196,18 @@ if [[ "${BUILD_SHARED}" == "1" && "${PLATFORM}" != "wasm_emscripten" ]]; then
 
   # Merge shared libraries into the main output (skip static libs/headers
   # that were already installed by the static pass).
-  echo "Merging shared libraries into ${OUT_DIR}/lib/"
-  mkdir -p "${OUT_DIR}/lib"
+  echo "Merging shared libraries into ${OUT_DIR}/"
+  # Unix: .so/.dylib in lib/
   find "${SHARED_TMP}/lib" -name '*.so' -o -name '*.so.*' -o -name '*.dylib' 2>/dev/null | while read f; do
+    mkdir -p "${OUT_DIR}/lib"
     cp -a "$f" "${OUT_DIR}/lib/"
-    echo "  $(basename $f)"
+    echo "  lib/$(basename $f)"
+  done
+  # Windows: .dll in bin/
+  find "${SHARED_TMP}/bin" -name '*.dll' 2>/dev/null | while read f; do
+    mkdir -p "${OUT_DIR}/bin"
+    cp -a "$f" "${OUT_DIR}/bin/"
+    echo "  bin/$(basename $f)"
   done
   rm -rf "${SHARED_TMP}"
   echo "Shared libraries merged."
