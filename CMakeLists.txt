@@ -387,6 +387,7 @@ moredeps_add_dep(curl
 # Emscripten options). Dependencies are pre-populated as git submodules in
 # deps/dawn_third_party (they cannot be nested inside the deps/dawn submodule).
 moredeps_add_dep(dawn
+  STATIC_ONLY
   CMAKE_ARGS
     "-DDAWN_THIRD_PARTY_DIR=${CMAKE_CURRENT_SOURCE_DIR}/deps/dawn_third_party"
     "-DDAWN_EMDAWNWEBGPU_DIR=${CMAKE_CURRENT_SOURCE_DIR}/deps/dawn/third_party/emdawnwebgpu"
