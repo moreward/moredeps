@@ -172,13 +172,17 @@ fi
 
 # Second pass: shared libraries (.so/.dylib/.dll)
 # Emscripten shared libraries are a different concept (wasm modules), skip.
+# Uses a separate temp install prefix so ExternalProject doesn't skip
+# (it would see stamps from the static build if we reused the same prefix).
 if [[ "${BUILD_SHARED}" == "1" && "${PLATFORM}" != "wasm_emscripten" ]]; then
   SHARED_BUILD_DIR="${REPO_ROOT}/_b/${PLATFORM}_shared"
+  SHARED_TMP="${OUT_DIR}_shared_tmp"
   echo ""
   echo "======================================================================"
   echo "Building shared libraries for: ${PLATFORM}"
   echo "======================================================================"
 
+  rm -rf "${SHARED_BUILD_DIR}" "${SHARED_TMP}"
   mkdir -p "${SHARED_BUILD_DIR}"
   cmake -S "${REPO_ROOT}" \
         -B "${SHARED_BUILD_DIR}" \
@@ -186,11 +190,20 @@ if [[ "${BUILD_SHARED}" == "1" && "${PLATFORM}" != "wasm_emscripten" ]]; then
         -DCMAKE_TOOLCHAIN_FILE="${TOOLCHAIN}" \
         -DCMAKE_BUILD_TYPE=Release \
         -DMOREDEPS_BUILD_SHARED=ON \
-        -DCMAKE_INSTALL_PREFIX="${OUT_DIR}"
+        -DCMAKE_INSTALL_PREFIX="${SHARED_TMP}"
 
   cmake --build "${SHARED_BUILD_DIR}" ${BUILD_PARALLEL}
 
-  echo "Shared libraries installed alongside static libs in: ${OUT_DIR}/lib/"
+  # Merge shared libraries into the main output (skip static libs/headers
+  # that were already installed by the static pass).
+  echo "Merging shared libraries into ${OUT_DIR}/lib/"
+  mkdir -p "${OUT_DIR}/lib"
+  find "${SHARED_TMP}/lib" -name '*.so' -o -name '*.so.*' -o -name '*.dylib' 2>/dev/null | while read f; do
+    cp -a "$f" "${OUT_DIR}/lib/"
+    echo "  $(basename $f)"
+  done
+  rm -rf "${SHARED_TMP}"
+  echo "Shared libraries merged."
 fi
 
 echo "======================================================================"
