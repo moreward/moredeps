@@ -10,7 +10,7 @@ on:
       shared:
         description: 'Also build shared libraries (.so/.dylib/.dll)'
         type: boolean
-        default: false
+        default: true
 
 env:
   CCACHE_DIR: ${{ github.workspace }}/.ccache

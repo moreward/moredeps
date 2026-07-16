@@ -28,7 +28,7 @@ PLATFORMS=(
 )
 
 PLATFORM="${1:-}"
-BUILD_SHARED="${MOREDEPS_BUILD_SHARED:-0}"
+BUILD_SHARED="${MOREDEPS_BUILD_SHARED:-1}"
 
 # Parse --shared flag from remaining args
 shift 2>/dev/null || true
