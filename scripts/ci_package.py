@@ -341,6 +341,7 @@ def package_dependency(dep_name: str, platform: str, out_dir: Path, repo_sha: st
 def generate_manifest(out_dir: Path, repo_sha: str) -> dict:
     """Generate the full manifest from built artifacts."""
     manifest = {
+        "manifest_version": 1,
         "repo_commit": repo_sha,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "artifacts": {},
