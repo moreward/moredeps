@@ -16,7 +16,7 @@
 3. **Compiler caching** — ccache (Unix) / sccache (Windows) via `actions/cache`. This is the only incremental mechanism; every run builds everything (see §5).
 4. **Artifact packaging** — each dependency/platform combo produces a zip with `lib/`, `include/`, `LICENSE`.
 5. **Manifest JSON** — per-release asset listing all artifacts, pinned upstream commits, repo URLs, and exclusions.
-6. **GitHub Releases** — immutable `build-<sha>` tags + rolling `latest` alias.
+6. **GitHub Releases** — immutable `build-<sha>` tags + rolling `latest` alias. Only the **last 3 builds** are retained; older releases are pruned automatically by the release job.
 7. **Web integration** — Pages site (`deps.morew4rd.com`) serves the manifest **same-origin**; the build workflow redeploys the site after each release (see §8 for why).
 
 Measured durations (warm cache): Linux ~7 min, macOS ~7.5 min, wasm ~10 min, Windows x64 ~16 min, Windows arm64 ~23 min. Cold cache: 30–70 min per platform.

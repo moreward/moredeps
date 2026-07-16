@@ -163,3 +163,6 @@
 [submodule "deps/imgui"]
 	path = deps/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "deps/lua-5.5.0"]
+	path = deps/lua-5.5.0
+	url = https://github.com/moreward/lua55.git
