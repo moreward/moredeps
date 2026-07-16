@@ -171,7 +171,8 @@ if [[ "${PLATFORM}" == "wasm_emscripten" ]]; then
 fi
 
 # Second pass: shared libraries (.so/.dylib/.dll)
-if [[ "${BUILD_SHARED}" == "1" ]]; then
+# Emscripten shared libraries are a different concept (wasm modules), skip.
+if [[ "${BUILD_SHARED}" == "1" && "${PLATFORM}" != "wasm_emscripten" ]]; then
   SHARED_BUILD_DIR="${REPO_ROOT}/_b/${PLATFORM}_shared"
   echo ""
   echo "======================================================================"
