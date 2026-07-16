@@ -202,7 +202,7 @@
                 '<span class="hint" id="dlCount"></span>' +
                 '<span class="hint">select libraries, then paste the commands in a terminal</span>' +
                 '</div>' +
-                '<textarea id="dlCommands" class="dl-commands" rows="6" readonly style="display:none"' +
+                '<textarea id="dlCommands" class="dl-commands" rows="6" readonly placeholder="Select libraries below to generate curl commands..."' +
                 ' title="curl commands for the selected libraries"></textarea>';
             html += '<table>';
             html += '<tr><th>Dependency</th>' + platforms.map(p =>
@@ -268,7 +268,6 @@
 
             const refresh = () => {
                 const sel = boxes().filter(b => b.checked);
-                ta.style.display = sel.length ? 'block' : 'none';
                 ta.value = sel.map(b => `curl -fLO ${b.dataset.url}`).join('\n');
                 copyBtn.disabled = sel.length === 0;
                 count.textContent = sel.length ? `${sel.length} selected` : '';
