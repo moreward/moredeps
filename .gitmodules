@@ -124,33 +124,6 @@
 [submodule "deps/boringssl"]
 	path = deps/boringssl
 	url = https://github.com/google/boringssl.git
-[submodule "deps/dawn_third_party/abseil-cpp"]
-	path = deps/dawn_third_party/abseil-cpp
-	url = https://chromium.googlesource.com/chromium/src/third_party/abseil-cpp
-[submodule "deps/dawn_third_party/jinja2"]
-	path = deps/dawn_third_party/jinja2
-	url = https://chromium.googlesource.com/chromium/src/third_party/jinja2
-[submodule "deps/dawn_third_party/markupsafe"]
-	path = deps/dawn_third_party/markupsafe
-	url = https://chromium.googlesource.com/chromium/src/third_party/markupsafe
-[submodule "deps/dawn_third_party/spirv-headers/src"]
-	path = deps/dawn_third_party/spirv-headers/src
-	url = https://chromium.googlesource.com/external/github.com/KhronosGroup/SPIRV-Headers
-[submodule "deps/dawn_third_party/spirv-tools/src"]
-	path = deps/dawn_third_party/spirv-tools/src
-	url = https://chromium.googlesource.com/external/github.com/KhronosGroup/SPIRV-Tools
-[submodule "deps/dawn_third_party/vulkan-headers/src"]
-	path = deps/dawn_third_party/vulkan-headers/src
-	url = https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-Headers
-[submodule "deps/dawn_third_party/vulkan-utility-libraries/src"]
-	path = deps/dawn_third_party/vulkan-utility-libraries/src
-	url = https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-Utility-Libraries
-[submodule "deps/dawn_third_party/gpuweb"]
-	path = deps/dawn_third_party/gpuweb
-	url = https://chromium.googlesource.com/external/github.com/gpuweb/gpuweb
-[submodule "deps/dawn_third_party/webgpu-headers/src"]
-	path = deps/dawn_third_party/webgpu-headers/src
-	url = https://chromium.googlesource.com/external/github.com/webgpu-native/webgpu-headers
 [submodule "deps/SheenBidi"]
 	path = deps/SheenBidi
 	url = https://github.com/Tehreer/SheenBidi.git
@@ -166,3 +139,6 @@
 [submodule "deps/lua-5.5.0"]
 	path = deps/lua-5.5.0
 	url = https://github.com/moreward/lua55.git
+[submodule "deps/dawn_third_party"]
+	path = deps/dawn_third_party
+	url = https://github.com/moreward/dawn-third-party.git
