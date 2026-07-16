@@ -4,7 +4,11 @@
 #
 # Usage:
 #   ./scripts/build_all.sh <platform>
+#   ./scripts/build_all.sh <platform> --shared    # also build .so/.dylib/.dll
 #   ./scripts/build_all.sh all
+#   ./scripts/build_all.sh all --shared
+#
+# Set MOREDEPS_BUILD_SHARED=1 in the environment to always build shared libs.
 #
 # Supported platforms:
 #   macos_arm64, linux_x64, linux_arm64, windows_x64, windows_arm64, wasm_emscripten
@@ -24,15 +28,31 @@ PLATFORMS=(
 )
 
 PLATFORM="${1:-}"
+BUILD_SHARED="${MOREDEPS_BUILD_SHARED:-0}"
+
+# Parse --shared flag from remaining args
+shift 2>/dev/null || true
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --shared) BUILD_SHARED=1 ;;
+    *) echo "Unknown option: $1"; exit 1 ;;
+  esac
+  shift
+done
+
 if [[ -z "${PLATFORM}" ]]; then
-  echo "Usage: $0 <platform>|all"
+  echo "Usage: $0 <platform>|all [--shared]"
   echo "Supported platforms: ${PLATFORMS[*]}"
   exit 1
 fi
 
 if [[ "${PLATFORM}" == "all" ]]; then
+  SHARED_FLAG=""
+  if [[ "${BUILD_SHARED}" == "1" ]]; then
+    SHARED_FLAG="--shared"
+  fi
   for p in "${PLATFORMS[@]}"; do
-    "$0" "$p"
+    "$0" "$p" ${SHARED_FLAG}
   done
   exit 0
 fi
@@ -148,6 +168,28 @@ if [[ "${PLATFORM}" == "wasm_emscripten" ]]; then
   echo "      etc.), but for browser HTTP/WebSocket/fetch use emscripten_fetch or JS"
   echo "      interop instead."
   echo ""
+fi
+
+# Second pass: shared libraries (.so/.dylib/.dll)
+if [[ "${BUILD_SHARED}" == "1" ]]; then
+  SHARED_BUILD_DIR="${REPO_ROOT}/_b/${PLATFORM}_shared"
+  echo ""
+  echo "======================================================================"
+  echo "Building shared libraries for: ${PLATFORM}"
+  echo "======================================================================"
+
+  mkdir -p "${SHARED_BUILD_DIR}"
+  cmake -S "${REPO_ROOT}" \
+        -B "${SHARED_BUILD_DIR}" \
+        -G "${GENERATOR}" \
+        -DCMAKE_TOOLCHAIN_FILE="${TOOLCHAIN}" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DMOREDEPS_BUILD_SHARED=ON \
+        -DCMAKE_INSTALL_PREFIX="${OUT_DIR}"
+
+  cmake --build "${SHARED_BUILD_DIR}" ${BUILD_PARALLEL}
+
+  echo "Shared libraries installed alongside static libs in: ${OUT_DIR}/lib/"
 fi
 
 echo "======================================================================"

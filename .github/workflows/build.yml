@@ -7,6 +7,10 @@ on:
         description: 'Platforms to build (all, linux, macos, windows, or comma-separated list)'
         default: 'all'
         required: true
+      shared:
+        description: 'Also build shared libraries (.so/.dylib/.dll)'
+        type: boolean
+        default: false
 
 env:
   CCACHE_DIR: ${{ github.workspace }}/.ccache
@@ -97,7 +101,7 @@ jobs:
           export CMAKE_C_COMPILER_LAUNCHER=ccache
           export CMAKE_CXX_COMPILER_LAUNCHER=ccache
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
-          ./scripts/build_all.sh linux_x64
+          ./scripts/build_all.sh linux_x64 ${{ inputs.shared && '--shared' || '' }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -148,7 +152,7 @@ jobs:
           export CMAKE_C_COMPILER_LAUNCHER=ccache
           export CMAKE_CXX_COMPILER_LAUNCHER=ccache
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
-          ./scripts/build_all.sh linux_arm64
+          ./scripts/build_all.sh linux_arm64 ${{ inputs.shared && '--shared' || '' }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -214,7 +218,7 @@ jobs:
           export CMAKE_C_COMPILER_LAUNCHER=ccache
           export CMAKE_CXX_COMPILER_LAUNCHER=ccache
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
-          ./scripts/build_all.sh wasm_emscripten
+          ./scripts/build_all.sh wasm_emscripten ${{ inputs.shared && '--shared' || '' }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -260,7 +264,7 @@ jobs:
           export CMAKE_C_COMPILER_LAUNCHER=ccache
           export CMAKE_CXX_COMPILER_LAUNCHER=ccache
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
-          ./scripts/build_all.sh macos_arm64
+          ./scripts/build_all.sh macos_arm64 ${{ inputs.shared && '--shared' || '' }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -309,7 +313,7 @@ jobs:
           export CMAKE_C_COMPILER_LAUNCHER=sccache
           export CMAKE_CXX_COMPILER_LAUNCHER=sccache
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
-          ./scripts/build_all.sh windows_x64
+          ./scripts/build_all.sh windows_x64 ${{ inputs.shared && '--shared' || '' }}
         shell: bash
 
       - name: Upload artifacts
@@ -359,7 +363,7 @@ jobs:
           export CMAKE_C_COMPILER_LAUNCHER=sccache
           export CMAKE_CXX_COMPILER_LAUNCHER=sccache
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
-          ./scripts/build_all.sh windows_arm64
+          ./scripts/build_all.sh windows_arm64 ${{ inputs.shared && '--shared' || '' }}
         shell: bash
 
       - name: Upload artifacts
