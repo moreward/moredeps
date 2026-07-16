@@ -205,12 +205,14 @@ def find_lib_files(dep_name: str, platform_dir: Path) -> list[Path]:
         return []
 
     expected_names = DEP_LIBRARY_NAMES.get(dep_name, [dep_name])
+    static_exts = {".a", ".lib"}
+    shared_exts = {".so", ".dylib", ".dll"}
     files = []
 
     for f in lib_dir.iterdir():
         if not f.is_file():
             continue
-        if f.suffix not in (".a", ".lib"):
+        if f.suffix not in (static_exts | shared_exts):
             continue
         # Match both the raw stem and the stem without a "lib" prefix:
         # libSDL3.a vs SDL3-static.lib, liblibunibreak.a vs libunibreak.lib
@@ -221,6 +223,30 @@ def find_lib_files(dep_name: str, platform_dir: Path) -> list[Path]:
         if any(c in expected_names for c in candidates):
             files.append(f)
 
+    return files
+
+
+def find_license_files(dep_name: str) -> list[Path]:
+    """Find all license files for a dependency (best effort)."""
+    dep_dir = Path("deps") / DIR_ALIAS.get(dep_name, dep_name)
+    if not dep_dir.exists():
+        return []
+
+    patterns = [
+        "LICENSE", "LICENSE.*", "LICENCE", "LICENCE.*",
+        "COPYING", "COPYING.*", "COPYRIGHT", "COPYRIGHT.*",
+        "LICENSES/*",
+    ]
+    files = []
+    for pat in patterns:
+        for f in sorted(dep_dir.glob(pat)):
+            if f.is_file() and f not in files:
+                files.append(f)
+    # Lua has the MIT license embedded in lua.h — extract a copy
+    if dep_name == "lua" and not files:
+        lua_h = dep_dir / "src" / "lua.h"
+        if lua_h.exists():
+            files.append(lua_h)  # we'll rename it to LICENSE in the zip
     return files
 
 
@@ -303,6 +329,7 @@ def package_dependency(dep_name: str, platform: str, out_dir: Path, repo_sha: st
     # Find files
     lib_files = find_lib_files(dep_name, platform_dir)
     header_files = find_header_files(dep_name, platform_dir)
+    license_files = find_license_files(dep_name)
 
     # If no files found, this dep wasn't built for this platform
     if not lib_files and not header_files:
@@ -312,28 +339,41 @@ def package_dependency(dep_name: str, platform: str, out_dir: Path, repo_sha: st
     zip_name = f"moredeps-{repo_sha[:8]}-{platform}-{dep_name}-{dep_commit[:8]}.zip"
     zip_path = out_dir / zip_name
 
+    zip_files = []  # track every file added
+
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         # Add libraries
         for f in lib_files:
             arcname = f"lib/{f.name}"
             zf.write(f, arcname)
+            zip_files.append({"path": arcname, "kind": "lib"})
 
         # Add headers
         for f in header_files:
             rel = f.relative_to(platform_dir / "include")
             arcname = f"include/{rel}"
             zf.write(f, arcname)
+            zip_files.append({"path": arcname, "kind": "header"})
 
-        # Add LICENSE if available
-        license_file = Path("deps") / DIR_ALIAS.get(dep_name, dep_name) / "LICENSE"
-        if license_file.exists():
-            zf.write(license_file, "LICENSE")
+        # Add license files (best effort)
+        seen_arcnames = {entry["path"] for entry in zip_files}
+        for f in license_files:
+            # For lua, the "license file" is lua.h — rename to LICENSE
+            if f.name == "lua.h" and dep_name == "lua":
+                arcname = "LICENSE"
+            else:
+                arcname = f.name if f.name.upper().startswith(("LICEN", "COPY")) else f"LICENSE.{f.suffix.lstrip('.') or 'txt'}"
+            if arcname not in seen_arcnames:
+                seen_arcnames.add(arcname)
+                zf.write(f, arcname)
+                zip_files.append({"path": arcname, "kind": "license"})
 
     return {
         "commit": dep_commit,
         "artifact_hash": sha256_file(zip_path),
         "filename": zip_name,
         "built": True,
+        "files": zip_files,
         **({"repo_url": repo_url} if repo_url else {}),
     }
 
