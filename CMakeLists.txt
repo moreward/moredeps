@@ -20,16 +20,7 @@ include(ExternalProject)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-# When MOREDEPS_BUILD_SHARED=ON, external projects are configured with
-# BUILD_SHARED_LIBS=ON and per-dep *_SHARED flags flipped. Use two build
-# passes: first static, then shared (install to the same prefix).
-option(MOREDEPS_BUILD_SHARED "Build shared libraries (.so/.dylib/.dll) alongside static" OFF)
-if(MOREDEPS_BUILD_SHARED)
-  set(BUILD_SHARED_LIBS ON CACHE BOOL "Build shared libraries" FORCE)
-else()
-  set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
-endif()
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
 
 # Respect the build type if the caller provided one; otherwise default to Release.
 if(NOT CMAKE_BUILD_TYPE)
@@ -126,9 +117,9 @@ endif()
 # Helper for adding dependency subprojects
 # -----------------------------------------------------------------------------
 function(moredeps_add_dep name)
-  set(options "")
+  set(options STATIC_ONLY)
   set(oneValueArgs SOURCE_DIR)
-  set(multiValueArgs CMAKE_ARGS DEPENDS BUILD_BYPRODUCTS INSTALL_COMMAND PATCH_COMMAND)
+  set(multiValueArgs CMAKE_ARGS SHARED_CMAKE_ARGS DEPENDS BUILD_BYPRODUCTS INSTALL_COMMAND PATCH_COMMAND)
   cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
   if(NOT ARG_SOURCE_DIR)
@@ -142,6 +133,7 @@ function(moredeps_add_dep name)
     set(PATCH_COMMAND_ARG PATCH_COMMAND ${ARG_PATCH_COMMAND})
   endif()
 
+  # Static variant
   ExternalProject_Add(
     ${name}
     SOURCE_DIR "${ARG_SOURCE_DIR}"
@@ -155,6 +147,30 @@ function(moredeps_add_dep name)
     DEPENDS ${ARG_DEPENDS}
     BUILD_BYPRODUCTS ${ARG_BUILD_BYPRODUCTS}
   )
+
+  # Shared variant -- auto-created for every dep that isn't STATIC_ONLY.
+  # Transforms dependency chain: curl -> boringssl becomes
+  # curl_shared -> boringssl_shared. 
+  if(MOREDEPS_BUILD_SHARED AND NOT ARG_STATIC_ONLY)
+    set(_shared_deps)
+    foreach(_d IN LISTS ARG_DEPENDS)
+      list(APPEND _shared_deps "${_d}_shared")
+    endforeach()
+
+    ExternalProject_Add(
+      ${name}_shared
+      SOURCE_DIR "${ARG_SOURCE_DIR}"
+      BINARY_DIR "${CMAKE_BINARY_DIR}/${name}_shared"
+      INSTALL_DIR "${CMAKE_INSTALL_PREFIX}"
+      CMAKE_ARGS
+        ${MOREDEPS_COMMON_CMAKE_ARGS}
+        "-DBUILD_SHARED_LIBS=ON"
+        ${ARG_SHARED_CMAKE_ARGS}
+      ${PATCH_COMMAND_ARG}
+      ${INSTALL_COMMAND_ARG}
+      DEPENDS ${_shared_deps}
+    )
+  endif()
 endfunction()
 
 # Helper for generating Sokol backend variants.
@@ -219,6 +235,7 @@ function(moredeps_sokol_variant component backend)
   endif()
 
   moredeps_add_dep(${_variant_name}
+    STATIC_ONLY
     SOURCE_DIR "${_variant_src_dir}"
     DEPENDS ${_depends}
   )
@@ -242,7 +259,6 @@ endif()
 
 moredeps_add_dep(boringssl
   CMAKE_ARGS
-    "-DBUILD_SHARED_LIBS=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,ON,OFF>"
     "-DBUILD_TESTING=OFF"
     "-DFIPS=OFF"
     "-DOPENSSL_NO_ASM=${BORINGSSL_NO_ASM}"
@@ -264,8 +280,8 @@ moredeps_add_dep(box3d
 # --- cglm ---
 moredeps_add_dep(cglm
   CMAKE_ARGS
-    "-DCGLM_STATIC=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,OFF,ON>"
-    "-DCGLM_SHARED=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,ON,OFF>"
+    "-DCGLM_STATIC=ON"
+    "-DCGLM_SHARED=OFF"
     "-DCGLM_USE_TEST=OFF"
     "-DCGLM_USE_C99=OFF"
 )
@@ -273,6 +289,7 @@ moredeps_add_dep(cglm
 # --- cimgui ---
 # Upstream CMakeLists hard-codes SHARED. We wrap it to build a static lib.
 moredeps_add_dep(cimgui
+  STATIC_ONLY
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/cimgui"
 )
 
@@ -280,6 +297,7 @@ moredeps_add_dep(cimgui
 # Upstream CMakeLists includes GNUInstallDirs after add_subdirectory(src), so
 # CMAKE_INSTALL_LIBDIR is empty during install. We wrap it to avoid patching.
 moredeps_add_dep(budouxc
+  STATIC_ONLY
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/budouxc"
 )
 
@@ -306,7 +324,7 @@ moredeps_add_dep(curl
   DEPENDS boringssl
   CMAKE_ARGS
     "-DBUILD_CURL_EXE=OFF"
-    "-DBUILD_STATIC_LIBS=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,OFF,ON>"
+    "-DBUILD_STATIC_LIBS=ON"
     "-DBUILD_TESTING=OFF"
     "-DBUILD_EXAMPLES=OFF"
     "-DBUILD_LIBCURL_DOCS=OFF"
@@ -399,8 +417,8 @@ moredeps_add_dep(dawn
 if(NOT EMSCRIPTEN)
   moredeps_add_dep(enet
     CMAKE_ARGS
-      "-DENET_STATIC=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,OFF,ON>"
-      "-DENET_SHARED=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,ON,OFF>"
+      "-DENET_STATIC=ON"
+      "-DENET_SHARED=OFF"
       "-DENET_TEST=OFF"
       "-DENET_USE_MORE_PEERS=OFF"
       "-DENET_IPV4_ONLY=OFF"
@@ -410,8 +428,8 @@ endif()
 # --- flecs ---
 moredeps_add_dep(flecs
   CMAKE_ARGS
-    "-DFLECS_STATIC=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,OFF,ON>"
-    "-DFLECS_SHARED=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,ON,OFF>"
+    "-DFLECS_STATIC=ON"
+    "-DFLECS_SHARED=OFF"
     "-DFLECS_TESTS=OFF"
     "-DFLECS_PIC=ON"
 )
@@ -434,7 +452,7 @@ moredeps_add_dep(freetype
 if(NOT EMSCRIPTEN)
   moredeps_add_dep(glfw
     CMAKE_ARGS
-      "-DBUILD_SHARED_LIBS=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,ON,OFF>"
+      "-DBUILD_SHARED_LIBS=OFF"
       "-DGLFW_BUILD_DOCS=OFF"
       "-DGLFW_INSTALL=ON"
       "-DGLFW_BUILD_WAYLAND=OFF"
@@ -468,8 +486,11 @@ if(NOT EMSCRIPTEN)
     DEPENDS boringssl
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/libwebsockets"
     CMAKE_ARGS
-      "-DLWS_WITH_STATIC=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,OFF,ON>"
-      "-DLWS_WITH_SHARED=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,ON,OFF>"
+      "-DLWS_WITH_STATIC=ON"
+      "-DLWS_WITH_SHARED=OFF"
+    SHARED_CMAKE_ARGS
+      "-DLWS_WITH_STATIC=OFF"
+      "-DLWS_WITH_SHARED=ON"
       "-DLWS_WITHOUT_TESTAPPS=ON"
       "-DLWS_WITHOUT_TEST_SERVER=ON"
       "-DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON"
@@ -598,14 +619,15 @@ endif()
 # --- libunibreak ---
 # Makefile-only upstream; wrapped to provide CMake install rules.
 moredeps_add_dep(libunibreak
+  STATIC_ONLY
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/libunibreak"
 )
 
 # --- mimalloc ---
 moredeps_add_dep(mimalloc
   CMAKE_ARGS
-    "-DMI_BUILD_STATIC=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,OFF,ON>"
-    "-DMI_BUILD_SHARED=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,ON,OFF>"
+    "-DMI_BUILD_STATIC=ON"
+    "-DMI_BUILD_SHARED=OFF"
     "-DMI_BUILD_OBJECT=OFF"
     "-DMI_BUILD_TESTS=OFF"
     "-DMI_OVERRIDE=ON"
@@ -645,8 +667,8 @@ moredeps_add_dep(miniaudio
 # --- physfs ---
 moredeps_add_dep(physfs
   CMAKE_ARGS
-    "-DPHYSFS_BUILD_STATIC=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,OFF,ON>"
-    "-DPHYSFS_BUILD_SHARED=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,ON,OFF>"
+    "-DPHYSFS_BUILD_STATIC=ON"
+    "-DPHYSFS_BUILD_SHARED=OFF"
     "-DPHYSFS_BUILD_TEST=OFF"
     "-DPHYSFS_BUILD_DOCS=OFF"
     "-DPHYSFS_ARCHIVE_ZIP=ON"
@@ -666,6 +688,7 @@ if(EMSCRIPTEN)
   moredeps_add_dep(raylib
     CMAKE_ARGS
       "-DBUILD_EXAMPLES=OFF"
+      "-DBUILD_SHARED_LIBS=OFF"
       "-DPLATFORM=Web"
   )
 else()
@@ -673,7 +696,7 @@ else()
     DEPENDS glfw
     CMAKE_ARGS
       "-DBUILD_EXAMPLES=OFF"
-      "-DBUILD_SHARED_LIBS=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,ON,OFF>"
+      "-DBUILD_SHARED_LIBS=OFF"
       "-DUSE_EXTERNAL_GLFW=ON"
       "-DOPENGL_VERSION=3.3"
   )
@@ -685,6 +708,7 @@ endif()
 # it on Windows/ARM64 as well.
 if(NOT EMSCRIPTEN AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64"))
   moredeps_add_dep(mtcc
+    STATIC_ONLY
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/mtcc"
   )
 endif()
@@ -701,8 +725,8 @@ endif()
 # --- sdl3 ---
 moredeps_add_dep(sdl3
   CMAKE_ARGS
-    "-DSDL_SHARED=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,ON,OFF>"
-    "-DSDL_STATIC=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,OFF,ON>"
+    "-DSDL_SHARED=OFF"
+    "-DSDL_STATIC=ON"
     "-DSDL_TEST_LIBRARY=OFF"
     "-DSDL_TESTS=OFF"
     "-DSDL_EXAMPLES=OFF"
@@ -736,6 +760,7 @@ moredeps_add_dep(sdl3
 # On Emscripten we compile with -DWEBGPU_BACKEND_EMDAWNWEBGPU so that
 # sdl3webgpu uses the emdawnwebgpu surface descriptor types.
 moredeps_add_dep(sdl3webgpu
+  STATIC_ONLY
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/sdl3webgpu"
   DEPENDS sdl3 dawn
 )
@@ -752,6 +777,7 @@ moredeps_add_dep(SheenBidi
 # global CMAKE_COMPILE_WARNING_AS_ERROR=ON. We instead build it from a wrapper
 # that depends on the libraries already built by this project.
 moredeps_add_dep(skribidi
+  STATIC_ONLY
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/skribidi"
   DEPENDS harfbuzz SheenBidi libunibreak budouxc
   CMAKE_ARGS
@@ -784,6 +810,7 @@ moredeps_add_dep(sqlite-amalgamation
 # BSD sockets are not available in a browser, so exclude on Emscripten.
 if(NOT EMSCRIPTEN)
   moredeps_add_dep(tinycsocket
+    STATIC_ONLY
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/tinycsocket"
     CMAKE_ARGS
       "-DTCS_ENABLE_TESTS=OFF"
@@ -795,6 +822,7 @@ endif()
 
 # --- tracy ---
 moredeps_add_dep(tracy
+  STATIC_ONLY
   CMAKE_ARGS
     "-DTRACY_ENABLE=ON"
     "-DTRACY_Fortran=OFF"
@@ -841,8 +869,8 @@ moredeps_add_dep(utf8proc
 # --- zlib ---
 moredeps_add_dep(zlib
   CMAKE_ARGS
-    "-DZLIB_BUILD_STATIC=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,OFF,ON>"
-    "-DZLIB_BUILD_SHARED=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,ON,OFF>"
+    "-DZLIB_BUILD_STATIC=ON"
+    "-DZLIB_BUILD_SHARED=OFF"
     "-DZLIB_BUILD_TESTING=OFF"
     "-DZLIB_INSTALL=ON"
     "-DZLIB_PREFIX=OFF"
@@ -854,7 +882,7 @@ moredeps_add_dep(lz4
   CMAKE_ARGS
     "-DLZ4_BUILD_CLI=OFF"
     "-DLZ4_POSITION_INDEPENDENT_LIB=ON"
-    "-DBUILD_STATIC_LIBS=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,OFF,ON>"
+    "-DBUILD_STATIC_LIBS=ON"
 )
 
 # --- xxhash ---
@@ -869,8 +897,8 @@ moredeps_add_dep(xxhash
 moredeps_add_dep(zstd
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/zstd/build/cmake"
   CMAKE_ARGS
-    "-DZSTD_BUILD_STATIC=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,OFF,ON>"
-    "-DZSTD_BUILD_SHARED=$<IF:$<BOOL:${MOREDEPS_BUILD_SHARED}>,ON,OFF>"
+    "-DZSTD_BUILD_STATIC=ON"
+    "-DZSTD_BUILD_SHARED=OFF"
     "-DZSTD_BUILD_COMPRESSION=ON"
     "-DZSTD_BUILD_DECOMPRESSION=ON"
     "-DZSTD_BUILD_DICTBUILDER=OFF"
@@ -926,6 +954,7 @@ foreach(_name IN LISTS MOREDEPS_WRAPPER_NAMES)
     continue()
   endif()
 
+  # STATIC_ONLY: wrappers are thin static libs from header-only sources
   ExternalProject_Add(
     ${_name}
     SOURCE_DIR "${_source_dir}"
@@ -981,6 +1010,7 @@ endforeach()
 # --- lua ---
 # Lua is Makefile-only. We wrap it in src/lua/ to build it via CMake.
 moredeps_add_dep(lua
+  STATIC_ONLY
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/lua"
 )
 
