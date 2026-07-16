@@ -199,29 +199,34 @@ def sha256_file(path: Path) -> str:
 
 
 def find_lib_files(dep_name: str, platform_dir: Path) -> list[Path]:
-    """Find all library files belonging to a dependency in a platform directory."""
-    lib_dir = platform_dir / "lib"
-    if not lib_dir.exists():
-        return []
-
+    """Find all library files belonging to a dependency in a platform directory.
+    
+    On Windows, .dll files are installed to bin/ (RUNTIME destination),
+    while .lib import libraries stay in lib/ (ARCHIVE destination).
+    On Unix, both .a and .so live in lib/.
+    """
     expected_names = DEP_LIBRARY_NAMES.get(dep_name, [dep_name])
     static_exts = {".a", ".lib"}
     shared_exts = {".so", ".dylib", ".dll"}
     files = []
 
-    for f in lib_dir.iterdir():
-        if not f.is_file():
+    for search_dir in ("lib", "bin"):
+        d = platform_dir / search_dir
+        if not d.exists():
             continue
-        if f.suffix not in (static_exts | shared_exts):
-            continue
-        # Match both the raw stem and the stem without a "lib" prefix:
-        # libSDL3.a vs SDL3-static.lib, liblibunibreak.a vs libunibreak.lib
-        stem = f.stem
-        candidates = [stem]
-        if stem.startswith("lib"):
-            candidates.append(stem[3:])
-        if any(c in expected_names for c in candidates):
-            files.append(f)
+        for f in d.iterdir():
+            if not f.is_file():
+                continue
+            if f.suffix not in (static_exts | shared_exts):
+                continue
+            # Match both the raw stem and the stem without a "lib" prefix:
+            # libSDL3.a vs SDL3-static.lib, liblibunibreak.a vs libunibreak.lib
+            stem = f.stem
+            candidates = [stem]
+            if stem.startswith("lib"):
+                candidates.append(stem[3:])
+            if any(c in expected_names for c in candidates):
+                files.append(f)
 
     return files
 

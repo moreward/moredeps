@@ -483,14 +483,12 @@ if(NOT EMSCRIPTEN)
     set(_LWS_SSL_LIBS "${CMAKE_INSTALL_PREFIX}/lib/libssl.a;${CMAKE_INSTALL_PREFIX}/lib/libcrypto.a")
   endif()
   moredeps_add_dep(libwebsockets
+    STATIC_ONLY
     DEPENDS boringssl
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/libwebsockets"
     CMAKE_ARGS
       "-DLWS_WITH_STATIC=ON"
       "-DLWS_WITH_SHARED=OFF"
-    SHARED_CMAKE_ARGS
-      "-DLWS_WITH_STATIC=OFF"
-      "-DLWS_WITH_SHARED=ON"
       "-DLWS_WITHOUT_TESTAPPS=ON"
       "-DLWS_WITHOUT_TEST_SERVER=ON"
       "-DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON"
