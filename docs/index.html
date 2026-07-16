@@ -158,6 +158,11 @@
     </footer>
 
     <script>
+        function escapeHtml(s) {
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
         const REPO = 'moreward/moredeps';
         const contentDiv = document.getElementById('content');
         const releaseSelect = document.getElementById('releaseSelect');
@@ -237,11 +242,30 @@
                         const sha = info.commit ? info.commit.substring(0, 7) : '';
                         const href = info.filename ? downloadUrl(release, info.filename) : release.html_url;
                         const artifactHash = info.artifact_hash || '';
-                        const title = `${info.filename || ''}${artifactHash ? '\n' + artifactHash : ''}`;
+                        // Build tooltip: filename + hash + file listing
+                        let title = info.filename || '';
+                        if (artifactHash) title += '\n' + artifactHash;
+                        if (info.files && info.files.length) {
+                            const nStatic = info.files.filter(f => f.kind === 'static').length;
+                            const nShared = info.files.filter(f => f.kind === 'shared').length;
+                            const nHeaders = info.files.filter(f => f.kind === 'header').length;
+                            title += '\n\nContents:';
+                            if (nStatic) title += `\n  ${nStatic} static lib(s)`;
+                            if (nShared) title += `\n  ${nShared} shared lib(s)`;
+                            if (nHeaders) title += `\n  ${nHeaders} header(s)`;
+                        }
                         const check = info.filename
                             ? `<input type="checkbox" class="dl-check" data-dep="${dep}" data-platform="${platform}" data-url="${href}" data-name="${info.filename}" data-hash="${artifactHash}"> `
                             : '';
-                        html += `<td><label>${check}<a href="${href}" title="${title}">download</a></label> <span class="sha">${sha}</span></td>`;
+                        // Show static/shared badge
+                        let badge = '';
+                        if (info.files) {
+                            const hasStatic = info.files.some(f => f.kind === 'static');
+                            const hasShared = info.files.some(f => f.kind === 'shared');
+                            if (hasStatic && hasShared) badge = ' <span style="font-size:0.7rem;background:#e8f5e9;color:#2e7d32;padding:0 3px;border-radius:2px" title="static + shared">s+s</span>';
+                            else if (hasShared) badge = ' <span style="font-size:0.7rem;background:#fff3e0;color:#e65100;padding:0 3px;border-radius:2px" title="shared only">shr</span>';
+                        }
+                        html += `<td><label>${check}<a href="${href}" title="${escapeHtml(title)}">download</a>${badge}</label> <span class="sha">${sha}</span></td>`;
                     } else {
                         html += '<td class="status-fail">failed</td>';
                     }

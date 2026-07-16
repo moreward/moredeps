@@ -194,8 +194,8 @@ if [[ "${BUILD_SHARED}" == "1" && "${PLATFORM}" != "wasm_emscripten" ]]; then
 
   cmake --build "${SHARED_BUILD_DIR}" ${BUILD_PARALLEL}
 
-  # Merge shared libraries into the main output (skip static libs/headers
-  # that were already installed by the static pass).
+  # Merge shared libraries into the main output.
+  # Static .a/.lib already installed by the static pass.
   echo "Merging shared libraries into ${OUT_DIR}/"
   # Unix: .so/.dylib in lib/
   find "${SHARED_TMP}/lib" -name '*.so' -o -name '*.so.*' -o -name '*.dylib' 2>/dev/null | while read f; do
@@ -203,11 +203,17 @@ if [[ "${BUILD_SHARED}" == "1" && "${PLATFORM}" != "wasm_emscripten" ]]; then
     cp -a "$f" "${OUT_DIR}/lib/"
     echo "  lib/$(basename $f)"
   done
-  # Windows: .dll in bin/
+  # Windows: .dll in bin/, import .lib in lib/ (rename to avoid overwriting static .lib)
   find "${SHARED_TMP}/bin" -name '*.dll' 2>/dev/null | while read f; do
     mkdir -p "${OUT_DIR}/bin"
     cp -a "$f" "${OUT_DIR}/bin/"
     echo "  bin/$(basename $f)"
+  done
+  # Copy import .lib files under lib/ (for linking against the DLL)
+  find "${SHARED_TMP}/lib" -name '*.lib' 2>/dev/null | while read f; do
+    mkdir -p "${OUT_DIR}/lib"
+    cp -a "$f" "${OUT_DIR}/lib/"
+    echo "  lib/$(basename $f) (import)"
   done
   rm -rf "${SHARED_TMP}"
   echo "Shared libraries merged."
