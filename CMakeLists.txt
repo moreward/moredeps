@@ -164,6 +164,7 @@ function(moredeps_add_dep name)
       INSTALL_DIR "${CMAKE_INSTALL_PREFIX}"
       CMAKE_ARGS
         ${MOREDEPS_COMMON_CMAKE_ARGS}
+        ${ARG_CMAKE_ARGS}
         "-DBUILD_SHARED_LIBS=ON"
         ${ARG_SHARED_CMAKE_ARGS}
       ${PATCH_COMMAND_ARG}
