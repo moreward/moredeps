@@ -140,6 +140,7 @@
         <select id="releaseSelect">
             <option value="">Loading...</option>
         </select>
+        <span style="margin-left:1rem;">📋 <a id="manifestLink" href="#">build_manifest.json</a></span>
     </div>
 
     <div id="content">
@@ -326,7 +327,8 @@
                 return `<p class="error">No downloadable artifacts in this release. <a href="${release.html_url}">View on GitHub</a></p>`;
             }
             let html = `<p>Per-dependency status is only shown for the latest build. ` +
-                `<a href="${release.html_url}">View this release on GitHub</a></p>`;
+                `<a href="${release.html_url}">View this release on GitHub</a> · ` +
+                `<a href="${manifestUrl(release)}">Download manifest</a></p>`;
             html += '<table><tr><th>Artifact</th><th>Size</th><th></th></tr>';
             for (const asset of zips) {
                 const sizeMB = (asset.size / (1024 * 1024)).toFixed(1);
@@ -337,7 +339,12 @@
             return html;
         }
 
+        function manifestUrl(release) {
+            return `https://github.com/${REPO}/releases/download/${release.tag_name}/build_manifest.json`;
+        }
+
         function loadRelease(release, localManifest) {
+            document.getElementById('manifestLink').href = manifestUrl(release);
             if (localManifest && release.tag_name === 'latest') {
                 contentDiv.innerHTML = renderTable(localManifest, release);
                 bindDownloadUI();
