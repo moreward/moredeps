@@ -4,7 +4,7 @@ project(@SOKOL_VARIANT_NAME@ LANGUAGES C @SOKOL_OBJC@)
 set(SOKOL_SRC_DIR "@SOKOL_SRC_DIR@")
 set(SOKOL_GP_SRC_DIR "@SOKOL_GP_SRC_DIR@")
 
-add_library(@SOKOL_VARIANT_NAME@ STATIC sokol_impl.c)
+add_library(@SOKOL_VARIANT_NAME@ sokol_impl.c)
 target_include_directories(@SOKOL_VARIANT_NAME@ PUBLIC
   $<BUILD_INTERFACE:${SOKOL_SRC_DIR}>
   $<INSTALL_INTERFACE:include/sokol_gp>
@@ -14,6 +14,10 @@ set_target_properties(@SOKOL_VARIANT_NAME@ PROPERTIES
   C_STANDARD 11
   POSITION_INDEPENDENT_CODE ON
 )
+
+if(WIN32 AND BUILD_SHARED_LIBS)
+  target_compile_definitions(@SOKOL_VARIANT_NAME@ PUBLIC SOKOL_DLL)
+endif()
 
 if(APPLE)
   if("@SOKOL_BACKEND@" STREQUAL "METAL")
@@ -35,10 +39,10 @@ if(WIN32 AND "@SOKOL_BACKEND@" STREQUAL "D3D11")
 endif()
 
 if("@SOKOL_BACKEND@" STREQUAL "WGPU")
-  # For WGPU variants, the final application must link the Dawn monolithic
-  # library (libwebgpu_dawn.a) or, on Emscripten, the emdawnwebgpu JS files.
-  # We do not link it here because the variant itself is a static library and
-  # Dawn may not be installed yet when this variant is configured.
+  if(BUILD_SHARED_LIBS)
+    target_link_directories(@SOKOL_VARIANT_NAME@ PRIVATE "${CMAKE_INSTALL_PREFIX}/lib")
+    target_link_libraries(@SOKOL_VARIANT_NAME@ PRIVATE webgpu_dawn)
+  endif()
 endif()
 
 install(TARGETS @SOKOL_VARIANT_NAME@

@@ -17,7 +17,7 @@ file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/sokol_gp_compat")
 file(COPY ${SOKOL_GP_VENDOR_DIR}/ DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/sokol_gp_compat")
 file(COPY "${SOKOL_GP_SRC_DIR}/sokol_gp.h" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/sokol_gp_compat")
 
-add_library(sokol_gp STATIC sokol_gp.c)
+add_library(sokol_gp sokol_gp.c)
 target_include_directories(sokol_gp PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/sokol_gp_compat>
   $<BUILD_INTERFACE:${SOKOL_GP_SRC_DIR}>

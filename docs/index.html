@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>moredeps — Prebuilt Static Libraries</title>
+    <title>moredeps — Prebuilt C/C++ Libraries</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -120,10 +120,13 @@
 </head>
 <body>
     <h1>📦 moredeps</h1>
-    <p class="subtitle">Prebuilt static libraries for C/C++ dependencies across platforms</p>
+    <p class="subtitle">Prebuilt static and shared libraries for C/C++ dependencies across platforms</p>
 
     <div class="info-box">
-        <strong>Quick start:</strong> Download the library + headers for your platform, or
+        <strong>Quick start:</strong> Each dependency ships as a single zip with
+        <code>static/</code> and <code>dynamic/</code> folders, then per-platform
+        subfolders containing the libraries and headers. Download the zip for the
+        libraries you need, or
         <a href="https://github.com/moreward/moredeps">build from source</a>.
         <br><br>
         <code>git clone https://github.com/moreward/moredeps.git</code><br>
@@ -302,13 +305,22 @@
 
             const refresh = () => {
                 const sel = boxes().filter(b => b.checked);
-                ta.value = sel.map(b => `curl -fLO ${b.dataset.url}`).join('\n');
-                ha.value = sel.filter(b => b.dataset.hash).map(b => {
+                // The same zip can be reachable from multiple platform cells,
+                // so deduplicate by filename before generating commands.
+                const uniqueByName = new Map();
+                for (const b of sel) {
+                    if (!uniqueByName.has(b.dataset.name)) {
+                        uniqueByName.set(b.dataset.name, b);
+                    }
+                }
+                const unique = [...uniqueByName.values()];
+                ta.value = unique.map(b => `curl -fLO ${b.dataset.url}`).join('\n');
+                ha.value = unique.filter(b => b.dataset.hash).map(b => {
                     const hash = b.dataset.hash.replace(/^sha256:/, '');
                     return `${hash}  ${b.dataset.name}`;
                 }).join('\n');
-                copyBtn.disabled = sel.length === 0;
-                count.textContent = sel.length ? `${sel.length} selected` : '';
+                copyBtn.disabled = unique.length === 0;
+                count.textContent = unique.length ? `${unique.length} selected` : '';
                 for (const rc of rowBoxes()) setGroupState(rc, boxes().filter(b => b.dataset.dep === rc.dataset.dep));
                 for (const cc of colBoxes()) setGroupState(cc, boxes().filter(b => b.dataset.platform === cc.dataset.platform));
                 if (all) setGroupState(all, boxes());

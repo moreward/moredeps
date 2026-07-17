@@ -238,7 +238,6 @@ function(moredeps_sokol_variant component backend)
   endif()
 
   moredeps_add_dep(${_variant_name}
-    STATIC_ONLY
     SOURCE_DIR "${_variant_src_dir}"
     DEPENDS ${_depends}
   )
@@ -959,12 +958,10 @@ set(MOREDEPS_WRAPPER_NAMES
   utest
 )
 
-# Wrappers that cannot be built as shared libraries (usually because they
-# define main() or depend on a target that does). Keep these static-only.
+# Wrappers that cannot be built as shared libraries.
 set(MOREDEPS_WRAPPER_STATIC_ONLY
   sokol_app
   sokol_glue
-  sokol_gp
 )
 
 foreach(_name IN LISTS MOREDEPS_WRAPPER_NAMES)

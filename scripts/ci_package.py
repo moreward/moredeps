@@ -2,8 +2,23 @@
 """
 scripts/ci_package.py
 
-Packages built artifacts into per-dependency, per-platform zip files and
-generates a build_manifest.json.
+Packages built artifacts into per-dependency zip files and generates a
+build_manifest.json.
+
+Each zip contains one dependency, organized by linkage type and platform:
+
+    <dependency>.zip
+      static/
+        <platform>/
+          lib/        - static libraries (.a, .lib)
+          include/    - public headers
+      dynamic/
+        <platform>/
+          lib/        - shared libraries (.so, .dylib) and import .lib
+          lib/import/ - Windows import libraries (kept separate from static .lib)
+          bin/        - Windows runtime DLLs
+          include/    - public headers
+      licenses/     - upstream license files (best effort)
 
 Usage:
     python scripts/ci_package.py --out-dir _out/ --repo-sha <sha> --manifest-out build_manifest.json
@@ -17,8 +32,10 @@ The script expects _out/ to contain subdirectories like:
     _out/wasm_emscripten/
 
 Each platform directory should have:
-    lib/     - static libraries
-    include/ - public headers
+    lib/          - static libraries
+    lib/import/   - Windows import libraries (for the DLL)
+    bin/          - Windows runtime DLLs
+    include/      - public headers
 """
 
 import argparse
@@ -198,12 +215,30 @@ def sha256_file(path: Path) -> str:
     return f"sha256:{h.hexdigest()}"
 
 
+def classify_lib(path: Path) -> str:
+    """Return 'static' or 'shared' for a library file path.
+
+    On Windows, import libraries for DLLs are staged under lib/import/ and are
+    considered shared linkage artifacts. Static .lib files live directly in lib/.
+    """
+    suffix = path.suffix.lower()
+    if suffix == ".a":
+        return "static"
+    if suffix in (".so", ".dylib"):
+        return "shared"
+    if suffix == ".dll":
+        return "shared"
+    if suffix == ".lib":
+        # Import libs are staged under lib/import/ on Windows; everything else
+        # in lib/ is a static library.
+        if path.parent.name == "import" and path.parent.parent.name == "lib":
+            return "shared"
+        return "static"
+    return "static"
+
+
 def find_lib_files(dep_name: str, platform_dir: Path) -> list[Path]:
     """Find all library files belonging to a dependency in a platform directory.
-    
-    On Windows, .dll files are installed to bin/ (RUNTIME destination),
-    while .lib import libraries stay in lib/ (ARCHIVE destination).
-    On Unix, both .a and .so live in lib/.
     """
     expected_names = DEP_LIBRARY_NAMES.get(dep_name, [dep_name])
     static_exts = {".a", ".lib"}
@@ -291,6 +326,7 @@ def find_header_files(dep_name: str, platform_dir: Path) -> list[Path]:
     search_terms = known_headers.get(dep_name, [dep_name.lower()])
 
     files = []
+    seen_paths = set()
 
     # Look for dep-specific subdirectories: include/<dep_name> and
     # include/<term> (e.g. include/openssl, include/freetype2)
@@ -298,8 +334,9 @@ def find_header_files(dep_name: str, platform_dir: Path) -> list[Path]:
         dep_include_dir = include_dir / subdir
         if dep_include_dir.is_dir():
             for f in dep_include_dir.rglob("*"):
-                if f.is_file():
+                if f.is_file() and f not in seen_paths:
                     files.append(f)
+                    seen_paths.add(f)
 
     # Also check for headers directly in include/ matching the search terms
     for f in include_dir.iterdir():
@@ -308,88 +345,135 @@ def find_header_files(dep_name: str, platform_dir: Path) -> list[Path]:
         stem = f.stem.lower()
         for term in search_terms:
             if term.lower() in stem:
-                files.append(f)
+                if f not in seen_paths:
+                    files.append(f)
+                    seen_paths.add(f)
                 break
 
     return files
 
 
-def package_dependency(dep_name: str, platform: str, out_dir: Path, repo_sha: str,
-                       submodule_urls: dict[str, str]) -> dict | None:
-    """Create a zip for a dependency/platform and return manifest entry."""
-    platform_dir = out_dir / platform
+def collect_files_for_platform(dep_name: str, platform: str, platform_dir: Path) -> list[tuple[Path, str, str]]:
+    """Collect files for one dep/platform and return (disk_path, zip_arcname, kind) tuples.
+
+    The arcname layout is:
+        static/<platform>/lib/...          for static libraries
+        static/<platform>/include/...       for headers when static libs exist
+        dynamic/<platform>/lib/...          for shared libraries (.so/.dylib)
+        dynamic/<platform>/lib/import/...   for Windows import .lib files
+        dynamic/<platform>/bin/...          for Windows runtime .dll files
+        dynamic/<platform>/include/...      for headers when dynamic libs exist
+    """
+    lib_files = find_lib_files(dep_name, platform_dir)
+    header_files = find_header_files(dep_name, platform_dir)
+    if not lib_files and not header_files:
+        return []
+
+    result: list[tuple[Path, str, str]] = []
+    has_static = False
+    has_shared = False
+
+    for f in lib_files:
+        kind = classify_lib(f)
+        if kind == "static":
+            has_static = True
+            arcname = f"static/{platform}/lib/{f.name}"
+        else:
+            has_shared = True
+            if f.suffix.lower() == ".dll":
+                arcname = f"dynamic/{platform}/bin/{f.name}"
+            elif f.parent.name == "import" and f.parent.parent.name == "lib":
+                arcname = f"dynamic/{platform}/lib/import/{f.name}"
+            else:
+                arcname = f"dynamic/{platform}/lib/{f.name}"
+        result.append((f, arcname, kind))
+
+    for f in header_files:
+        rel = f.relative_to(platform_dir / "include")
+        # Provide headers in whichever linkage folders have artifacts.
+        if has_static:
+            result.append((f, f"static/{platform}/include/{rel}", "header"))
+        if has_shared:
+            result.append((f, f"dynamic/{platform}/include/{rel}", "header"))
+        # If there are no libraries (shouldn't happen for our deps), still
+        # include headers under static/ for discoverability.
+        if not has_static and not has_shared:
+            result.append((f, f"static/{platform}/include/{rel}", "header"))
+
+    return result
+
+
+def package_dependency(dep_name: str, out_dir: Path, repo_sha: str,
+                       submodule_urls: dict[str, str]) -> dict[str, dict | None]:
+    """Create a single zip for a dependency and return per-platform manifest entries."""
     dep_commit = get_submodule_commit(dep_name)
     dep_dir = f"deps/{DIR_ALIAS.get(dep_name, dep_name)}"
     repo_url = submodule_urls.get(dep_dir)
 
-    # Check exclusion first
-    reason = EXCLUDED.get((dep_name, platform))
-    if reason:
-        return {
-            "commit": dep_commit,
-            "built": False,
-            "reason": reason,
-        }
-
-    # Find files
-    lib_files = find_lib_files(dep_name, platform_dir)
-    header_files = find_header_files(dep_name, platform_dir)
-    license_files = find_license_files(dep_name)
-
-    # If no files found, this dep wasn't built for this platform
-    if not lib_files and not header_files:
-        return None
-
-    # Create zip
-    zip_name = f"moredeps-{repo_sha[:8]}-{platform}-{dep_name}-{dep_commit[:8]}.zip"
+    zip_name = f"moredeps-{repo_sha[:8]}-{dep_name}-{dep_commit[:8]}.zip"
     zip_path = out_dir / zip_name
 
-    zip_files = []  # track every file added
+    per_platform: dict[str, dict | None] = {}
+    has_any_files = False
 
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        # Add libraries
-        for f in lib_files:
-            # .dll files live in bin/ on disk but ship in bin/ in the zip.
-            # import .lib files live in lib/import/ on disk and ship in lib/import/ in the zip.
-            if f.parent.name == "bin":
-                subdir = "bin"
-            elif f.parent.name == "import" and f.parent.parent.name == "lib":
-                subdir = "lib/import"
-            else:
-                subdir = "lib"
-            arcname = f"{subdir}/{f.name}"
-            zf.write(f, arcname)
-            kind = "shared" if f.suffix in (".so", ".dylib", ".dll") else "static"
-            zip_files.append({"path": arcname, "kind": kind})
+        seen_arcnames: set[str] = set()
 
-        # Add headers
-        for f in header_files:
-            rel = f.relative_to(platform_dir / "include")
-            arcname = f"include/{rel}"
-            zf.write(f, arcname)
-            zip_files.append({"path": arcname, "kind": "header"})
+        for platform in PLATFORMS:
+            reason = EXCLUDED.get((dep_name, platform))
+            if reason:
+                per_platform[platform] = {
+                    "commit": dep_commit,
+                    "built": False,
+                    "reason": reason,
+                }
+                continue
 
-        # Add license files (best effort)
-        seen_arcnames = {entry["path"] for entry in zip_files}
-        for f in license_files:
-            # For lua, the "license file" is lua.h — rename to LICENSE
-            if f.name == "lua.h" and dep_name == "lua":
-                arcname = "LICENSE"
-            else:
-                arcname = f.name if f.name.upper().startswith(("LICEN", "COPY")) else f"LICENSE.{f.suffix.lstrip('.') or 'txt'}"
-            if arcname not in seen_arcnames:
+            files = collect_files_for_platform(dep_name, platform, out_dir / platform)
+            if not files:
+                per_platform[platform] = None
+                continue
+
+            has_any_files = True
+            platform_files: list[dict[str, str]] = []
+            for disk_path, arcname, kind in files:
+                zf.write(disk_path, arcname)
                 seen_arcnames.add(arcname)
-                zf.write(f, arcname)
-                zip_files.append({"path": arcname, "kind": "license"})
+                platform_files.append({"path": arcname, "kind": kind})
 
-    return {
-        "commit": dep_commit,
-        "artifact_hash": sha256_file(zip_path),
-        "filename": zip_name,
-        "built": True,
-        "files": zip_files,
-        **({"repo_url": repo_url} if repo_url else {}),
-    }
+            per_platform[platform] = {
+                "commit": dep_commit,
+                "built": True,
+                "files": platform_files,
+                "filename": zip_name,
+                **({"repo_url": repo_url} if repo_url else {}),
+            }
+
+        # Add license files (best effort). Deduplicate by arcname to avoid
+        # overwriting a header/lib with the same name.
+        license_files = find_license_files(dep_name)
+        for f in license_files:
+            if f.name == "lua.h" and dep_name == "lua":
+                arcname = "licenses/LICENSE"
+            elif f.name.upper().startswith(("LICEN", "COPY", "LICENS")):
+                arcname = f"licenses/{dep_name}-{f.name}"
+            else:
+                arcname = f"licenses/{dep_name}-LICENSE.{f.suffix.lstrip('.') or 'txt'}"
+            if arcname not in seen_arcnames:
+                zf.write(f, arcname)
+                seen_arcnames.add(arcname)
+
+    if not has_any_files:
+        # No platform produced anything for this dependency; remove the empty zip.
+        zip_path.unlink(missing_ok=True)
+        return {p: None for p in PLATFORMS}
+
+    artifact_hash = sha256_file(zip_path)
+    for entry in per_platform.values():
+        if entry and entry.get("built") is True:
+            entry["artifact_hash"] = artifact_hash
+
+    return per_platform
 
 
 def generate_manifest(out_dir: Path, repo_sha: str) -> dict:
@@ -408,11 +492,7 @@ def generate_manifest(out_dir: Path, repo_sha: str) -> dict:
     submodule_urls = get_submodule_urls()
 
     for dep in deps:
-        manifest["artifacts"][dep] = {}
-        for platform in PLATFORMS:
-            entry = package_dependency(dep, platform, out_dir, repo_sha, submodule_urls)
-            if entry:
-                manifest["artifacts"][dep][platform] = entry
+        manifest["artifacts"][dep] = package_dependency(dep, out_dir, repo_sha, submodule_urls)
 
     return manifest
 
@@ -446,6 +526,8 @@ def main():
     excluded_count = 0
     for dep in manifest["artifacts"].values():
         for plat in dep.values():
+            if plat is None:
+                continue
             if plat.get("built"):
                 built_count += 1
             elif plat.get("built") is False:
