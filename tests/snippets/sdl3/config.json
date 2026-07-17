@@ -1,0 +1,4 @@
+{
+  "link_libs": ["SDL3"],
+  "skip_static_macos": true
+}

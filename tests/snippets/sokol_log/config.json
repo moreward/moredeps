@@ -1,0 +1,4 @@
+{
+  "link_libs": ["sokol_log"],
+  "no_run": true
+}

@@ -2,16 +2,19 @@
 
 ## Test coverage
 
-- [x] Add test snippets (30/46 deps covered):
+- [x] Add test snippets (44/46 deps covered, 86 PASS):
   - [x] `zlib`, `sqlite-amalgamation`, `cJSON`, `curl`, `enet`
   - [x] `mimalloc`, `miniaudio`, `skribidi`, `sokol`, `sokol_gp`
   - [x] `lz4`, `xxhash`, `utf8proc`, `harfbuzz`, `freetype`
   - [x] `lua`, `stb_image`, `FastNoiseLite`, `libunibreak`, `SheenBidi`
   - [x] `physfs`, `box3d`, `cglm`, `cgltf`, `microui`
   - [x] `flecs`, `budouxc`, `fontstash`, `reproc`, `tinycsocket`
-- [ ] Remaining ~16 deps: `boringssl`, `cimgui`, `dawn`, `imgui`, `sdl3`,
-      `tracy`, `stb` (other modules), `glfw`, `libwebsockets`, `mtcc`,
-      `nanovg`, `raudio`, `raylib`, `ubench`, `utest`
+  - [x] `stb_image_write`, `stb_rect_pack`, `sokol_args`, `sokol_fetch`
+  - [x] `sokol_log`, `sokol_time`, `stb_ds`, `stb_truetype`
+  - [x] `mtcc`, `ubench`, `raudio`, `sdl3`, `glfw`
+- [ ] Still unsnippeted (hard APIs): `boringssl`, `cimgui`, `dawn`,
+      `imgui`, `tracy`, `libwebsockets`, `nanovg`, `raylib`,
+      `utest`, `sdl3webgpu`, `stb_image_resize`
 - [ ] Wire WASM link tests back into CI (toolchain auto-detection bug)
 
 ## Windows

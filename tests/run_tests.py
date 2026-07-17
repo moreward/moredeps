@@ -323,18 +323,28 @@ def run_executable(build_dir: Path, dep_name: str, linkage: str,
     return True
 
 
+def find_snippet(dep_name: str, expected_names: list[str]) -> Path | None:
+    """Find a test snippet for a dependency, checking both the dep key and
+    individual module names (e.g. 'stb' checks 'stb/' then 'stb_image/')."""
+    candidates = [dep_name] + expected_names
+    for name in candidates:
+        for ext in (".c", ".cpp"):
+            p = SNIPPETS / name / f"test{ext}"
+            if p.exists():
+                return p
+    return None
+
+
 def test_dep(dep_name: str, platform: str, out_dir: Path, bin_dir: Path | None,
              toolchain: Path | None, verbose: bool, results: dict) -> None:
     """Run static and/or dynamic link tests for a dependency."""
-    snippet = SNIPPETS / dep_name / "test.c"
-    if not snippet.exists():
-        snippet = SNIPPETS / dep_name / "test.cpp"
-    if not snippet.exists():
-        return
-
     config = read_config(dep_name)
     os_prefix = platform.split("_")[0]
     expected_names = config.get("link_libs", DEP_LIBRARY_NAMES.get(dep_name, [dep_name]))
+    snippet = find_snippet(dep_name, expected_names)
+    if not snippet:
+        return
+
     platform_dir = out_dir / platform
 
     static_dir = platform_dir / "lib"
@@ -415,6 +425,17 @@ def main():
         sys.exit(1)
 
     deps = [d.strip() for d in args.deps.split(",")] if args.deps else sorted(DEP_LIBRARY_NAMES.keys())
+
+    # Also test individual module snippets that live under the dep key
+    # (e.g. tests/snippets/stb_image/ for dep "stb").
+    extra = []
+    for dep in deps:
+        names = DEP_LIBRARY_NAMES.get(dep, [dep])
+        for n in names:
+            sd = SNIPPETS / n
+            if sd.is_dir() and n != dep:
+                extra.append(n)
+    deps = sorted(set(deps + extra))
 
     results: dict[str, dict[str, str]] = {}
     for dep in deps:
