@@ -204,14 +204,14 @@
                 'linux_arm64': 'Linux ARM64',
                 'windows_x64': 'Windows x64',
                 'windows_arm64': 'Windows ARM64',
-                'wasm_emscripten': 'Emscripten/WASM'
+                'wasm_emscripten': 'WASM'
             };
 
             let html = '<div class="dl-toolbar">' +
                 '<button id="dlCopyCmds" disabled>Copy commands</button>' +
                 '<label><input type="checkbox" id="dlSelectAll"> select all</label>' +
                 '<span class="hint" id="dlCount"></span>' +
-                '<span class="hint">select libraries, then paste the commands in a terminal</span>' +
+                '<span class="hint">select rows, then paste the curl commands in a terminal</span>' +
                 '</div>' +
                 '<textarea id="dlCommands" class="dl-commands" rows="6" readonly placeholder="Select libraries below to generate curl commands..."' +
                 ' title="curl commands for the selected libraries"></textarea>' +
@@ -219,58 +219,78 @@
                 'Verify downloads: <code>shasum -a 256 -c SHA256SUMS</code></p>' +
                 '<textarea id="dlHashes" class="dl-commands" rows="6" readonly placeholder="SHA256SUMS will appear here..."' +
                 ' style="margin-top:0.2rem"></textarea>';
+
             html += '<table>';
-            html += '<tr><th>Dependency</th>' + platforms.map(p =>
-                `<th>${platformLabels[p]}<br><label class="th-check"><input type="checkbox" class="col-check" data-platform="${p}"> all</label></th>`
+            html += '<tr><th>Dependency</th><th>Download</th>' + platforms.map(p =>
+                `<th title="${platformLabels[p]}">${platformLabels[p].split(' ')[0]}</th>`
             ).join('') + '</tr>';
 
             const deps = Object.keys(manifest.artifacts).sort();
 
             for (const dep of deps) {
-                html += '<tr>';
-                // Link the dependency name to its upstream repo at the pinned commit
                 const firstInfo = Object.values(manifest.artifacts[dep]).find(e => e && e.commit);
                 const depLabel = (firstInfo && firstInfo.repo_url && firstInfo.commit)
                     ? `<a href="${firstInfo.repo_url}/tree/${firstInfo.commit}" title="${firstInfo.repo_url} @ ${firstInfo.commit}">${dep}</a>`
                     : dep;
-                html += `<td><label class="th-check"><input type="checkbox" class="row-check" data-dep="${dep}"> all</label> <strong>${depLabel}</strong></td>`;
-                for (const platform of platforms) {
-                    const info = manifest.artifacts[dep]?.[platform];
+
+                // Find a built entry for download info (all platforms share the same zip).
+                const builtEntry = Object.values(manifest.artifacts[dep]).find(e => e && e.built === true);
+                const zipName = builtEntry ? builtEntry.filename : null;
+                const zipHash = builtEntry ? builtEntry.artifact_hash || '' : '';
+                const zipUrl = zipName ? downloadUrl(release, zipName) : '#';
+
+                // Aggregate file counts across all platforms for the tooltip.
+                let totalStatic = 0, totalShared = 0, totalHeaders = 0;
+                for (const p of platforms) {
+                    const info = manifest.artifacts[dep]?.[p];
+                    if (info && info.files) {
+                        totalStatic += info.files.filter(f => f.kind === 'static').length;
+                        totalShared += info.files.filter(f => f.kind === 'shared').length;
+                        totalHeaders += info.files.filter(f => f.kind === 'header').length;
+                    }
+                }
+                let dlTitle = zipName || '';
+                if (zipHash) dlTitle += '\n' + zipHash;
+                if (totalStatic) dlTitle += `\n${totalStatic} static lib(s)`;
+                if (totalShared) dlTitle += `\n${totalShared} shared lib(s)`;
+                if (totalHeaders) dlTitle += `\n${totalHeaders} header(s)`;
+
+                // Download cell: checkbox + link.
+                const dlCheck = zipName
+                    ? `<input type="checkbox" class="dl-check" data-dep="${dep}" data-url="${zipUrl}" data-name="${zipName}" data-hash="${zipHash}"> `
+                    : '';
+                const shaShort = (firstInfo && firstInfo.commit) ? firstInfo.commit.substring(0, 7) : '';
+                const dlLink = zipName
+                    ? `${dlCheck}<a class="download" href="${zipUrl}" title="${escapeHtml(dlTitle)}">zip</a> <span class="sha">${shaShort}</span>`
+                    : '<span class="status-skip">—</span>';
+
+                html += '<tr>';
+                html += `<td><strong>${depLabel}</strong></td>`;
+                html += `<td>${dlLink}</td>`;
+
+                for (const p of platforms) {
+                    const info = manifest.artifacts[dep]?.[p];
                     if (!info) {
                         html += '<td class="status-skip">—</td>';
                     } else if (info.built === false) {
                         const reason = info.reason || 'excluded';
                         html += `<td class="status-skip" title="${reason}">N/A</td>`;
                     } else if (info.built === true) {
-                        const sha = info.commit ? info.commit.substring(0, 7) : '';
-                        const href = info.filename ? downloadUrl(release, info.filename) : release.html_url;
-                        const artifactHash = info.artifact_hash || '';
-                        // Build tooltip: filename + hash + file listing
-                        let title = info.filename || '';
-                        if (artifactHash) title += '\n' + artifactHash;
-                        if (info.files && info.files.length) {
-                            const nStatic = info.files.filter(f => f.kind === 'static').length;
-                            const nShared = info.files.filter(f => f.kind === 'shared').length;
-                            const nHeaders = info.files.filter(f => f.kind === 'header').length;
-                            title += '\n\nContents:';
-                            if (nStatic) title += `\n  ${nStatic} static lib(s)`;
-                            if (nShared) title += `\n  ${nShared} shared lib(s)`;
-                            if (nHeaders) title += `\n  ${nHeaders} header(s)`;
-                        }
-                        const check = info.filename
-                            ? `<input type="checkbox" class="dl-check" data-dep="${dep}" data-platform="${platform}" data-url="${href}" data-name="${info.filename}" data-hash="${artifactHash}"> `
-                            : '';
-                        // Show static/shared badge
+                        const hasStatic = info.files && info.files.some(f => f.kind === 'static');
+                        const hasShared = info.files && info.files.some(f => f.kind === 'shared');
                         let badge = '';
-                        if (info.files) {
-                            const hasStatic = info.files.some(f => f.kind === 'static');
-                            const hasShared = info.files.some(f => f.kind === 'shared');
-                            if (hasStatic && hasShared) badge = ' <span style="font-size:0.7rem;background:#e8f5e9;color:#2e7d32;padding:0 3px;border-radius:2px" title="static + shared">s+s</span>';
-                            else if (hasShared) badge = ' <span style="font-size:0.7rem;background:#fff3e0;color:#e65100;padding:0 3px;border-radius:2px" title="shared only">shr</span>';
+                        if (hasStatic && hasShared) {
+                            badge = '<span style="font-size:0.7rem;background:#e8f5e9;color:#2e7d32;padding:0 3px;border-radius:2px" title="static + shared">s+s</span>';
+                        } else if (hasShared) {
+                            badge = '<span style="font-size:0.7rem;background:#fff3e0;color:#e65100;padding:0 3px;border-radius:2px" title="shared only">shr</span>';
+                        } else if (hasStatic) {
+                            badge = '<span style="font-size:0.7rem;background:#e3f2fd;color:#1565c0;padding:0 3px;border-radius:2px" title="static only">sta</span>';
+                        } else {
+                            badge = '<span style="font-size:0.7rem;color:#888">hdr</span>';
                         }
-                        html += `<td><label>${check}<a href="${href}" title="${escapeHtml(title)}">download</a>${badge}</label> <span class="sha">${sha}</span></td>`;
+                        html += `<td>${badge}</td>`;
                     } else {
-                        html += '<td class="status-fail">failed</td>';
+                        html += '<td class="status-fail">fail</td>';
                     }
                 }
                 html += '</tr>';
@@ -285,6 +305,9 @@
         }
 
         // Wires up the checkbox UI rendered by renderTable().
+        // Each row has one checkbox in the Download column; the checkbox
+        // stores the zip URL + filename + hash so the user can batch-copy
+        // curl commands and a SHA256SUMS file.
         function bindDownloadUI() {
             const ta = document.getElementById('dlCommands');
             const ha = document.getElementById('dlHashes');
@@ -294,49 +317,24 @@
             if (!ta) return;
 
             const boxes = () => [...document.querySelectorAll('.dl-check')];
-            const rowBoxes = () => [...document.querySelectorAll('.row-check')];
-            const colBoxes = () => [...document.querySelectorAll('.col-check')];
-
-            const setGroupState = (cb, group) => {
-                const n = group.filter(b => b.checked).length;
-                cb.checked = n > 0 && n === group.length;
-                cb.indeterminate = n > 0 && n < group.length;
-            };
 
             const refresh = () => {
                 const sel = boxes().filter(b => b.checked);
-                // The same zip can be reachable from multiple platform cells,
-                // so deduplicate by filename before generating commands.
-                const uniqueByName = new Map();
-                for (const b of sel) {
-                    if (!uniqueByName.has(b.dataset.name)) {
-                        uniqueByName.set(b.dataset.name, b);
-                    }
-                }
-                const unique = [...uniqueByName.values()];
-                ta.value = unique.map(b => `curl -fLO ${b.dataset.url}`).join('\n');
-                ha.value = unique.filter(b => b.dataset.hash).map(b => {
+                ta.value = sel.map(b => `curl -fLO ${b.dataset.url}`).join('\n');
+                ha.value = sel.filter(b => b.dataset.hash).map(b => {
                     const hash = b.dataset.hash.replace(/^sha256:/, '');
                     return `${hash}  ${b.dataset.name}`;
                 }).join('\n');
-                copyBtn.disabled = unique.length === 0;
-                count.textContent = unique.length ? `${unique.length} selected` : '';
-                for (const rc of rowBoxes()) setGroupState(rc, boxes().filter(b => b.dataset.dep === rc.dataset.dep));
-                for (const cc of colBoxes()) setGroupState(cc, boxes().filter(b => b.dataset.platform === cc.dataset.platform));
-                if (all) setGroupState(all, boxes());
+                copyBtn.disabled = sel.length === 0;
+                count.textContent = sel.length ? `${sel.length} selected` : '';
+                if (all) {
+                    all.checked = sel.length > 0 && sel.length === boxes().length;
+                    all.indeterminate = sel.length > 0 && sel.length < boxes().length;
+                }
+                // Row checkboxes removed — one download per dep now.
             };
 
             boxes().forEach(b => b.addEventListener('change', refresh));
-            rowBoxes().forEach(rc => rc.addEventListener('change', () => {
-                boxes().filter(b => b.dataset.dep === rc.dataset.dep)
-                    .forEach(b => { b.checked = rc.checked; });
-                refresh();
-            }));
-            colBoxes().forEach(cc => cc.addEventListener('change', () => {
-                boxes().filter(b => b.dataset.platform === cc.dataset.platform)
-                    .forEach(b => { b.checked = cc.checked; });
-                refresh();
-            }));
             if (all) {
                 all.addEventListener('change', () => {
                     boxes().forEach(b => { b.checked = all.checked; });
