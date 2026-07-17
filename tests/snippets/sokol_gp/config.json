@@ -1,0 +1,5 @@
+{
+  "link_libs": ["sokol_gp"],
+  "extra_static_libs": ["objc"],
+  "frameworks": ["Foundation", "Cocoa", "QuartzCore", "Metal", "MetalKit"]
+}

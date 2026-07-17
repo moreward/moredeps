@@ -1,0 +1,339 @@
+#!/usr/bin/env python3
+"""
+tests/run_tests.py
+
+Smoke-test the built artifacts by compiling a tiny program for each
+dependency in both static and dynamic linkage modes.
+
+Usage:
+    python tests/run_tests.py --platform macos_arm64
+    python tests/run_tests.py --platform linux_x64 --out-dir _out
+    python tests/run_tests.py --platform windows_x64 --toolchain toolchain/windows_x64.cmake
+
+The script looks for built artifacts in:
+    <out-dir>/<platform>/{lib,lib/import,bin,include}
+
+and for per-dependency test snippets in:
+    tests/snippets/<dep>/test.c
+    tests/snippets/<dep>/config.json   (optional)
+
+Exit codes:
+    0  all tests passed
+    1  one or more tests failed
+"""
+
+import argparse
+import json
+import os
+import platform
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+TESTS = Path(__file__).resolve().parent
+SNIPPETS = TESTS / "snippets"
+
+# Reuse the dependency metadata from the packaging script.
+sys.path.insert(0, str(ROOT / "scripts"))
+from ci_package import DEP_LIBRARY_NAMES, KNOWN_HEADERS, PLATFORMS, EXCLUDED
+
+
+def detect_platform() -> str:
+    """Best-effort host platform detection."""
+    system = platform.system().lower()
+    machine = platform.machine().lower()
+    mapping = {
+        ("darwin", "arm64"): "macos_arm64",
+        ("darwin", "aarch64"): "macos_arm64",
+        ("darwin", "x86_64"): "macos_x64",
+        ("linux", "x86_64"): "linux_x64",
+        ("linux", "amd64"): "linux_x64",
+        ("linux", "aarch64"): "linux_arm64",
+        ("linux", "arm64"): "linux_arm64",
+        ("windows", "x86_64"): "windows_x64",
+        ("windows", "amd64"): "windows_x64",
+        ("windows", "arm64"): "windows_arm64",
+        ("windows", "aarch64"): "windows_arm64",
+    }
+    key = (system, machine)
+    if key in mapping:
+        return mapping[key]
+    raise RuntimeError(f"Cannot detect platform for {system}/{machine}; pass --platform explicitly")
+
+
+def discover_static_libs(lib_dir: Path) -> list[Path]:
+    """Return all static libraries in lib_dir, recursively."""
+    libs = []
+    if lib_dir.exists():
+        for f in lib_dir.rglob("*"):
+            if f.is_file() and f.suffix in (".a", ".lib"):
+                libs.append(f)
+    return libs
+
+
+def discover_shared_libs(lib_dir: Path, import_dir: Path | None = None) -> list[Path]:
+    """Return shared libraries (and Windows import libs) to link."""
+    libs = []
+    for d in (lib_dir, import_dir):
+        if d and d.exists():
+            for f in d.rglob("*"):
+                if f.is_file() and f.suffix in (".so", ".dylib", ".lib"):
+                    libs.append(f)
+    return libs
+
+
+def find_dep_libs(dep_name: str, lib_dir: Path, expected_names: list[str]) -> list[Path]:
+    """Find the libraries in lib_dir that belong to a specific dependency."""
+    names = set(expected_names)
+    found = []
+    if not lib_dir.exists():
+        return found
+    for f in lib_dir.iterdir():
+        if not f.is_file():
+            continue
+        stem = f.stem
+        candidates = {stem}
+        if stem.startswith("lib"):
+            candidates.add(stem[3:])
+        if names & candidates:
+            found.append(f)
+    return found
+
+
+def read_config(dep_name: str) -> dict:
+    """Read optional per-dep config.json."""
+    path = SNIPPETS / dep_name / "config.json"
+    if path.exists():
+        return json.loads(path.read_text())
+    return {}
+
+
+def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
+                include_dir: Path, libs: list[Path], config: dict) -> None:
+    """Generate a minimal CMake project for the snippet."""
+    lang = "CXX" if snippet.suffix in (".cpp", ".cxx", ".cc") else "C"
+    target = f"test_{dep_name}_{linkage}"
+
+    lines = [
+        "cmake_minimum_required(VERSION 3.25)",
+        f"project({target} LANGUAGES {lang})",
+        f"add_executable({target} {snippet.name})",
+    ]
+
+    if include_dir.exists():
+        lines.append(f"target_include_directories({target} PRIVATE {include_dir.as_posix()})")
+
+    for lib_dir in sorted(set(lib.parent for lib in libs)):
+        lines.append(f"target_link_directories({target} PRIVATE {lib_dir.as_posix()})")
+
+    # Add system frameworks on Apple platforms if requested.
+    frameworks = config.get("frameworks", [])
+    if sys.platform == "darwin" and frameworks:
+        for fw in frameworks:
+            lines.append(f"target_link_libraries({target} PRIVATE \"-framework {fw}\")")
+
+    # Extra system libs (e.g. pthread, dl, m).
+    extra = config.get(f"extra_{linkage}_libs", config.get("extra_libs", []))
+    if extra:
+        lines.append(f"target_link_libraries({target} PRIVATE {' '.join(extra)})")
+
+    # Add the dep's own libraries (or all discovered libs). For static mode we
+    # link all static libraries in the artifact tree so transitive C/C++ deps are
+    # resolved. For dynamic mode we link only the shared libraries discovered
+    # for this dependency to avoid pulling in unrelated symbols.
+    if lang == "C":
+        lines.append(f"set_property(TARGET {target} PROPERTY C_STANDARD 11)")
+    else:
+        lines.append(f"set_property(TARGET {target} PROPERTY CXX_STANDARD 17)")
+
+    # Set rpath on Unix so the dynamic executables can find their .so/.dylib.
+    if linkage == "dynamic" and sys.platform in ("darwin", "linux"):
+        rpaths = sorted(set(lib.parent.as_posix() for lib in libs))
+        for rp in rpaths:
+            lines.append(f"set_target_properties({target} PROPERTIES BUILD_RPATH \"{rp}\")")
+            lines.append(f"set_target_properties({target} PROPERTIES INSTALL_RPATH \"{rp}\")")
+
+    # Finally link the libraries. For static, link all discovered static libs to
+    # resolve transitive dependencies. For dynamic, link only the shared libs.
+    if libs:
+        # Escape spaces in paths for CMake.
+        lib_paths = ' '.join(f'"{lib.as_posix()}"' for lib in libs)
+        lines.append(f"target_link_libraries({target} PRIVATE {lib_paths})")
+
+    lines.append(f"set_target_properties({target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY {build_dir.as_posix()})")
+
+    (build_dir / "CMakeLists.txt").write_text("\n".join(lines) + "\n")
+    shutil.copy2(snippet, build_dir / snippet.name)
+
+
+def build_test(build_dir: Path, toolchain: Path | None = None, verbose: bool = False) -> bool:
+    """Configure and build the generated CMake project."""
+    cfg_args = ["cmake", "-S", str(build_dir), "-B", str(build_dir / "_b")]
+    if toolchain:
+        cfg_args.extend(["-DCMAKE_TOOLCHAIN_FILE", str(toolchain)])
+    if sys.platform == "win32":
+        # Prefer Ninja if available; otherwise let CMake pick the default.
+        if shutil.which("ninja"):
+            cfg_args.extend(["-G", "Ninja"])
+    cfg_args.append(f"-DCMAKE_BUILD_TYPE=Release")
+    if not verbose:
+        cfg_args.append("-Wno-dev")
+
+    res = subprocess.run(cfg_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    if verbose:
+        print(res.stdout)
+    if res.returncode != 0:
+        print("CONFIGURE FAILED:\n" + res.stdout)
+        return False
+
+    res = subprocess.run(["cmake", "--build", str(build_dir / "_b"), "--config", "Release"],
+                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    if verbose:
+        print(res.stdout)
+    if res.returncode != 0:
+        print("BUILD FAILED:\n" + res.stdout)
+        return False
+
+    return True
+
+
+def run_executable(build_dir: Path, dep_name: str, linkage: str) -> bool:
+    """Run the built executable."""
+    exe = build_dir / f"test_{dep_name}_{linkage}"
+    if sys.platform == "win32":
+        exe = exe.with_suffix(".exe")
+    if not exe.exists():
+        # CMake may place it under a config subdir on Windows multi-config generators.
+        exe = build_dir / "Release" / f"test_{dep_name}_{linkage}.exe"
+    if not exe.exists():
+        print(f"EXECUTABLE NOT FOUND: {exe}")
+        return False
+
+    env = os.environ.copy()
+    # On Windows, make sure the .dll directory is on PATH.
+    if sys.platform == "win32":
+        # The caller passes the bin directory separately, but we don't have it here.
+        pass
+
+    res = subprocess.run([str(exe)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
+    if res.returncode != 0:
+        print(f"RUN FAILED (exit {res.returncode}):\n{res.stdout}")
+        return False
+    return True
+
+
+def test_dep(dep_name: str, platform: str, out_dir: Path, bin_dir: Path | None,
+             toolchain: Path | None, verbose: bool, results: dict) -> None:
+    """Run static and/or dynamic link tests for a dependency."""
+    snippet = SNIPPETS / dep_name / "test.c"
+    if not snippet.exists():
+        snippet = SNIPPETS / dep_name / "test.cpp"
+    if not snippet.exists():
+        return
+
+    config = read_config(dep_name)
+    expected_names = config.get("link_libs", DEP_LIBRARY_NAMES.get(dep_name, [dep_name]))
+    platform_dir = out_dir / platform
+
+    static_dir = platform_dir / "lib"
+    dynamic_dir = platform_dir / "lib"
+    import_dir = platform_dir / "lib" / "import"
+    include_dir = platform_dir / "include"
+
+    static_libs = find_dep_libs(dep_name, static_dir, expected_names)
+    dynamic_libs = find_dep_libs(dep_name, dynamic_dir, expected_names)
+    if import_dir.exists():
+        dynamic_libs += find_dep_libs(dep_name, import_dir, expected_names)
+
+    # For static, also pull in every other static lib to resolve transitive deps.
+    if static_libs:
+        static_libs = discover_static_libs(static_dir)
+
+    # For dynamic, keep only shared/import libraries (not leftover static archives).
+    dynamic_libs = [lib for lib in dynamic_libs if lib.suffix in (".so", ".dylib", ".lib")]
+
+    # On Windows, the import library lives in lib/import; the .dll itself is runtime.
+    if dynamic_libs and sys.platform == "win32":
+        dynamic_libs = [lib for lib in dynamic_libs if lib.suffix == ".lib"]
+
+    skip_static = config.get("skip_static", not bool(static_libs))
+    skip_dynamic = config.get("skip_dynamic", not bool(dynamic_libs))
+
+    for linkage, libs, skip in [("static", static_libs, skip_static),
+                                 ("dynamic", dynamic_libs, skip_dynamic)]:
+        if skip:
+            results[dep_name][linkage] = "skipped"
+            continue
+
+        with tempfile.TemporaryDirectory(prefix=f"moredeps-test-{dep_name}-{linkage}-") as td:
+            build_dir = Path(td)
+            write_cmake(build_dir, dep_name, linkage, snippet, include_dir, libs, config)
+            ok = build_test(build_dir, toolchain=toolchain, verbose=verbose)
+            if not ok:
+                results[dep_name][linkage] = "build-failed"
+                continue
+            if not config.get("no_run", False):
+                ok = run_executable(build_dir, dep_name, linkage)
+                if not ok:
+                    results[dep_name][linkage] = "run-failed"
+                    continue
+            results[dep_name][linkage] = "ok"
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Smoke-test built artifacts")
+    parser.add_argument("--platform", help=f"Platform to test. One of: {', '.join(PLATFORMS)}")
+    parser.add_argument("--out-dir", type=Path, default=ROOT / "_out", help="Directory containing _out/<platform>")
+    parser.add_argument("--toolchain", type=Path, help="CMake toolchain file to use")
+    parser.add_argument("--deps", help="Comma-separated deps to test (default: all with snippets)")
+    parser.add_argument("--verbose", action="store_true", help="Print CMake output")
+    args = parser.parse_args()
+
+    platform = args.platform or detect_platform()
+    if platform not in PLATFORMS:
+        print(f"Error: unsupported platform {platform}", file=sys.stderr)
+        sys.exit(1)
+
+    platform_dir = args.out_dir / platform
+    if not platform_dir.exists():
+        print(f"Error: output directory {platform_dir} does not exist", file=sys.stderr)
+        sys.exit(1)
+
+    deps = [d.strip() for d in args.deps.split(",")] if args.deps else sorted(DEP_LIBRARY_NAMES.keys())
+
+    results: dict[str, dict[str, str]] = {}
+    for dep in deps:
+        results[dep] = {}
+        test_dep(dep, platform, args.out_dir, platform_dir / "bin", args.toolchain, args.verbose, results)
+
+    # Print summary
+    print(f"\n{'='*60}")
+    print(f"Test results for {platform}")
+    print(f"{'='*60}")
+    ok = 0
+    failed = 0
+    skipped = 0
+    for dep, res in sorted(results.items()):
+        if not res:
+            continue
+        for linkage, status in sorted(res.items()):
+            if status == "ok":
+                ok += 1
+                print(f"  PASS  {dep} ({linkage})")
+            elif status == "skipped":
+                skipped += 1
+                print(f"  SKIP  {dep} ({linkage})")
+            else:
+                failed += 1
+                print(f"  FAIL  {dep} ({linkage}): {status}")
+    print(f"{'='*60}")
+    print(f"PASS: {ok}, SKIP: {skipped}, FAIL: {failed}")
+    if failed:
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
