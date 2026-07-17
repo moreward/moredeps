@@ -157,15 +157,6 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
         for fw in frameworks:
             lines.append(f"target_link_libraries({target} PRIVATE \"-framework {fw}\")")
 
-    # Extra system libs (e.g. pthread, dl, m).
-    extra = config.get(f"extra_{linkage}_libs", config.get("extra_libs", []))
-    if extra:
-        lines.append(f"target_link_libraries({target} PRIVATE {' '.join(extra)})")
-
-    # Add the dep's own libraries (or all discovered libs). For static mode we
-    # link all static libraries in the artifact tree so transitive C/C++ deps are
-    # resolved. For dynamic mode we link only the shared libraries discovered
-    # for this dependency to avoid pulling in unrelated symbols.
     if lang == "C":
         lines.append(f"set_property(TARGET {target} PROPERTY C_STANDARD 11)")
     else:
@@ -195,6 +186,12 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
     if libs:
         lib_paths = ' '.join(f'"{lib.as_posix()}"' for lib in libs)
         lines.append(f"target_link_libraries({target} PRIVATE {lib_paths})")
+
+    # Extra system libs from per-dep config (e.g. freetype needs z).
+    # Must come AFTER the dep's own libs so GNU ld resolves left-to-right.
+    extra = config.get(f"extra_{linkage}_libs", config.get("extra_libs", []))
+    if extra:
+        lines.append(f"target_link_libraries({target} PRIVATE {' '.join(extra)})")
 
     if sys.platform == "linux":
         lines.append(f"target_link_libraries({target} PRIVATE m GL pthread dl)")
