@@ -6,7 +6,8 @@
 ## 1. Goals & Constraints
 
 ### 1.1 Targets (initial matrix)
-We must produce static libraries for every buildable dependency on the following platforms:
+We produce static *and* shared libraries for every buildable dependency on the following platforms (shared skipped for wasm, and for a
+few deps that define `main()` — see `CMakeLists.txt`):
 
 | Platform | Arch | Status |
 |---|---|---|
@@ -24,12 +25,14 @@ We must produce static libraries for every buildable dependency on the following
 - **Production-level only.** No hacky scripts, no “works for now,” no undocumented assumptions.
 - Every dependency must be built with its **correct** build system, not forced into a one-size-fits-all script unless that is the canonical way (e.g., header-only libs wrapped in a `.c` file).
 - Use a top-level `CMakeLists.txt` to drive **all CMake-buildable dependencies**.
-- Header-only libraries get a dedicated `src/<DEP_NAME>/` directory containing a `.c` (or `.cpp`) file that defines the implementation macro(s) and includes the public header(s) so that CMake can produce a real static library.
+- Header-only libraries get a dedicated `src/<DEP_NAME>/` directory containing a `.c` (or `.cpp`) file that defines the implementation macro(s) and includes the public header(s) so that CMake can produce a real linkable library (both static and shared).
 - All builds go under `_b/<PLATFORM>_<ARCH>/<DEP_NAME>/` (or `wasm_emscripten/<DEP_NAME>`).
 - Some combinations are **not buildable**; these must be documented, not silently skipped.
 - Create `scripts/build_all.sh` that orchestrates everything.
 - Capture and record things that cannot build this way.
-- Later CI will produce a JSON manifest of commit hashes and artifact hashes, zip each artifact (`static lib + headers`, optional shared lib), upload to GitHub Releases, and skip unchanged dependencies.
+- Later CI will produce `moredeps.json` (a manifest of commit hashes and artifact hashes), zip each dependency
+  (one zip per dep with `static/<platform>/` and `dynamic/<platform>/` subfolders), upload to GitHub Releases,
+  and skip unchanged dependencies.
 
 ### 1.3 Non-goals (for now)
 - Running tests for every dependency (we build libraries, not run the upstream test suites by default).
@@ -85,7 +88,7 @@ Legend:
 | `sdl3webgpu` | CMake | C | `src/sdl3webgpu/` wrapper | Patched at build time on Emscripten for `WGPUStringView` API; otherwise depends on `dawn` + `sdl3`. |
 | `SheenBidi` | CMake | C | `ExternalProject_Add` | Unicode bidi algorithm library. |
 | `skribidi` | CMake | C | `src/skribidi/` wrapper | Depends on `harfbuzz`, `SheenBidi`, `libunibreak`, `budouxc`. Upstream fetches these; we use submodules. |
-| `sokol` | Header-only | H | `src/sokol_<mod>/` wrappers + generated backend variants | Per-module static libs. Platform defaults use Metal/D3D11/GLCORE/GLES3. Backend-specific variants (`*_glcore`, `*_metal`, `*_d3d11`, `*_gles3`, `*_wgpu`) are produced. `sokol_app`/`sokol_glue` WGPU is only available on Emscripten. |
+| `sokol` | Header-only | H | `src/sokol_<mod>/` wrappers + generated backend variants | Per-module libs (static + shared where possible). Platform defaults use Metal/D3D11/GLCORE/GLES3. Backend-specific variants (`*_glcore`, `*_metal`, `*_d3d11`, `*_gles3`, `*_wgpu`) are produced. `sokol_app`/`sokol_glue` WGPU is only available on Emscripten. |
 | `sokol_gp` | Header-only | H | `src/sokol_gp/` wrapper + generated backend variants | Built against the vendored sokol headers in `deps/sokol_gp/thirdparty`; must not be mixed with top-level `sokol` libraries. Variants: `*_glcore`, `*_gles3`, `*_metal`, `*_d3d11`. No WGPU variant. |
 | `sqlite-amalgamation` | CMake | C | `ExternalProject_Add` | None known. |
 | `stb` | Header-only | H | `src/stb_<lib>/` wrappers | Per-module static libraries. |
@@ -330,21 +333,23 @@ For dependencies where downstream projects need shared libs, we can build them w
 ## 5. Release & CI Strategy (future phase)
 
 ### 5.1 Artifact format
-Each artifact is a zip file named like:
+Each dependency ships as a single zip file named like:
 ```
-moredeps-<commit>-<platform>-<dep>-<version>.zip
+moredeps-<sha8>-<dep>-<dep-commit-sha8>.zip
 ```
 Contents:
 ```
-<dep>/
-  lib/<static-or-shared-libs>
-  include/<public headers>
-  share/<optional CMake configs>
-  LICENSE
+static/<platform>/lib/          # static libraries
+static/<platform>/include/       # public headers
+dynamic/<platform>/lib/          # shared libraries (.so/.dylib)
+dynamic/<platform>/lib/import/   # Windows import .lib
+dynamic/<platform>/bin/          # Windows runtime .dll
+dynamic/<platform>/include/      # public headers
+licenses/                        # upstream license files
 ```
 
 ### 5.2 Manifest JSON
-`docs/moredeps.json` (or similar):
+`moredeps.json` (attached to each release as `moredeps.json`):
 ```json
 {
   "repo_commit": "abc123",
@@ -354,7 +359,7 @@ Contents:
       "linux_x64": {
         "commit": "3743ea6...",
         "artifact_hash": "sha256:...",
-        "filename": "moredeps-abc123-linux_x64-sokol-3743ea6.zip",
+        "filename": "moredeps-abc123-sokol-3743ea6.zip",
         "built": true
       },
       "wasm_emscripten": { "built": false, "reason": "N/A" }
