@@ -1,0 +1,10 @@
+{
+  "link_libs": [
+    "sdl3webgpu"
+  ],
+  "skip_static_macos": true,
+  "extra_static_libs": [
+    "SDL3",
+    "webgpu_dawn"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "link_libs": [
+    "crypto"
+  ],
+  "include_dirs": [],
+  "extra_libs": []
+}

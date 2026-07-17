@@ -1,0 +1,12 @@
+{
+  "link_libs": [
+    "raylib"
+  ],
+  "skip_static_macos": true,
+  "frameworks_macos": [
+    "Cocoa",
+    "OpenGL",
+    "IOKit",
+    "CoreVideo"
+  ]
+}

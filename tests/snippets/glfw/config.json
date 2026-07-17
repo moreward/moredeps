@@ -1,0 +1,10 @@
+{
+  "link_libs": [
+    "glfw3"
+  ],
+  "frameworks_macos": [
+    "Cocoa",
+    "IOKit",
+    "CoreVideo"
+  ]
+}
