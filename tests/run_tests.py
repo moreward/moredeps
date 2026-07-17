@@ -205,7 +205,25 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
              or config.get(f"extra_libs_{os_prefix}")
              or config.get("extra_libs", []))
     if extra:
-        lines.append(f"target_link_libraries({target} PRIVATE {' '.join(extra)})")
+        resolved = []
+        for name in extra:
+            # For static linkage, resolve the name to the actual .a file in our
+            # lib dir so CMake doesn't pick the .so variant (which would then
+            # fail at runtime when the shared lib isn't on rpath).
+            if linkage == "static":
+                found = False
+                for libdir in sorted(set(lib.parent for lib in libs)):
+                    candidate = libdir / f"lib{name}.a"
+                    if candidate.exists():
+                        resolved.append(f'"{candidate.as_posix()}"')
+                        found = True
+                        break
+                if not found:
+                    resolved.append(name)
+            else:
+                resolved.append(name)
+        if resolved:
+            lines.append(f"target_link_libraries({target} PRIVATE {' '.join(resolved)})")
 
     if sys.platform == "linux":
         lines.append(f"target_link_libraries({target} PRIVATE m GL pthread dl)")
