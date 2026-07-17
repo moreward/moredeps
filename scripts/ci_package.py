@@ -3,7 +3,7 @@
 scripts/ci_package.py
 
 Packages built artifacts into per-dependency zip files and generates a
-build_manifest.json.
+moredeps.json manifest.
 
 Each zip contains one dependency, organized by linkage type and platform:
 
@@ -21,7 +21,7 @@ Each zip contains one dependency, organized by linkage type and platform:
       licenses/     - upstream license files (best effort)
 
 Usage:
-    python scripts/ci_package.py --out-dir _out/ --repo-sha <sha> --manifest-out build_manifest.json
+    python scripts/ci_package.py --out-dir _out/ --repo-sha <sha> --manifest-out moredeps.json
 
 The script expects _out/ to contain subdirectories like:
     _out/linux_x64/

@@ -118,7 +118,7 @@ Host detection uses `RUNNER_ARCH` (set by GitHub Actions), **not** `PROCESSOR_AR
 
 ## 7. Packaging and manifest
 
-`scripts/ci_package.py` (run by the `release` job) creates one zip per dependency/platform from `_out/<platform>/{lib,include}` and writes `build_manifest.json`.
+`scripts/ci_package.py` (run by the `release` job) creates one zip per dependency from `_out/<platform>/{lib,include}` and writes `moredeps.json`.
 
 Artifact naming:
 
@@ -168,7 +168,7 @@ Manifest format (actual):
 | `build-<full-sha>` | Immutable | Permanent record for the commit |
 | `latest` | Rolling alias | Deleted and recreated each run; what the site displays |
 
-Both contain `build_manifest.json` + all zips. Old `build-<sha>` releases accumulate (no cleanup implemented yet).
+Both contain `moredeps.json` + all zips. Old `build-<sha>` releases accumulate (no cleanup implemented yet).
 
 ### Why the manifest is served from Pages, not from the release
 
@@ -176,7 +176,7 @@ Fetching a release asset from the browser does not work: `github.com/.../release
 
 Therefore:
 
-- The `deploy-site` job (in `build.yml`, after `release`) checks out `docs/`, downloads the fresh `build_manifest.json` server-side, and redeploys GitHub Pages. The site fetches the manifest **same-origin**.
+- The `deploy-site` job (in `build.yml`, after `release`) checks out `docs/`, downloads the fresh `moredeps.json` server-side, and redeploys GitHub Pages. The site fetches the manifest **same-origin**.
 - `pages.yml` (push-triggered docs deploys) also fetches the latest manifest before deploying, so a docs push doesn't wipe it from the site.
 - Both use the `pages` concurrency group to serialize deployments.
 

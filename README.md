@@ -20,7 +20,7 @@ By @morew4rd.
 CI builds all platforms and publishes per-dependency zips (library + headers + license) to GitHub Releases. The status site **[deps.morew4rd.com](https://deps.morew4rd.com)** renders the build matrix from the manifest and generates copy-paste `curl` commands for batch downloads.
 
 - Releases: `build-<sha>` (immutable per commit) and `latest` (rolling alias). Only the **last 3 builds** are retained; older releases are pruned automatically.
-- `build_manifest.json` (attached to each release) lists every artifact with the dependency's pinned upstream commit and repo URL.
+- `moredeps.json` (attached to each release) lists every artifact with the dependency's pinned upstream commit and repo URL.
 
 ## Quick start
 

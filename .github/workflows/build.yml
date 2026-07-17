@@ -411,12 +411,12 @@ jobs:
           python scripts/ci_package.py \
             --out-dir _out/ \
             --repo-sha ${{ github.sha }} \
-            --manifest-out build_manifest.json
+            --manifest-out moredeps.json
 
       - name: Collect release files
         run: |
           mkdir -p release_assets
-          cp build_manifest.json release_assets/
+          cp moredeps.json release_assets/
           find _out/ -name "moredeps-*.zip" -exec cp {} release_assets/ \;
           ls -la release_assets/
 
@@ -482,7 +482,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ---------------------------------------------------------------------------
-  # Redeploy the Pages site with the fresh build_manifest.json.
+  # Redeploy the Pages site with the fresh moredeps.json.
   # The site fetches the manifest same-origin; release asset URLs cannot be
   # fetched from the browser (github.com redirects to
   # release-assets.githubusercontent.com without CORS headers).
@@ -509,10 +509,10 @@ jobs:
           sparse-checkout-cone-mode: false
           submodules: false
 
-      - name: Fetch latest build manifest
+      - name: Fetch latest moredeps.json
         run: |
-          curl -sfL "https://github.com/${{ github.repository }}/releases/download/latest/build_manifest.json" \
-            -o docs/build_manifest.json
+          curl -sfL "https://github.com/${{ github.repository }}/releases/download/latest/moredeps.json" \
+            -o docs/moredeps.json
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

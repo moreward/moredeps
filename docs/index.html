@@ -135,7 +135,7 @@
         <br><br>
         <small>🕐 Only the <strong>last 3 builds</strong> are retained. Older releases are pruned automatically by CI.</small>
         <br>
-        <small>📋 <a href="https://github.com/moreward/moredeps/releases/download/latest/build_manifest.json">Download build_manifest.json</a> (machine-readable, with SHA256 hashes)</small>
+        <small>📋 <a href="https://github.com/moreward/moredeps/releases/download/latest/moredeps.json">Download moredeps.json</a> (machine-readable, with SHA256 hashes)</small>
     </div>
 
     <div class="release-selector">
@@ -143,7 +143,7 @@
         <select id="releaseSelect">
             <option value="">Loading...</option>
         </select>
-        <span style="margin-left:1rem;">📋 <a id="manifestLink" href="#">build_manifest.json</a></span>
+        <span style="margin-left:1rem;">📋 <a id="manifestLink" href="#">moredeps.json</a></span>
     </div>
 
     <div id="content">
@@ -183,7 +183,7 @@
         // status table is only available for the build described by this
         // manifest; older releases show a plain asset list instead.
         async function fetchLocalManifest() {
-            const res = await fetch('build_manifest.json');
+            const res = await fetch('moredeps.json');
             if (!res.ok) throw new Error(`Manifest fetch error: ${res.status}`);
             return res.json();
         }
@@ -376,7 +376,7 @@
         }
 
         function manifestUrl(release) {
-            return `https://github.com/${REPO}/releases/download/${release.tag_name}/build_manifest.json`;
+            return `https://github.com/${REPO}/releases/download/${release.tag_name}/moredeps.json`;
         }
 
         function loadRelease(release, localManifest) {

@@ -344,7 +344,7 @@ Contents:
 ```
 
 ### 5.2 Manifest JSON
-`docs/build_manifest.json` (or similar):
+`docs/moredeps.json` (or similar):
 ```json
 {
   "repo_commit": "abc123",
