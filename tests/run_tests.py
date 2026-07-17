@@ -126,8 +126,10 @@ def read_config(dep_name: str) -> dict:
 
 
 def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
-                include_dir: Path, libs: list[Path], config: dict) -> None:
+                include_dir: Path, libs: list[Path], config: dict,
+                platform: str) -> None:
     """Generate a minimal CMake project for the snippet."""
+    os_prefix = platform.split("_")[0]
     lang = "CXX" if snippet.suffix in (".cpp", ".cxx", ".cc") else "C"
     target = f"test_{dep_name}_{linkage}"
 
@@ -152,7 +154,8 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
         lines.append(f"target_link_directories({target} PRIVATE {lib_dir.as_posix()})")
 
     # Add system frameworks on Apple platforms if requested.
-    frameworks = config.get("frameworks", [])
+    frameworks = (config.get(f"frameworks_{os_prefix}")
+                  or config.get("frameworks", []))
     if sys.platform == "darwin" and frameworks:
         for fw in frameworks:
             lines.append(f"target_link_libraries({target} PRIVATE \"-framework {fw}\")")
@@ -165,8 +168,9 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
     # Set rpath so dynamic executables can find their .so/.dylib at runtime.
     # Use --disable-new-dtags on Linux to emit DT_RPATH (transitive) rather
     # than DT_RUNPATH (non-transitive): libskribidi.so → libharfbuzz.so needs
-    # this.
-    if linkage == "dynamic":
+    # this.  Skip on Windows: MSVC link.exe doesn't understand -rpath; DLL
+    # lookup is via PATH which the runner sets before execution.
+    if linkage == "dynamic" and sys.platform != "win32":
         rpaths = sorted(set(lib.parent.as_posix() for lib in libs))
         for rp in rpaths:
             if sys.platform == "linux":
@@ -189,12 +193,19 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
 
     # Extra system libs from per-dep config (e.g. freetype needs z).
     # Must come AFTER the dep's own libs so GNU ld resolves left-to-right.
-    extra = config.get(f"extra_{linkage}_libs", config.get("extra_libs", []))
+    # Config keys can be platform-specific: extra_static_libs_windows, etc.
+    extra = (config.get(f"extra_{linkage}_libs_{os_prefix}")
+             or config.get(f"extra_{linkage}_libs")
+             or config.get(f"extra_libs_{os_prefix}")
+             or config.get("extra_libs", []))
     if extra:
         lines.append(f"target_link_libraries({target} PRIVATE {' '.join(extra)})")
 
     if sys.platform == "linux":
         lines.append(f"target_link_libraries({target} PRIVATE m GL pthread dl)")
+    elif sys.platform == "win32":
+        # D3D11/DXGI for sokol_gfx/sokol_gp D3D backends; opengl32 as fallback.
+        lines.append(f"target_link_libraries({target} PRIVATE d3d11 dxgi opengl32)")
 
     lines.append(f"set_target_properties({target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY {build_dir.as_posix()})")
 
@@ -302,9 +313,12 @@ def test_dep(dep_name: str, platform: str, out_dir: Path, bin_dir: Path | None,
     # For dynamic, keep only shared/import libraries (not leftover static archives).
     dynamic_libs = [lib for lib in dynamic_libs if lib.suffix in (".so", ".dylib", ".lib")]
 
-    # On Windows, the import library lives in lib/import; the .dll itself is runtime.
-    if dynamic_libs and sys.platform == "win32":
-        dynamic_libs = [lib for lib in dynamic_libs if lib.suffix == ".lib"]
+    # On Windows, static .lib files live in lib/ and import .lib in lib/import/.
+    # For dynamic tests we only want the import libs.  Also skip rpath entirely
+    # (MSVC link.exe doesn't understand -rpath; DLL lookup is via PATH).
+    if sys.platform == "win32":
+        dynamic_libs = [lib for lib in dynamic_libs if lib.parent.name == "import"]
+        static_libs = [lib for lib in static_libs if lib.parent.name != "import"]
 
     skip_static = config.get("skip_static", not bool(static_libs))
     skip_dynamic = config.get("skip_dynamic", not bool(dynamic_libs))
@@ -324,7 +338,7 @@ def test_dep(dep_name: str, platform: str, out_dir: Path, bin_dir: Path | None,
 
         with tempfile.TemporaryDirectory(prefix=f"moredeps-test-{dep_name}-{linkage}-") as td:
             build_dir = Path(td)
-            write_cmake(build_dir, dep_name, linkage, snippet, include_dir, libs, config)
+            write_cmake(build_dir, dep_name, linkage, snippet, include_dir, libs, config, platform)
             ok = build_test(build_dir, platform, toolchain=toolchain, verbose=verbose)
             if not ok:
                 results[dep_name][linkage] = "build-failed"
