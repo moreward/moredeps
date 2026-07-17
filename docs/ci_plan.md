@@ -118,12 +118,23 @@ Host detection uses `RUNNER_ARCH` (set by GitHub Actions), **not** `PROCESSOR_AR
 
 ## 7. Packaging and manifest
 
-`scripts/ci_package.py` (run by the `release` job) creates one zip per dependency from `_out/<platform>/{lib,include}` and writes `moredeps.json`.
+`scripts/ci_package.py` (run by the `release` job) creates **one zip per dependency** (all platforms
+in a single archive) and writes `moredeps.json`.  The zip layout is:
+
+```
+static/<platform>/lib/          # static libraries
+static/<platform>/include/       # public headers
+dynamic/<platform>/lib/          # shared libraries (.so/.dylib)
+dynamic/<platform>/lib/import/   # Windows import .lib
+dynamic/<platform>/bin/          # Windows runtime .dll
+dynamic/<platform>/include/      # public headers
+licenses/                        # upstream license files
+```
 
 Artifact naming:
 
 ```
-moredeps-<repo-sha8>-<platform>-<dep>-<dep-commit8>.zip
+moredeps-<repo-sha8>-<dep>-<dep-commit8>.zip
 ```
 
 Important implementation details (all learned the hard way):
@@ -168,7 +179,8 @@ Manifest format (actual):
 | `build-<full-sha>` | Immutable | Permanent record for the commit |
 | `latest` | Rolling alias | Deleted and recreated each run; what the site displays |
 
-Both contain `moredeps.json` + all zips. Old `build-<sha>` releases accumulate (no cleanup implemented yet).
+Both contain `moredeps.json` + all zips. Only the last 3 `build-<sha>` releases
+are kept; older ones are pruned automatically by the `release` job.
 
 ### Why the manifest is served from Pages, not from the release
 
