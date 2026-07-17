@@ -2,5 +2,6 @@
   "link_libs": ["harfbuzz", "harfbuzz-subset"],
   "extra_static_libs": ["freetype", "z"],
   "extra_static_libs_windows": ["freetype", "zlibstatic"],
-  "frameworks_macos": ["CoreText", "CoreFoundation", "CoreGraphics"]
+  "frameworks_macos": ["CoreText", "CoreFoundation", "CoreGraphics"],
+  "skip_static_windows": true
 }
