@@ -1,4 +1,10 @@
 {
   "link_libs": ["SDL3"],
-  "skip_static_macos": true
+  "extra_static_libs": ["usb-1.0"],
+  "frameworks_macos": [
+    "Cocoa", "IOKit", "Carbon", "Metal", "QuartzCore", "Foundation",
+    "CoreVideo", "CoreAudio", "AudioToolbox", "CoreMedia",
+    "AVFoundation", "ForceFeedback", "GameController",
+    "UniformTypeIdentifiers", "CoreHaptics"
+  ]
 }
