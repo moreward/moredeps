@@ -172,16 +172,34 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
         lines.append(f"set_property(TARGET {target} PROPERTY CXX_STANDARD 17)")
 
     # Set rpath so dynamic executables can find their .so/.dylib at runtime.
+    # Use --disable-new-dtags on Linux to emit DT_RPATH (transitive) rather
+    # than DT_RUNPATH (non-transitive): libskribidi.so → libharfbuzz.so needs
+    # this.
     if linkage == "dynamic":
         rpaths = sorted(set(lib.parent.as_posix() for lib in libs))
         for rp in rpaths:
-            lines.append(f"target_link_options({target} PRIVATE \"LINKER:-rpath,{rp}\")")
+            if sys.platform == "linux":
+                lines.append(f"target_link_options({target} PRIVATE \"LINKER:--disable-new-dtags,-rpath,{rp}\")")
+            else:
+                lines.append(f"target_link_options({target} PRIVATE \"LINKER:-rpath,{rp}\")")
+
+    # Force the C++ linker even for C snippets.  On Linux the C linker driver
+    # does not pull -lstdc++ automatically, and many of our static archives
+    # (TracyClient, raudio, Dawn) are C++.  Also add libm/libpthread/libGL/libdl
+    # which are not implicitly linked on Linux but are needed by sqlite3,
+    # miniaudio, sokol_gfx (GLCORE backend), etc.
+    lines.append(f"set_target_properties({target} PROPERTIES LINKER_LANGUAGE CXX)")
+    if sys.platform == "linux":
+        lines.append(f"target_link_libraries({target} PRIVATE m GL pthread dl)")
 
     # Finally link the libraries. For static, link all discovered static libs to
     # resolve transitive dependencies. For dynamic, link only the shared libs.
+    # On Linux wrap static archives in --start-group/--end-group so link order
+    # does not matter (e.g. freetype.a needs inflateEnd from libz.a).
     if libs:
-        # Escape spaces in paths for CMake.
         lib_paths = ' '.join(f'"{lib.as_posix()}"' for lib in libs)
+        if linkage == "static" and sys.platform == "linux":
+            lib_paths = f"-Wl,--start-group {lib_paths} -Wl,--end-group"
         lines.append(f"target_link_libraries({target} PRIVATE {lib_paths})")
 
     lines.append(f"set_target_properties({target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY {build_dir.as_posix()})")
