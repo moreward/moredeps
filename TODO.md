@@ -2,13 +2,16 @@
 
 ## Test coverage
 
-- [ ] Add test snippets for ~30 remaining deps:
-  - `boringssl`, `box3d`, `budouxc`, `cglm`, `cgltf`, `cimgui`
-  - `dawn`, `FastNoiseLite`, `flecs`, `fontstash`, `glfw`
-  - `imgui`, `libunibreak`, `libwebsockets`, `microui`, `mtcc`
-  - `nanovg`, `physfs`, `raudio`, `raylib`, `reproc`
-  - `sdl3`, `sdl3webgpu`, `SheenBidi`, `sokol` variants, `stb`
-  - `tinycsocket`, `tracy`, `ubench`, `utest`
+- [x] Add test snippets (30/46 deps covered):
+  - [x] `zlib`, `sqlite-amalgamation`, `cJSON`, `curl`, `enet`
+  - [x] `mimalloc`, `miniaudio`, `skribidi`, `sokol`, `sokol_gp`
+  - [x] `lz4`, `xxhash`, `utf8proc`, `harfbuzz`, `freetype`
+  - [x] `lua`, `stb_image`, `FastNoiseLite`, `libunibreak`, `SheenBidi`
+  - [x] `physfs`, `box3d`, `cglm`, `cgltf`, `microui`
+  - [x] `flecs`, `budouxc`, `fontstash`, `reproc`, `tinycsocket`
+- [ ] Remaining ~16 deps: `boringssl`, `cimgui`, `dawn`, `imgui`, `sdl3`,
+      `tracy`, `stb` (other modules), `glfw`, `libwebsockets`, `mtcc`,
+      `nanovg`, `raudio`, `raylib`, `ubench`, `utest`
 - [ ] Wire WASM link tests back into CI (toolchain auto-detection bug)
 
 ## Windows
