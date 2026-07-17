@@ -160,8 +160,9 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
             lines.append(f"target_link_directories({target} PRIVATE {d})")
 
     # Add system frameworks on Apple platforms if requested.
-    frameworks = (config.get(f"frameworks_{os_prefix}")
-                  or config.get("frameworks", []))
+    fw_generic = config.get("frameworks", [])
+    fw_platform = config.get(f"frameworks_{os_prefix}", [])
+    frameworks = fw_platform + [f for f in fw_generic if f not in fw_platform]
     if sys.platform == "darwin" and frameworks:
         for fw in frameworks:
             lines.append(f"target_link_libraries({target} PRIVATE \"-framework {fw}\")")
@@ -200,10 +201,11 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
     # Extra system libs from per-dep config (e.g. freetype needs z).
     # Must come AFTER the dep's own libs so GNU ld resolves left-to-right.
     # Config keys can be platform-specific: extra_static_libs_windows, etc.
-    extra = (config.get(f"extra_{linkage}_libs_{os_prefix}")
-             or config.get(f"extra_{linkage}_libs")
-             or config.get(f"extra_libs_{os_prefix}")
-             or config.get("extra_libs", []))
+    extra_generic = (config.get(f"extra_{linkage}_libs", [])
+                     or config.get("extra_libs", []))
+    extra_platform = (config.get(f"extra_{linkage}_libs_{os_prefix}", [])
+                      or config.get(f"extra_libs_{os_prefix}", []))
+    extra = extra_platform + [e for e in extra_generic if e not in extra_platform]
     if extra:
         resolved = []
         for name in extra:

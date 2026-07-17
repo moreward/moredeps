@@ -1,10 +1,13 @@
 {
   "link_libs": ["raylib"],
-  "extra_static_libs": ["glfw3", "usb-1.0"],
+  "extra_static_libs": ["glfw3"],
+  "extra_static_libs_macos": ["usb-1.0"],
   "frameworks_macos": [
     "Cocoa", "OpenGL", "IOKit", "CoreVideo", "CoreFoundation",
     "Carbon", "Metal", "QuartzCore", "Foundation",
     "CoreAudio", "AudioToolbox", "CoreMedia",
     "ForceFeedback", "GameController"
-  ]
+  ],
+  "skip_static_linux": true,
+  "skip_static_windows": true
 }
