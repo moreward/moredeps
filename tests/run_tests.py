@@ -140,6 +140,10 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
     if include_dir.exists():
         lines.append(f"target_include_directories({target} PRIVATE {include_dir.as_posix()})")
 
+    extra_inc = config.get("include_dirs", [])
+    for d in extra_inc:
+        lines.append(f"target_include_directories({target} PRIVATE {d})")
+
     for lib_dir in sorted(set(lib.parent for lib in libs)):
         lines.append(f"target_link_directories({target} PRIVATE {lib_dir.as_posix()})")
 
@@ -268,6 +272,12 @@ def test_dep(dep_name: str, platform: str, out_dir: Path, bin_dir: Path | None,
     dynamic_dir = platform_dir / "lib"
     import_dir = platform_dir / "lib" / "import"
     include_dir = platform_dir / "include"
+
+    # Resolve any relative include dirs against the platform dir.
+    extra_inc = config.get("include_dirs", [])
+    if extra_inc:
+        config = dict(config)  # shallow copy so we don't mutate the original
+        config["include_dirs"] = [str(platform_dir / d) for d in extra_inc]
 
     static_libs = find_dep_libs(dep_name, static_dir, expected_names)
     dynamic_libs = find_dep_libs(dep_name, dynamic_dir, expected_names)

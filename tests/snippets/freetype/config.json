@@ -1,0 +1,4 @@
+{
+  "link_libs": ["freetype"],
+  "include_dirs": ["include/freetype2"]
+}

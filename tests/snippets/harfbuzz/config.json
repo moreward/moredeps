@@ -1,0 +1,4 @@
+{
+  "link_libs": ["harfbuzz", "harfbuzz-subset"],
+  "skip_static": true
+}
