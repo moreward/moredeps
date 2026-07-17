@@ -338,6 +338,7 @@ jobs:
 
       - name: Run link tests
         run: |
+          source scripts/setup_vcvars.sh x64
           python tests/run_tests.py --platform windows_x64
         shell: bash
 
@@ -393,6 +394,7 @@ jobs:
 
       - name: Run link tests
         run: |
+          source scripts/setup_vcvars.sh arm64 || source scripts/setup_vcvars.sh x64_arm64
           python tests/run_tests.py --platform windows_arm64
         shell: bash
 
