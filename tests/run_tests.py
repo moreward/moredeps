@@ -277,11 +277,14 @@ def build_test(build_dir: Path, platform: str, toolchain: Path | None = None,
 
 
 def run_executable(build_dir: Path, dep_name: str, linkage: str,
-                   bin_dir: Path | None = None) -> bool:
+                   bin_dir: Path | None = None,
+                   lib_dir: Path | None = None) -> bool:
     """Run the built executable.
 
     On Windows the .dll files are in `bin_dir`; they must be on PATH so the
     dynamic linker can find them at runtime.
+    On Linux/macOS, `lib_dir` is added to LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
+    so transient .so/.dylib deps of static archives can be resolved.
     """
     exe = build_dir / f"test_{dep_name}_{linkage}"
     if sys.platform == "win32":
@@ -297,6 +300,13 @@ def run_executable(build_dir: Path, dep_name: str, linkage: str,
     if bin_dir and bin_dir.exists():
         sep = ";" if sys.platform == "win32" else ":"
         env["PATH"] = str(bin_dir) + sep + env.get("PATH", "")
+    # On Linux/macOS, static binaries may pick up transient .so deps
+    # (e.g. libharfbuzz-subset.a → libharfbuzz.so).  Add the lib dir.
+    if lib_dir and lib_dir.exists():
+        if sys.platform == "darwin":
+            env["DYLD_LIBRARY_PATH"] = str(lib_dir) + ":" + env.get("DYLD_LIBRARY_PATH", "")
+        elif sys.platform == "linux":
+            env["LD_LIBRARY_PATH"] = str(lib_dir) + ":" + env.get("LD_LIBRARY_PATH", "")
 
     res = subprocess.run([str(exe)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
     if res.returncode != 0:
@@ -353,6 +363,7 @@ def test_dep(dep_name: str, platform: str, out_dir: Path, bin_dir: Path | None,
 
     no_run = config.get("no_run", False) or is_wasm(platform)
     bin_dir_for_run = bin_dir if is_win(platform) else None
+    lib_dir_for_run = static_dir if sys.platform in ("linux", "darwin") else None
 
     for linkage, libs, skip in [("static", static_libs, skip_static),
                                  ("dynamic", dynamic_libs, skip_dynamic)]:
@@ -368,7 +379,7 @@ def test_dep(dep_name: str, platform: str, out_dir: Path, bin_dir: Path | None,
                 results[dep_name][linkage] = "build-failed"
                 continue
             if not no_run:
-                ok = run_executable(build_dir, dep_name, linkage, bin_dir=bin_dir_for_run)
+                ok = run_executable(build_dir, dep_name, linkage, bin_dir=bin_dir_for_run, lib_dir=lib_dir_for_run)
                 if not ok:
                     results[dep_name][linkage] = "run-failed"
                     continue
