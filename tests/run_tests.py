@@ -189,18 +189,15 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
     # which are not implicitly linked on Linux but are needed by sqlite3,
     # miniaudio, sokol_gfx (GLCORE backend), etc.
     lines.append(f"set_target_properties({target} PROPERTIES LINKER_LANGUAGE CXX)")
-    if sys.platform == "linux":
-        lines.append(f"target_link_libraries({target} PRIVATE m GL pthread dl)")
 
-    # Finally link the libraries. For static, link all discovered static libs to
-    # resolve transitive dependencies. For dynamic, link only the shared libs.
-    # On Linux wrap static archives in --start-group/--end-group so link order
-    # does not matter (e.g. freetype.a needs inflateEnd from libz.a).
+    # Link the dep's own libraries first, then system libs after so GNU ld
+    # resolves left-to-right (the .so/.a may reference GL, m, pthread).
     if libs:
         lib_paths = ' '.join(f'"{lib.as_posix()}"' for lib in libs)
-        if linkage == "static" and sys.platform == "linux":
-            lib_paths = f"-Wl,--start-group {lib_paths} -Wl,--end-group"
         lines.append(f"target_link_libraries({target} PRIVATE {lib_paths})")
+
+    if sys.platform == "linux":
+        lines.append(f"target_link_libraries({target} PRIVATE m GL pthread dl)")
 
     lines.append(f"set_target_properties({target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY {build_dir.as_posix()})")
 
@@ -304,10 +301,6 @@ def test_dep(dep_name: str, platform: str, out_dir: Path, bin_dir: Path | None,
     dynamic_libs = find_dep_libs(dep_name, dynamic_dir, expected_names)
     if import_dir.exists():
         dynamic_libs += find_dep_libs(dep_name, import_dir, expected_names)
-
-    # For static, also pull in every other static lib to resolve transitive deps.
-    if static_libs:
-        static_libs = discover_static_libs(static_dir)
 
     # For dynamic, keep only shared/import libraries (not leftover static archives).
     dynamic_libs = [lib for lib in dynamic_libs if lib.suffix in (".so", ".dylib", ".lib")]

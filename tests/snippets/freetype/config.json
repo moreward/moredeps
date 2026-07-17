@@ -1,4 +1,5 @@
 {
   "link_libs": ["freetype"],
-  "include_dirs": ["include/freetype2"]
+  "include_dirs": ["include/freetype2"],
+  "extra_static_libs": ["z"]
 }
