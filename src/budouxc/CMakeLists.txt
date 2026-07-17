@@ -11,7 +11,11 @@ set(BUDOUXC_HEADERS
   ${BUDOUXC_SRC_DIR}/include/budoux.h
 )
 
-add_library(budouxc STATIC ${BUDOUXC_SOURCES} ${BUDOUXC_HEADERS})
+add_library(budouxc ${BUDOUXC_SOURCES} ${BUDOUXC_HEADERS})
+set_target_properties(budouxc PROPERTIES
+  WINDOWS_EXPORT_ALL_SYMBOLS ON
+)
+
 target_include_directories(budouxc PUBLIC
   $<BUILD_INTERFACE:${BUDOUXC_SRC_DIR}/include>
   $<INSTALL_INTERFACE:include>

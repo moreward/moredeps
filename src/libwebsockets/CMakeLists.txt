@@ -23,4 +23,25 @@ if(EXISTS "${LWS_PATCH}")
   endif()
 endif()
 
+# Point libwebsockets at the BoringSSL installed by this project. We set the
+# library list here (rather than on the top-level CMAKE_ARGS) so the two paths
+# survive as a single CMake list instead of being split into separate command-
+# line arguments by ExternalProject.
+set(LWS_OPENSSL_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/include")
+if(BUILD_SHARED_LIBS)
+  if(WIN32)
+    set(LWS_OPENSSL_LIBRARIES "${CMAKE_INSTALL_PREFIX}/lib/ssl.lib;${CMAKE_INSTALL_PREFIX}/lib/crypto.lib")
+  elseif(APPLE)
+    set(LWS_OPENSSL_LIBRARIES "${CMAKE_INSTALL_PREFIX}/lib/libssl.dylib;${CMAKE_INSTALL_PREFIX}/lib/libcrypto.dylib")
+  else()
+    set(LWS_OPENSSL_LIBRARIES "${CMAKE_INSTALL_PREFIX}/lib/libssl.so;${CMAKE_INSTALL_PREFIX}/lib/libcrypto.so")
+  endif()
+else()
+  if(WIN32)
+    set(LWS_OPENSSL_LIBRARIES "${CMAKE_INSTALL_PREFIX}/lib/ssl.lib;${CMAKE_INSTALL_PREFIX}/lib/crypto.lib")
+  else()
+    set(LWS_OPENSSL_LIBRARIES "${CMAKE_INSTALL_PREFIX}/lib/libssl.a;${CMAKE_INSTALL_PREFIX}/lib/libcrypto.a")
+  endif()
+endif()
+
 add_subdirectory("${LWS_BUILD_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/lws_build")

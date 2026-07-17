@@ -23,7 +23,7 @@ if(EMSCRIPTEN)
   endif()
 endif()
 
-add_library(sdl3webgpu STATIC ${SDL3WEBGPU_BUILD_DIR}/sdl3webgpu.c)
+add_library(sdl3webgpu ${SDL3WEBGPU_BUILD_DIR}/sdl3webgpu.c)
 target_include_directories(sdl3webgpu PUBLIC
   $<BUILD_INTERFACE:${SDL3WEBGPU_BUILD_DIR}>
   $<BUILD_INTERFACE:${SDL3_SRC_DIR}>
@@ -33,6 +33,9 @@ target_include_directories(sdl3webgpu PUBLIC
 set_target_properties(sdl3webgpu PROPERTIES
   C_STANDARD 11
   POSITION_INDEPENDENT_CODE ON
+)
+set_target_properties(sdl3webgpu PROPERTIES
+  WINDOWS_EXPORT_ALL_SYMBOLS ON
 )
 
 if(APPLE)
@@ -45,6 +48,20 @@ if(APPLE)
   )
 elseif(EMSCRIPTEN)
   target_compile_definitions(sdl3webgpu PRIVATE WEBGPU_BACKEND_EMDAWNWEBGPU)
+endif()
+
+if(BUILD_SHARED_LIBS)
+  # sdl3webgpu needs SDL3 and the WebGPU implementation (dawn) at link time when
+  # built as a shared library. Link by name so the install name / rpath is
+  # relative to the same lib/ directory on all platforms.
+  target_link_directories(sdl3webgpu PRIVATE "${CMAKE_INSTALL_PREFIX}/lib")
+  if(WIN32)
+    target_link_libraries(sdl3webgpu PRIVATE SDL3 webgpu_dawn)
+  elseif(APPLE)
+    target_link_libraries(sdl3webgpu PRIVATE SDL3 webgpu_dawn)
+  else()
+    target_link_libraries(sdl3webgpu PRIVATE SDL3 webgpu_dawn)
+  endif()
 endif()
 
 install(TARGETS sdl3webgpu

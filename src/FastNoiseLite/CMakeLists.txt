@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 project(FastNoiseLite LANGUAGES C)
 
-add_library(FastNoiseLite STATIC FastNoiseLite.c)
+add_library(FastNoiseLite FastNoiseLite.c)
 target_include_directories(FastNoiseLite PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../deps/FastNoiseLite/C>
   $<INSTALL_INTERFACE:include>
@@ -11,6 +11,10 @@ set_target_properties(FastNoiseLite PROPERTIES
   C_STANDARD 11
   POSITION_INDEPENDENT_CODE ON
 )
+set_target_properties(FastNoiseLite PROPERTIES
+  WINDOWS_EXPORT_ALL_SYMBOLS ON
+)
+
 
 install(TARGETS FastNoiseLite
   EXPORT FastNoiseLiteTargets

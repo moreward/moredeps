@@ -134,19 +134,21 @@ function(moredeps_add_dep name)
   endif()
 
   # Static variant
-  ExternalProject_Add(
-    ${name}
-    SOURCE_DIR "${ARG_SOURCE_DIR}"
-    BINARY_DIR "${CMAKE_BINARY_DIR}/${name}"
-    INSTALL_DIR "${CMAKE_INSTALL_PREFIX}"
-    CMAKE_ARGS
-      ${MOREDEPS_COMMON_CMAKE_ARGS}
-      ${ARG_CMAKE_ARGS}
-    ${PATCH_COMMAND_ARG}
-    ${INSTALL_COMMAND_ARG}
-    DEPENDS ${ARG_DEPENDS}
-    BUILD_BYPRODUCTS ${ARG_BUILD_BYPRODUCTS}
-  )
+  if(NOT MOREDEPS_BUILD_SHARED)
+    ExternalProject_Add(
+      ${name}
+      SOURCE_DIR "${ARG_SOURCE_DIR}"
+      BINARY_DIR "${CMAKE_BINARY_DIR}/${name}"
+      INSTALL_DIR "${CMAKE_INSTALL_PREFIX}"
+      CMAKE_ARGS
+        ${MOREDEPS_COMMON_CMAKE_ARGS}
+        ${ARG_CMAKE_ARGS}
+      ${PATCH_COMMAND_ARG}
+      ${INSTALL_COMMAND_ARG}
+      DEPENDS ${ARG_DEPENDS}
+      BUILD_BYPRODUCTS ${ARG_BUILD_BYPRODUCTS}
+    )
+  endif()
 
   # Shared variant -- auto-created for every dep that isn't STATIC_ONLY.
   # Transforms dependency chain: curl -> boringssl becomes
@@ -293,7 +295,6 @@ moredeps_add_dep(cglm
 # --- cimgui ---
 # Upstream CMakeLists hard-codes SHARED. We wrap it to build a static lib.
 moredeps_add_dep(cimgui
-  STATIC_ONLY
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/cimgui"
 )
 
@@ -301,7 +302,6 @@ moredeps_add_dep(cimgui
 # Upstream CMakeLists includes GNUInstallDirs after add_subdirectory(src), so
 # CMAKE_INSTALL_LIBDIR is empty during install. We wrap it to avoid patching.
 moredeps_add_dep(budouxc
-  STATIC_ONLY
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/budouxc"
 )
 
@@ -387,7 +387,6 @@ moredeps_add_dep(curl
 # Emscripten options). Dependencies are pre-populated as git submodules in
 # deps/dawn_third_party (they cannot be nested inside the deps/dawn submodule).
 moredeps_add_dep(dawn
-  STATIC_ONLY
   CMAKE_ARGS
     "-DDAWN_THIRD_PARTY_DIR=${CMAKE_CURRENT_SOURCE_DIR}/deps/dawn_third_party"
     "-DDAWN_EMDAWNWEBGPU_DIR=${CMAKE_CURRENT_SOURCE_DIR}/deps/dawn/third_party/emdawnwebgpu"
@@ -412,6 +411,9 @@ moredeps_add_dep(dawn
     "-DDAWN_USE_WAYLAND=OFF"
     "-DDAWN_ENABLE_DESKTOP_GL=OFF"
     "-DDAWN_ENABLE_OPENGLES=OFF"
+  SHARED_CMAKE_ARGS
+    "-DDAWN_BUILD_MONOLITHIC_LIBRARY=SHARED"
+    "-DBUILD_SHARED_LIBS=OFF"
   INSTALL_COMMAND
     ${CMAKE_COMMAND} -DDAWN_BUILD_DIR=<BINARY_DIR>
                      -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
@@ -490,13 +492,7 @@ moredeps_add_dep(harfbuzz
 # --- libwebsockets ---
 # Uses BoringSSL from the common prefix. BSD sockets are not available in a browser.
 if(NOT EMSCRIPTEN)
-  if(WIN32)
-    set(_LWS_SSL_LIBS "${CMAKE_INSTALL_PREFIX}/lib/ssl.lib;${CMAKE_INSTALL_PREFIX}/lib/crypto.lib")
-  else()
-    set(_LWS_SSL_LIBS "${CMAKE_INSTALL_PREFIX}/lib/libssl.a;${CMAKE_INSTALL_PREFIX}/lib/libcrypto.a")
-  endif()
   moredeps_add_dep(libwebsockets
-    STATIC_ONLY
     DEPENDS boringssl
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/libwebsockets"
     CMAKE_ARGS
@@ -511,7 +507,6 @@ if(NOT EMSCRIPTEN)
       "-DLWS_WITH_SSL=ON"
       "-DLWS_WITH_BORINGSSL=ON"
       "-DLWS_OPENSSL_INCLUDE_DIRS=${CMAKE_INSTALL_PREFIX}/include"
-      "-DLWS_OPENSSL_LIBRARIES=${_LWS_SSL_LIBS}"
       "-DDISABLE_WERROR=ON"
       "-DLWS_HAVE_RSA_SET0_KEY=ON"
       "-DLWS_HAVE_ECDSA_SIG_get0=ON"
@@ -529,6 +524,7 @@ if(NOT EMSCRIPTEN)
       "-DLWS_WITH_FSMOUNT=OFF"
       "-DLWS_WITH_OTA=OFF"
       "-DLWS_WITH_LEJP=OFF"
+      "-DLWS_WITH_LEJP_CONF=OFF"
       "-DLWS_WITH_LHP=OFF"
       "-DLWS_WITH_JSONRPC=OFF"
       "-DLWS_WITH_CONMON=OFF"
@@ -624,13 +620,15 @@ if(NOT EMSCRIPTEN)
       "-DLWS_TLS_LOG_PLAINTEXT_TX=OFF"
       "-DLWS_WITHOUT_CLIENT=OFF"
       "-DLWS_WITHOUT_SERVER=OFF"
+    SHARED_CMAKE_ARGS
+      "-DLWS_WITH_STATIC=OFF"
+      "-DLWS_WITH_SHARED=ON"
   )
 endif()
 
 # --- libunibreak ---
 # Makefile-only upstream; wrapped to provide CMake install rules.
 moredeps_add_dep(libunibreak
-  STATIC_ONLY
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/libunibreak"
 )
 
@@ -785,7 +783,6 @@ moredeps_add_dep(sdl3
 # On Emscripten we compile with -DWEBGPU_BACKEND_EMDAWNWEBGPU so that
 # sdl3webgpu uses the emdawnwebgpu surface descriptor types.
 moredeps_add_dep(sdl3webgpu
-  STATIC_ONLY
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/sdl3webgpu"
   DEPENDS sdl3 dawn
 )
@@ -802,7 +799,6 @@ moredeps_add_dep(SheenBidi
 # global CMAKE_COMPILE_WARNING_AS_ERROR=ON. We instead build it from a wrapper
 # that depends on the libraries already built by this project.
 moredeps_add_dep(skribidi
-  STATIC_ONLY
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/skribidi"
   DEPENDS harfbuzz SheenBidi libunibreak budouxc
   CMAKE_ARGS
@@ -811,22 +807,7 @@ moredeps_add_dep(skribidi
 
 # --- sqlite-amalgamation ---
 moredeps_add_dep(sqlite-amalgamation
-  CMAKE_ARGS
-    "-DBUILD_SHELL=OFF"
-    "-DSQLITE_ENABLE_MATH_FUNCTIONS=ON"
-    "-DSQLITE_RECOMMENDED_OPTIONS=ON"
-    "-DSQLITE_OMIT_DECLTYPE=ON"
-    "-DSQLITE_OMIT_JSON=OFF"
-    "-DSQLITE_ENABLE_FTS5=OFF"
-    "-DSQLITE_ENABLE_RTREE=OFF"
-    "-DSQLITE_ENABLE_STAT4=OFF"
-    "-DSQLITE_ENABLE_GEOPOLY=OFF"
-    "-DSQLITE_ENABLE_RBU=OFF"
-    "-DSQLITE_ENABLE_DBSTAT_VTAB=OFF"
-    "-DSQLITE_ENABLE_COLUMN_METADATA=OFF"
-    "-DSQLITE_ENABLE_ICU=OFF"
-    "-DSQLITE_USE_URI=OFF"
-    "-DBUILD_WITH_XPSDK=OFF"
+  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/sqlite-amalgamation"
 )
 
 # --- tinycsocket ---
@@ -835,7 +816,6 @@ moredeps_add_dep(sqlite-amalgamation
 # BSD sockets are not available in a browser, so exclude on Emscripten.
 if(NOT EMSCRIPTEN)
   moredeps_add_dep(tinycsocket
-    STATIC_ONLY
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/tinycsocket"
     CMAKE_ARGS
       "-DTCS_ENABLE_TESTS=OFF"
@@ -847,7 +827,6 @@ endif()
 
 # --- tracy ---
 moredeps_add_dep(tracy
-  STATIC_ONLY
   CMAKE_ARGS
     "-DTRACY_ENABLE=ON"
     "-DTRACY_Fortran=OFF"
@@ -980,6 +959,14 @@ set(MOREDEPS_WRAPPER_NAMES
   utest
 )
 
+# Wrappers that cannot be built as shared libraries (usually because they
+# define main() or depend on a target that does). Keep these static-only.
+set(MOREDEPS_WRAPPER_STATIC_ONLY
+  sokol_app
+  sokol_glue
+  sokol_gp
+)
+
 foreach(_name IN LISTS MOREDEPS_WRAPPER_NAMES)
   set(_source_dir "${CMAKE_CURRENT_SOURCE_DIR}/src/${_name}")
   if(NOT EXISTS "${_source_dir}/CMakeLists.txt")
@@ -987,16 +974,17 @@ foreach(_name IN LISTS MOREDEPS_WRAPPER_NAMES)
     continue()
   endif()
 
-  # STATIC_ONLY: wrappers are thin static libs from header-only sources
-  ExternalProject_Add(
-    ${_name}
-    SOURCE_DIR "${_source_dir}"
-    BINARY_DIR "${CMAKE_BINARY_DIR}/${_name}"
-    INSTALL_DIR "${CMAKE_INSTALL_PREFIX}"
-    CMAKE_ARGS
-      ${MOREDEPS_COMMON_CMAKE_ARGS}
-    BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/${_name}/${CMAKE_STATIC_LIBRARY_PREFIX}${_name}${CMAKE_STATIC_LIBRARY_SUFFIX}"
-  )
+  # Wrappers can build static or shared depending on BUILD_SHARED_LIBS.
+  if(_name IN_LIST MOREDEPS_WRAPPER_STATIC_ONLY)
+    moredeps_add_dep(${_name}
+      STATIC_ONLY
+      SOURCE_DIR "${_source_dir}"
+    )
+  else()
+    moredeps_add_dep(${_name}
+      SOURCE_DIR "${_source_dir}"
+    )
+  endif()
 endforeach()
 
 # -----------------------------------------------------------------

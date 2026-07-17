@@ -5,7 +5,7 @@ else()
   project(sokol_fetch LANGUAGES C)
 endif()
 
-add_library(sokol_fetch STATIC sokol_fetch.c)
+add_library(sokol_fetch sokol_fetch.c)
 target_include_directories(sokol_fetch PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../deps/sokol>
   $<INSTALL_INTERFACE:include>
@@ -14,6 +14,11 @@ set_target_properties(sokol_fetch PROPERTIES
   C_STANDARD 11
   POSITION_INDEPENDENT_CODE ON
 )
+if(WIN32 AND BUILD_SHARED_LIBS)
+  target_compile_definitions(sokol_fetch PUBLIC SOKOL_DLL)
+endif()
+
+
 
 if(APPLE AND False)
   target_compile_options(sokol_fetch PRIVATE -x objective-c)

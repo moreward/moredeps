@@ -34,7 +34,7 @@ set(UNIBREAK_HEADERS
   ${UNIBREAK_SRC_DIR}/src/wordbreakdef.h
 )
 
-add_library(libunibreak STATIC ${UNIBREAK_SOURCES} ${UNIBREAK_HEADERS})
+add_library(libunibreak ${UNIBREAK_SOURCES} ${UNIBREAK_HEADERS})
 target_include_directories(libunibreak PUBLIC
   $<BUILD_INTERFACE:${UNIBREAK_SRC_DIR}/src>
   $<INSTALL_INTERFACE:include>
@@ -43,6 +43,10 @@ set_target_properties(libunibreak PROPERTIES
   C_STANDARD 11
   POSITION_INDEPENDENT_CODE ON
 )
+set_target_properties(libunibreak PROPERTIES
+  WINDOWS_EXPORT_ALL_SYMBOLS ON
+)
+
 
 install(TARGETS libunibreak
   EXPORT libunibreakConfig

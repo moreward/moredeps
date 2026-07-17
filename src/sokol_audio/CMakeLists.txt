@@ -1,11 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
-if(APPLE AND False)
-  project(sokol_audio LANGUAGES C OBJC)
-else()
-  project(sokol_audio LANGUAGES C)
-endif()
+project(sokol_audio LANGUAGES C)
 
-add_library(sokol_audio STATIC sokol_audio.c)
+add_library(sokol_audio sokol_audio.c)
 target_include_directories(sokol_audio PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../deps/sokol>
   $<INSTALL_INTERFACE:include>
@@ -14,15 +10,14 @@ set_target_properties(sokol_audio PROPERTIES
   C_STANDARD 11
   POSITION_INDEPENDENT_CODE ON
 )
+if(WIN32 AND BUILD_SHARED_LIBS)
+  target_compile_definitions(sokol_audio PUBLIC SOKOL_DLL)
+endif()
 
-if(APPLE AND False)
-  target_compile_options(sokol_audio PRIVATE -x objective-c)
-  target_link_libraries(sokol_audio PRIVATE
-    "-framework AppKit"
-    "-framework Metal"
-    "-framework MetalKit"
-    "-framework Cocoa"
-    "-framework QuartzCore"
+if(APPLE)
+  target_link_libraries(sokol_audio PUBLIC
+    "-framework AudioToolbox"
+    "-framework CoreAudio"
   )
 endif()
 

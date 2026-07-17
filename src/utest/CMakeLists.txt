@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 project(utest LANGUAGES C)
 
-add_library(utest STATIC utest.c)
+add_library(utest utest.c)
 target_include_directories(utest PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../deps/utest>
   $<INSTALL_INTERFACE:include>
@@ -11,6 +11,10 @@ set_target_properties(utest PROPERTIES
   C_STANDARD 11
   POSITION_INDEPENDENT_CODE ON
 )
+set_target_properties(utest PROPERTIES
+  WINDOWS_EXPORT_ALL_SYMBOLS ON
+)
+
 
 install(TARGETS utest
   EXPORT utestTargets

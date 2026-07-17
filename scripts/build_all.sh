@@ -203,17 +203,17 @@ if [[ "${BUILD_SHARED}" == "1" && "${PLATFORM}" != "wasm_emscripten" ]]; then
     cp -a "$f" "${OUT_DIR}/lib/"
     echo "  lib/$(basename $f)"
   done
-  # Windows: .dll in bin/, import .lib in lib/ (rename to avoid overwriting static .lib)
+  # Windows: .dll in bin/, import .lib in lib/import/ (kept separate from static .lib)
   find "${SHARED_TMP}/bin" -name '*.dll' 2>/dev/null | while read f; do
     mkdir -p "${OUT_DIR}/bin"
     cp -a "$f" "${OUT_DIR}/bin/"
     echo "  bin/$(basename $f)"
   done
-  # Copy import .lib files under lib/ (for linking against the DLL)
+  # Copy import .lib files under lib/import/ (for linking against the DLL)
   find "${SHARED_TMP}/lib" -name '*.lib' 2>/dev/null | while read f; do
-    mkdir -p "${OUT_DIR}/lib"
-    cp -a "$f" "${OUT_DIR}/lib/"
-    echo "  lib/$(basename $f) (import)"
+    mkdir -p "${OUT_DIR}/lib/import"
+    cp -a "$f" "${OUT_DIR}/lib/import/"
+    echo "  lib/import/$(basename $f) (import)"
   done
   rm -rf "${SHARED_TMP}"
   echo "Shared libraries merged."

@@ -1,6 +1,6 @@
---- a/CMakeLists.txt
-+++ b/CMakeLists.txt
-@@ -978,7 +978,10 @@ if (MSVC)
+--- a/CMakeLists.txt	2026-07-12 19:33:47.761207728 -0700
++++ b/CMakeLists.txt	2026-07-16 22:28:58.754680021 -0700
+@@ -977,7 +977,10 @@
  	# Turn off pointless microsoft security warnings.
  	add_definitions(-D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE)
  	# Fail the build if any warnings
@@ -12,3 +12,17 @@
  	# Unbreak MSVC broken preprocessor __VA_ARGS__ behaviour
  	if (MSVC_VERSION GREATER 1925)
  		add_compile_options(/Zc:preprocessor /wd5105)
+--- a/CMakeLists-implied-options.txt	2026-07-12 19:33:47.761046435 -0700
++++ b/CMakeLists-implied-options.txt	2026-07-16 22:28:58.754910608 -0700
+@@ -53,9 +53,9 @@
+ 	set(LWS_WITH_LEJP_CONF OFF)
+ 	message("LWS_WITH_DIR ${LWS_WITH_DIR}")
+ else()
+-	message(STATUS "Compiled with LWS_WITH_DIR and LWS_WITH_LEJP_CONF")
++	message(STATUS "Compiled with LWS_WITH_DIR")
+ 	set(LWS_WITH_DIR ON)
+-	set(LWS_WITH_LEJP_CONF ON)
++	set(LWS_WITH_LEJP_CONF OFF)
+ endif()
+ 
+ if (LWS_FOR_GITOHASHI)

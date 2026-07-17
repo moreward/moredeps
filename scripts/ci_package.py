@@ -210,7 +210,7 @@ def find_lib_files(dep_name: str, platform_dir: Path) -> list[Path]:
     shared_exts = {".so", ".dylib", ".dll"}
     files = []
 
-    for search_dir in ("lib", "bin"):
+    for search_dir in ("lib", "lib/import", "bin"):
         d = platform_dir / search_dir
         if not d.exists():
             continue
@@ -349,8 +349,14 @@ def package_dependency(dep_name: str, platform: str, out_dir: Path, repo_sha: st
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         # Add libraries
         for f in lib_files:
-            # .dll files live in bin/ on disk but ship in lib/ in the zip
-            subdir = "bin" if f.parent.name == "bin" else "lib"
+            # .dll files live in bin/ on disk but ship in bin/ in the zip.
+            # import .lib files live in lib/import/ on disk and ship in lib/import/ in the zip.
+            if f.parent.name == "bin":
+                subdir = "bin"
+            elif f.parent.name == "import" and f.parent.parent.name == "lib":
+                subdir = "lib/import"
+            else:
+                subdir = "lib"
             arcname = f"{subdir}/{f.name}"
             zf.write(f, arcname)
             kind = "shared" if f.suffix in (".so", ".dylib", ".dll") else "static"

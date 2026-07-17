@@ -5,7 +5,7 @@ else()
   project(sokol_gfx LANGUAGES C)
 endif()
 
-add_library(sokol_gfx STATIC sokol_gfx.c)
+add_library(sokol_gfx sokol_gfx.c)
 target_include_directories(sokol_gfx PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../deps/sokol>
   $<INSTALL_INTERFACE:include>
@@ -14,6 +14,11 @@ set_target_properties(sokol_gfx PROPERTIES
   C_STANDARD 11
   POSITION_INDEPENDENT_CODE ON
 )
+if(WIN32 AND BUILD_SHARED_LIBS)
+  target_compile_definitions(sokol_gfx PUBLIC SOKOL_DLL)
+endif()
+
+
 
 if(APPLE AND TRUE)
   target_compile_options(sokol_gfx PRIVATE -x objective-c)

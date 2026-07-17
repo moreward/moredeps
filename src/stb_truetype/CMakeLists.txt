@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 project(stb_truetype LANGUAGES C)
 
-add_library(stb_truetype STATIC stb_truetype.c)
+add_library(stb_truetype stb_truetype.c)
 target_include_directories(stb_truetype PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../deps/stb>
   $<INSTALL_INTERFACE:include>
@@ -10,6 +10,10 @@ set_target_properties(stb_truetype PROPERTIES
   C_STANDARD 11
   POSITION_INDEPENDENT_CODE ON
 )
+set_target_properties(stb_truetype PROPERTIES
+  WINDOWS_EXPORT_ALL_SYMBOLS ON
+)
+
 
 install(TARGETS stb_truetype
   EXPORT stb_truetypeTargets

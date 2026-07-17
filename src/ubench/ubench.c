@@ -3,3 +3,5 @@
 #endif
 #define UBENCH_IMPLEMENTATION
 #include "ubench.h"
+
+UBENCH_STATE();
