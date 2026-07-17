@@ -131,9 +131,13 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
     lang = "CXX" if snippet.suffix in (".cpp", ".cxx", ".cc") else "C"
     target = f"test_{dep_name}_{linkage}"
 
+    # Always enable both C and CXX so the CMake-generated link line picks up
+    # the C++ standard library.  Many of our static archives are C++ (Tracy,
+    # Dawn, raudio, etc.) and referencing them from a pure-C executable on
+    # Linux/gcc leaves __cxa_demangle / std::thread / -lm unresolved.
     lines = [
         "cmake_minimum_required(VERSION 3.25)",
-        f"project({target} LANGUAGES {lang})",
+        f"project({target} LANGUAGES C CXX)",
         f"add_executable({target} {snippet.name})",
     ]
 
@@ -167,12 +171,11 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
     else:
         lines.append(f"set_property(TARGET {target} PROPERTY CXX_STANDARD 17)")
 
-    # Set rpath on Unix so the dynamic executables can find their .so/.dylib.
-    if linkage == "dynamic" and sys.platform in ("darwin", "linux"):
+    # Set rpath so dynamic executables can find their .so/.dylib at runtime.
+    if linkage == "dynamic":
         rpaths = sorted(set(lib.parent.as_posix() for lib in libs))
         for rp in rpaths:
-            lines.append(f"set_target_properties({target} PROPERTIES BUILD_RPATH \"{rp}\")")
-            lines.append(f"set_target_properties({target} PROPERTIES INSTALL_RPATH \"{rp}\")")
+            lines.append(f"target_link_options({target} PRIVATE \"LINKER:-rpath,{rp}\")")
 
     # Finally link the libraries. For static, link all discovered static libs to
     # resolve transitive dependencies. For dynamic, link only the shared libs.
