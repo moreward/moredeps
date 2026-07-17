@@ -1,4 +1,4 @@
 {
-  "skip_static": true,
-  "link_libs": ["sokol_gfx"]
+  "link_libs": ["sokol_gfx"],
+  "frameworks_macos": ["Metal", "MetalKit", "Cocoa", "QuartzCore", "Foundation"]
 }

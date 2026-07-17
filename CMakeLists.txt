@@ -1028,7 +1028,6 @@ endforeach()
 # --- lua ---
 # Lua is Makefile-only. We wrap it in src/lua/ to build it via CMake.
 moredeps_add_dep(lua
-  STATIC_ONLY
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/lua"
 )
 

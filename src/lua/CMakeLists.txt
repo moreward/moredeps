@@ -38,7 +38,7 @@ set(LUA_LIB_SOURCES
   ${LUA_SRC_DIR}/lzio.c
 )
 
-add_library(lua STATIC ${LUA_LIB_SOURCES})
+add_library(lua ${LUA_LIB_SOURCES})
 target_include_directories(lua PUBLIC
   $<BUILD_INTERFACE:${LUA_SRC_DIR}>
   $<INSTALL_INTERFACE:include>
@@ -47,6 +47,14 @@ set_target_properties(lua PROPERTIES
   C_STANDARD 11
   POSITION_INDEPENDENT_CODE ON
 )
+
+# Shared-library DLL export on Windows.
+# LUA_BUILD_AS_DLL (public)  → consumers see __declspec(dllimport)
+# LUA_CORE         (private) → building lua sees __declspec(dllexport)
+if(BUILD_SHARED_LIBS AND WIN32)
+  target_compile_definitions(lua PUBLIC LUA_BUILD_AS_DLL)
+  target_compile_definitions(lua PRIVATE LUA_CORE)
+endif()
 
 if(APPLE)
   target_compile_definitions(lua PRIVATE LUA_USE_MACOSX)

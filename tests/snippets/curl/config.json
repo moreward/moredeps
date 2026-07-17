@@ -1,3 +1,3 @@
 {
-  "skip_static": true
+  "extra_static_libs_macos": ["idn2"]
 }

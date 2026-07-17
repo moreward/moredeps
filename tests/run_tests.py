@@ -153,6 +153,12 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
     for lib_dir in sorted(set(lib.parent for lib in libs)):
         lines.append(f"target_link_directories({target} PRIVATE {lib_dir.as_posix()})")
 
+    # On macOS, Homebrew libraries live in /opt/homebrew/lib (ARM) or
+    # /usr/local/lib (Intel) which CMake does not search by default.
+    if sys.platform == "darwin":
+        for d in ["/opt/homebrew/lib", "/usr/local/lib"]:
+            lines.append(f"target_link_directories({target} PRIVATE {d})")
+
     # Add system frameworks on Apple platforms if requested.
     frameworks = (config.get(f"frameworks_{os_prefix}")
                   or config.get("frameworks", []))
@@ -303,7 +309,7 @@ def test_dep(dep_name: str, platform: str, out_dir: Path, bin_dir: Path | None,
     extra_inc = config.get("include_dirs", [])
     if extra_inc:
         config = dict(config)  # shallow copy so we don't mutate the original
-        config["include_dirs"] = [str(platform_dir / d) for d in extra_inc]
+        config["include_dirs"] = [str(platform_dir / d).replace('\\', '/') for d in extra_inc]
 
     static_libs = find_dep_libs(dep_name, static_dir, expected_names)
     dynamic_libs = find_dep_libs(dep_name, dynamic_dir, expected_names)
