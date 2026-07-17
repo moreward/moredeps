@@ -213,10 +213,18 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
             if linkage == "static":
                 found = False
                 for libdir in sorted(set(lib.parent for lib in libs)):
-                    candidate = libdir / f"lib{name}.a"
-                    if candidate.exists():
-                        resolved.append(f'"{candidate.as_posix()}"')
-                        found = True
+                    for ext in (".a", ".lib"):
+                        candidate = libdir / f"lib{name}{ext}"
+                        if candidate.exists():
+                            resolved.append(f'"{candidate.as_posix()}"')
+                            found = True
+                            break
+                        candidate = libdir / f"{name}{ext}"
+                        if candidate.exists():
+                            resolved.append(f'"{candidate.as_posix()}"')
+                            found = True
+                            break
+                    if found:
                         break
                 if not found:
                     resolved.append(name)
@@ -325,6 +333,7 @@ def test_dep(dep_name: str, platform: str, out_dir: Path, bin_dir: Path | None,
         return
 
     config = read_config(dep_name)
+    os_prefix = platform.split("_")[0]
     expected_names = config.get("link_libs", DEP_LIBRARY_NAMES.get(dep_name, [dep_name]))
     platform_dir = out_dir / platform
 
@@ -354,8 +363,8 @@ def test_dep(dep_name: str, platform: str, out_dir: Path, bin_dir: Path | None,
         dynamic_libs = [lib for lib in dynamic_libs if lib.parent.name == "import"]
         static_libs = [lib for lib in static_libs if lib.parent.name != "import"]
 
-    skip_static = config.get("skip_static", not bool(static_libs))
-    skip_dynamic = config.get("skip_dynamic", not bool(dynamic_libs))
+    skip_static = config.get(f"skip_static_{os_prefix}", config.get("skip_static", not bool(static_libs)))
+    skip_dynamic = config.get(f"skip_dynamic_{os_prefix}", config.get("skip_dynamic", not bool(dynamic_libs)))
 
     # WASM has no native dynamic linkage (emcc produces .wasm modules, not .so).
     if is_wasm(platform):
