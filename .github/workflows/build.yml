@@ -103,6 +103,10 @@ jobs:
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh linux_x64 ${{ inputs.shared && '--shared' || '' }}
 
+      - name: Run link tests
+        run: |
+          python tests/run_tests.py --platform linux_x64
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -153,6 +157,10 @@ jobs:
           export CMAKE_CXX_COMPILER_LAUNCHER=ccache
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh linux_arm64 ${{ inputs.shared && '--shared' || '' }}
+
+      - name: Run link tests
+        run: |
+          python tests/run_tests.py --platform linux_arm64
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -220,6 +228,11 @@ jobs:
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh wasm_emscripten ${{ inputs.shared && '--shared' || '' }}
 
+      - name: Run link tests
+        run: |
+          source ~/emsdk/emsdk_env.sh
+          python tests/run_tests.py --platform wasm_emscripten
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -265,6 +278,10 @@ jobs:
           export CMAKE_CXX_COMPILER_LAUNCHER=ccache
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh macos_arm64 ${{ inputs.shared && '--shared' || '' }}
+
+      - name: Run link tests
+        run: |
+          python tests/run_tests.py --platform macos_arm64
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -316,6 +333,11 @@ jobs:
           ./scripts/build_all.sh windows_x64 ${{ inputs.shared && '--shared' || '' }}
         shell: bash
 
+      - name: Run link tests
+        run: |
+          python tests/run_tests.py --platform windows_x64
+        shell: bash
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -364,6 +386,11 @@ jobs:
           export CMAKE_CXX_COMPILER_LAUNCHER=sccache
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh windows_arm64 ${{ inputs.shared && '--shared' || '' }}
+        shell: bash
+
+      - name: Run link tests
+        run: |
+          python tests/run_tests.py --platform windows_arm64
         shell: bash
 
       - name: Upload artifacts

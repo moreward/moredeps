@@ -1,0 +1,4 @@
+{
+  "link_libs": ["skribidi"],
+  "skip_static": true
+}

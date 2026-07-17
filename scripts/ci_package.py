@@ -290,40 +290,42 @@ def find_license_files(dep_name: str) -> list[Path]:
     return files
 
 
+# Header names/dirs that differ from the dependency name.
+KNOWN_HEADERS = {
+    "boringssl": ["openssl"],
+    "budouxc": ["budoux"],
+    "cJSON": ["cjson"],
+    "curl": ["curl"],
+    "dawn": ["dawn", "webgpu"],
+    "enet": ["enet"],
+    "flecs": ["flecs"],
+    "freetype": ["freetype2"],
+    "glfw": ["glfw"],
+    "harfbuzz": ["harfbuzz"],
+    "libunibreak": ["linebreak", "unibreak", "wordbreak", "graphemebreak",
+                    "eastasianwidth", "emojidef", "indicconjunctbreak"],
+    "libwebsockets": ["libwebsockets"],
+    "lua": ["lua"],
+    "mtcc": ["libtcc", "tcc"],
+    "sdl3": ["SDL3"],
+    "sdl3webgpu": ["sdl3webgpu"],
+    "skribidi": ["skb"],
+    "sqlite-amalgamation": ["sqlite3"],
+    "stb": ["stb"],
+    "tracy": ["tracy"],
+    "utf8proc": ["utf8proc"],
+    "zlib": ["zlib"],
+    "zstd": ["zstd"],
+}
+
+
 def find_header_files(dep_name: str, platform_dir: Path) -> list[Path]:
     """Find all header files belonging to a dependency in a platform directory."""
     include_dir = platform_dir / "include"
     if not include_dir.exists():
         return []
 
-    # Header names/dirs that differ from the dependency name.
-    known_headers = {
-        "boringssl": ["openssl"],
-        "budouxc": ["budoux"],
-        "cJSON": ["cjson"],
-        "curl": ["curl"],
-        "dawn": ["dawn", "webgpu"],
-        "enet": ["enet"],
-        "flecs": ["flecs"],
-        "freetype": ["freetype2"],
-        "glfw": ["glfw"],
-        "harfbuzz": ["harfbuzz"],
-        "libunibreak": ["linebreak", "unibreak", "wordbreak", "graphemebreak",
-                        "eastasianwidth", "emojidef", "indicconjunctbreak"],
-        "libwebsockets": ["libwebsockets"],
-        "lua": ["lua"],
-        "mtcc": ["libtcc", "tcc"],
-        "sdl3": ["SDL3"],
-        "sdl3webgpu": ["sdl3webgpu"],
-        "skribidi": ["skb"],
-        "sqlite-amalgamation": ["sqlite3"],
-        "stb": ["stb"],
-        "tracy": ["tracy"],
-        "utf8proc": ["utf8proc"],
-        "zlib": ["zlib"],
-        "zstd": ["zstd"],
-    }
-    search_terms = known_headers.get(dep_name, [dep_name.lower()])
+    search_terms = KNOWN_HEADERS.get(dep_name, [dep_name.lower()])
 
     files = []
     seen_paths = set()

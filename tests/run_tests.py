@@ -57,11 +57,25 @@ def detect_platform() -> str:
         ("windows", "amd64"): "windows_x64",
         ("windows", "arm64"): "windows_arm64",
         ("windows", "aarch64"): "windows_arm64",
+        # WASM can't be auto-detected from host; must be passed explicitly.
     }
     key = (system, machine)
     if key in mapping:
         return mapping[key]
     raise RuntimeError(f"Cannot detect platform for {system}/{machine}; pass --platform explicitly")
+
+
+def is_wasm(plat: str) -> bool:
+    """True if the platform string refers to an Emscripten/WASM target."""
+    return plat.startswith("wasm_")
+
+
+def is_win(plat: str) -> bool:
+    return plat.startswith("windows_")
+
+
+def is_apple(plat: str) -> bool:
+    return plat.startswith("macos_")
 
 
 def discover_static_libs(lib_dir: Path) -> list[Path]:
@@ -169,16 +183,24 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
     shutil.copy2(snippet, build_dir / snippet.name)
 
 
-def build_test(build_dir: Path, toolchain: Path | None = None, verbose: bool = False) -> bool:
-    """Configure and build the generated CMake project."""
+def build_test(build_dir: Path, platform: str, toolchain: Path | None = None,
+                verbose: bool = False) -> bool:
+    """Configure and build the generated CMake project.
+
+    On WASM targets the toolchain file is inferred from `toolchain/<platform>.cmake`
+    when not explicitly provided.
+    """
     cfg_args = ["cmake", "-S", str(build_dir), "-B", str(build_dir / "_b")]
     if toolchain:
         cfg_args.extend(["-DCMAKE_TOOLCHAIN_FILE", str(toolchain)])
+    elif is_wasm(platform):
+        default_tc = ROOT / "toolchain" / f"{platform}.cmake"
+        if default_tc.exists():
+            cfg_args.extend(["-DCMAKE_TOOLCHAIN_FILE", str(default_tc)])
     if sys.platform == "win32":
-        # Prefer Ninja if available; otherwise let CMake pick the default.
         if shutil.which("ninja"):
             cfg_args.extend(["-G", "Ninja"])
-    cfg_args.append(f"-DCMAKE_BUILD_TYPE=Release")
+    cfg_args.append("-DCMAKE_BUILD_TYPE=Release")
     if not verbose:
         cfg_args.append("-Wno-dev")
 
@@ -200,8 +222,13 @@ def build_test(build_dir: Path, toolchain: Path | None = None, verbose: bool = F
     return True
 
 
-def run_executable(build_dir: Path, dep_name: str, linkage: str) -> bool:
-    """Run the built executable."""
+def run_executable(build_dir: Path, dep_name: str, linkage: str,
+                   bin_dir: Path | None = None) -> bool:
+    """Run the built executable.
+
+    On Windows the .dll files are in `bin_dir`; they must be on PATH so the
+    dynamic linker can find them at runtime.
+    """
     exe = build_dir / f"test_{dep_name}_{linkage}"
     if sys.platform == "win32":
         exe = exe.with_suffix(".exe")
@@ -213,10 +240,9 @@ def run_executable(build_dir: Path, dep_name: str, linkage: str) -> bool:
         return False
 
     env = os.environ.copy()
-    # On Windows, make sure the .dll directory is on PATH.
-    if sys.platform == "win32":
-        # The caller passes the bin directory separately, but we don't have it here.
-        pass
+    if bin_dir and bin_dir.exists():
+        sep = ";" if sys.platform == "win32" else ":"
+        env["PATH"] = str(bin_dir) + sep + env.get("PATH", "")
 
     res = subprocess.run([str(exe)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
     if res.returncode != 0:
@@ -262,6 +288,13 @@ def test_dep(dep_name: str, platform: str, out_dir: Path, bin_dir: Path | None,
     skip_static = config.get("skip_static", not bool(static_libs))
     skip_dynamic = config.get("skip_dynamic", not bool(dynamic_libs))
 
+    # WASM has no native dynamic linkage (emcc produces .wasm modules, not .so).
+    if is_wasm(platform):
+        skip_dynamic = True
+
+    no_run = config.get("no_run", False) or is_wasm(platform)
+    bin_dir_for_run = bin_dir if is_win(platform) else None
+
     for linkage, libs, skip in [("static", static_libs, skip_static),
                                  ("dynamic", dynamic_libs, skip_dynamic)]:
         if skip:
@@ -271,12 +304,12 @@ def test_dep(dep_name: str, platform: str, out_dir: Path, bin_dir: Path | None,
         with tempfile.TemporaryDirectory(prefix=f"moredeps-test-{dep_name}-{linkage}-") as td:
             build_dir = Path(td)
             write_cmake(build_dir, dep_name, linkage, snippet, include_dir, libs, config)
-            ok = build_test(build_dir, toolchain=toolchain, verbose=verbose)
+            ok = build_test(build_dir, platform, toolchain=toolchain, verbose=verbose)
             if not ok:
                 results[dep_name][linkage] = "build-failed"
                 continue
-            if not config.get("no_run", False):
-                ok = run_executable(build_dir, dep_name, linkage)
+            if not no_run:
+                ok = run_executable(build_dir, dep_name, linkage, bin_dir=bin_dir_for_run)
                 if not ok:
                     results[dep_name][linkage] = "run-failed"
                     continue
