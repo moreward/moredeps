@@ -430,6 +430,7 @@ if(NOT EMSCRIPTEN)
       "-DENET_USE_MORE_PEERS=OFF"
       "-DENET_IPV4_ONLY=OFF"
     SHARED_CMAKE_ARGS
+      "-DENET_STATIC=OFF"
       "-DENET_SHARED=ON"
   )
 endif()
@@ -442,6 +443,7 @@ moredeps_add_dep(flecs
     "-DFLECS_TESTS=OFF"
     "-DFLECS_PIC=ON"
   SHARED_CMAKE_ARGS
+    "-DFLECS_STATIC=OFF"
     "-DFLECS_SHARED=ON"
 )
 
@@ -663,11 +665,17 @@ moredeps_add_dep(mimalloc
     "-DMI_SEE_ASM=OFF"
     "-DMI_INSTALL_TOPLEVEL=ON"
   SHARED_CMAKE_ARGS
+    "-DMI_BUILD_STATIC=OFF"
     "-DMI_BUILD_SHARED=ON"
 )
 
 # --- miniaudio ---
 moredeps_add_dep(miniaudio
+  PATCH_COMMAND
+    ${CMAKE_COMMAND}
+    -DSOURCE_DIR=<SOURCE_DIR>
+    -DPATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/patches/miniaudio_shared_link.patch
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/scripts/apply_patch.cmake
   CMAKE_ARGS
     "-DMINIAUDIO_BUILD_EXAMPLES=OFF"
     "-DMINIAUDIO_BUILD_TESTS=OFF"
@@ -693,6 +701,7 @@ moredeps_add_dep(physfs
     "-DPHYSFS_ARCHIVE_SLB=OFF"
     "-DPHYSFS_ARCHIVE_VDF=OFF"
   SHARED_CMAKE_ARGS
+    "-DPHYSFS_BUILD_STATIC=OFF"
     "-DPHYSFS_BUILD_SHARED=ON"
 )
 
@@ -891,6 +900,7 @@ moredeps_add_dep(zlib
     "-DZLIB_INSTALL=ON"
     "-DZLIB_PREFIX=OFF"
   SHARED_CMAKE_ARGS
+    "-DZLIB_BUILD_STATIC=OFF"
     "-DZLIB_BUILD_SHARED=ON"
 )
 
@@ -933,6 +943,7 @@ moredeps_add_dep(zstd
     "-DZSTD_LZ4_SUPPORT=OFF"
     "-DZSTD_FRAMEWORK=OFF"
   SHARED_CMAKE_ARGS
+    "-DZSTD_BUILD_STATIC=OFF"
     "-DZSTD_BUILD_SHARED=ON"
 )
 
