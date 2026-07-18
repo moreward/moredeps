@@ -332,7 +332,7 @@ def compute_build_hash(repo_root: Path, dep_name: str, platform: str,
     artifacts are identical.  Bump PACKAGING_VERSION when packaging
     logic changes.  Must match ci_package.py's compute_build_hash.
     """
-    PACKAGING_VERSION = 1  # bump when packaging logic changes zip contents
+    PACKAGING_VERSION = 2  # bump when packaging logic changes zip contents
 
     def _file_hash(f: Path) -> str:
         h = hashlib.sha256()
