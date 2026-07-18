@@ -125,9 +125,59 @@ def read_config(dep_name: str) -> dict:
     return {}
 
 
+def find_cmake_package(platform_dir: Path, dep_name: str) -> tuple[str, str] | None:
+    """Check if a dep installed a CMake config and return (package_name, target_name)."""
+    cmake_dir = platform_dir / "lib" / "cmake"
+    if not cmake_dir.exists():
+        return None
+
+    # Map dep names to known CMake package/target names (case-insensitive search).
+    known = {
+        "sdl3": ("SDL3", "SDL3::SDL3"),
+        "sdl3webgpu": ("sdl3webgpu", "sdl3webgpu::sdl3webgpu"),
+        "raylib": ("raylib", "raylib"),
+        "glfw": ("glfw3", "glfw"),
+        "freetype": ("freetype", "freetype"),
+        "harfbuzz": ("harfbuzz", "harfbuzz::harfbuzz"),
+        "curl": ("CURL", "CURL::libcurl"),
+        "boringssl": ("OpenSSL", "OpenSSL::SSL"),
+        "zlib": ("zlib", "ZLIB::ZLIB"),
+        "skribidi": ("skribidi", "skribidi::skribidi"),
+        "cjson": ("cJSON", "cJSON::cjson"),
+        "enet": ("enet", "enet::enet"),
+        "flecs": ("flecs", "flecs::flecs"),
+        "lz4": ("lz4", "lz4::lz4"),
+        "mimalloc": ("mimalloc", "mimalloc::mimalloc"),
+        "utf8proc": ("utf8proc", "utf8proc::utf8proc"),
+        "zstd": ("zstd", "zstd::libzstd_static"),
+        "xxhash": ("xxHash", "xxHash::xxhash"),
+        "libwebsockets": ("libwebsockets", "libwebsockets::websockets"),
+        "libunibreak": ("libunibreak", "libunibreak::libunibreak"),
+        "cglm": ("cglm", "cglm::cglm"),
+        "reproc": ("reproc", "reproc::reproc"),
+        "box3d": ("box3d", "box3d::box3d"),
+        "budouxc": ("budouxc", "budouxc::budouxc"),
+        "SheenBidi": ("SheenBidi", "SheenBidi::SheenBidi"),
+        "physfs": ("PhysFS", "PhysFS::PhysFS"),
+        "tracy": ("Tracy", "Tracy::TracyClient"),
+        "dawn": ("Dawn", "Dawn::webgpu_dawn"),
+    }
+    if dep_name in known:
+        pkg, target = known[dep_name]
+        # Verify the package directory exists.
+        if (cmake_dir / pkg).is_dir():
+            return (pkg, target)
+    # Fallback: try case-insensitive match.
+    dep_lower = dep_name.lower()
+    for d in cmake_dir.iterdir():
+        if d.is_dir() and d.name.lower() == dep_lower:
+            return (d.name, f"{dep_name}::{dep_name}")
+    return None
+
+
 def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
                 include_dir: Path, libs: list[Path], config: dict,
-                platform: str) -> None:
+                platform: str, platform_dir: Path) -> None:
     """Generate a minimal CMake project for the snippet."""
     os_prefix = platform.split("_")[0]
     lang = "CXX" if snippet.suffix in (".cpp", ".cxx", ".cc") else "C"
@@ -192,53 +242,59 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
     # miniaudio, sokol_gfx (GLCORE backend), etc.
     lines.append(f"set_target_properties({target} PROPERTIES LINKER_LANGUAGE CXX)")
 
-    # Link the dep's own libraries first, then system libs after so GNU ld
-    # resolves left-to-right (the .so/.a may reference GL, m, pthread).
-    if libs:
-        lib_paths = ' '.join(f'"{lib.as_posix()}"' for lib in libs)
-        lines.append(f"target_link_libraries({target} PRIVATE {lib_paths})")
+    # If the dep installed CMake config files, use find_package to get
+    # transitive deps (frameworks, system libs) automatically.
+    pkg_info = find_cmake_package(platform_dir, dep_name)
+    use_find_package = bool(pkg_info and config.get("use_cmake_config"))
 
-    # Extra system libs from per-dep config (e.g. freetype needs z).
-    # Must come AFTER the dep's own libs so GNU ld resolves left-to-right.
-    # Config keys can be platform-specific: extra_static_libs_windows, etc.
-    extra_generic = (config.get(f"extra_{linkage}_libs", [])
-                     or config.get("extra_libs", []))
-    extra_platform = (config.get(f"extra_{linkage}_libs_{os_prefix}", [])
-                      or config.get(f"extra_libs_{os_prefix}", []))
-    extra = extra_platform + [e for e in extra_generic if e not in extra_platform]
-    if extra:
-        resolved = []
-        for name in extra:
-            # For static linkage, resolve the name to the actual .a file in our
-            # lib dir so CMake doesn't pick the .so variant (which would then
-            # fail at runtime when the shared lib isn't on rpath).
-            if linkage == "static":
-                found = False
-                for libdir in sorted(set(lib.parent for lib in libs)):
-                    for ext in (".a", ".lib"):
-                        candidate = libdir / f"lib{name}{ext}"
-                        if candidate.exists():
-                            resolved.append(f'"{candidate.as_posix()}"')
-                            found = True
+    if use_find_package:
+        pkg_name, target_name = pkg_info
+        lines.append(f"set(CMAKE_PREFIX_PATH \"{platform_dir.as_posix()}\")")
+        lines.append(f"find_package({pkg_name} REQUIRED)")
+        lines.append(f"target_link_libraries({target} PRIVATE {target_name})")
+    else:
+        # Link the dep's own libraries first, then system libs after so GNU ld
+        # resolves left-to-right (the .so/.a may reference GL, m, pthread).
+        if libs:
+            lib_paths = ' '.join(f'"{lib.as_posix()}"' for lib in libs)
+            lines.append(f"target_link_libraries({target} PRIVATE {lib_paths})")
+
+        # Extra system libs from per-dep config.
+        # Config keys can be platform-specific: extra_static_libs_windows, etc.
+        extra_generic = (config.get(f"extra_{linkage}_libs", [])
+                         or config.get("extra_libs", []))
+        extra_platform = (config.get(f"extra_{linkage}_libs_{os_prefix}", [])
+                          or config.get(f"extra_libs_{os_prefix}", []))
+        extra = extra_platform + [e for e in extra_generic if e not in extra_platform]
+        if extra:
+            resolved = []
+            for name in extra:
+                if linkage == "static":
+                    found = False
+                    for libdir in sorted(set(lib.parent for lib in libs)):
+                        for ext in (".a", ".lib"):
+                            candidate = libdir / f"lib{name}{ext}"
+                            if candidate.exists():
+                                resolved.append(f'"{candidate.as_posix()}"')
+                                found = True
+                                break
+                            candidate = libdir / f"{name}{ext}"
+                            if candidate.exists():
+                                resolved.append(f'"{candidate.as_posix()}"')
+                                found = True
+                                break
+                        if found:
                             break
-                        candidate = libdir / f"{name}{ext}"
-                        if candidate.exists():
-                            resolved.append(f'"{candidate.as_posix()}"')
-                            found = True
-                            break
-                    if found:
-                        break
-                if not found:
+                    if not found:
+                        resolved.append(name)
+                else:
                     resolved.append(name)
-            else:
-                resolved.append(name)
-        if resolved:
-            lines.append(f"target_link_libraries({target} PRIVATE {' '.join(resolved)})")
+            if resolved:
+                lines.append(f"target_link_libraries({target} PRIVATE {' '.join(resolved)})")
 
     if sys.platform == "linux":
         lines.append(f"target_link_libraries({target} PRIVATE m GL pthread dl)")
     elif sys.platform == "win32":
-        # D3D11/DXGI for sokol_gfx/sokol_gp D3D backends; opengl32 as fallback.
         lines.append(f"target_link_libraries({target} PRIVATE d3d11 dxgi opengl32)")
 
     lines.append(f"set_target_properties({target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY {build_dir.as_posix()})")
@@ -394,7 +450,7 @@ def test_dep(dep_name: str, platform: str, out_dir: Path, bin_dir: Path | None,
 
         with tempfile.TemporaryDirectory(prefix=f"moredeps-test-{dep_name}-{linkage}-") as td:
             build_dir = Path(td)
-            write_cmake(build_dir, dep_name, linkage, snippet, include_dir, libs, config, platform)
+            write_cmake(build_dir, dep_name, linkage, snippet, include_dir, libs, config, platform, platform_dir)
             ok = build_test(build_dir, platform, toolchain=toolchain, verbose=verbose)
             if not ok:
                 results[dep_name][linkage] = "build-failed"

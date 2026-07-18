@@ -1,5 +1,4 @@
 {
   "link_libs": ["glfw3", "glfw"],
-  "frameworks_macos": ["Cocoa", "IOKit", "CoreVideo"],
-  "skip_static_linux": true
+  "use_cmake_config": true
 }
