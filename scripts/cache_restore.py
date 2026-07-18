@@ -5,11 +5,13 @@ scripts/cache_restore.py
 Restores previously-built artifacts from the latest GitHub release when a
 dependency's inputs haven't changed.
 
-A dependency is eligible for caching when *all three* of these match a
-previous release:
-  - The moredeps repo commit (build scripts, patches, CMake options)
-  - The dependency's submodule commit
-  - The platform + linkage (static / shared)
+A dependency is eligible for caching when its per-dependency *build_hash*
+matches a previous release's entry.  build_hash captures:
+  - the dependency's submodule commit
+  - the target platform
+  - the top-level CMakeLists.txt and toolchain/<platform>.cmake
+  - dep-specific patches (patches/<dep>_*.patch)
+  - the build wrapper in src/<dep>/ (if any)
 
 Usage:
     # After cmake configure, before cmake --build:
@@ -37,7 +39,6 @@ import argparse
 import hashlib
 import io
 import json
-import os
 import sys
 import urllib.request
 import zipfile
@@ -146,15 +147,6 @@ def get_latest_release_manifest(repo: str) -> Optional[dict]:
     except json.JSONDecodeError:
         print("  Failed to parse moredeps.json")
         return None
-
-
-def sha256_file(path: Path) -> str:
-    """SHA-256 of a file as a hex string."""
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(65536), b""):
-            h.update(chunk)
-    return h.hexdigest()
 
 
 def extract_platform_files(
