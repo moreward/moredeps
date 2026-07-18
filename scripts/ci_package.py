@@ -220,7 +220,7 @@ def compute_build_hash(dep_name: str, platform: str, dep_commit: str) -> str:
     logic changes in a zip-contents-affecting way.
     Mirrored in scripts/cache_restore.py.
     """
-    PACKAGING_VERSION = 2  # bump when packaging logic changes zip contents
+    PACKAGING_VERSION = 3  # bump when packaging logic changes zip contents
     def _file_hash(f: Path) -> str:
         h = hashlib.sha256()
         with open(f, "rb") as fh:
@@ -317,14 +317,24 @@ def find_lib_files(dep_name: str, platform_dir: Path) -> list[Path]:
             candidates = [stem]
             if stem.startswith("lib"):
                 candidates.append(stem[3:])
-            # Also strip version suffix (e.g. libcurl.4 -> libcurl, curl.4 -> curl)
-            base_stem = stem
-            # Remove trailing .major or .major.minor version numbers
-            parts = base_stem.rsplit(".", 2)
-            if len(parts) > 1 and parts[-1].isdigit():
-                candidates.append(parts[0])
-                if parts[0].startswith("lib"):
-                    candidates.append(parts[0][3:])
+            # Strip version suffix from shared lib stems:
+            #   libreproc.so.14 -> stem libreproc.so -> base libreproc
+            #   libcurl.4.dylib  -> stem libcurl.4  -> base libcurl
+            sfx = f.suffix.lower()
+            if sfx.lstrip(".").isdigit():
+                # .so.X file: strip .so from stem (libreproc.so -> libreproc)
+                if "." in stem and stem.rsplit(".", 1)[-1] == "so":
+                    base = stem.rsplit(".", 1)[0]
+                    candidates.append(base)
+                    if base.startswith("lib"):
+                        candidates.append(base[3:])
+            elif "." in stem:
+                # .X.dylib file: strip .X from stem (libcurl.4 -> libcurl)
+                parts = stem.rsplit(".", 1)
+                if parts[-1].isdigit():
+                    candidates.append(parts[0])
+                    if parts[0].startswith("lib"):
+                        candidates.append(parts[0][3:])
             if any(c in expected_names for c in candidates):
                 files.append(f)
 
