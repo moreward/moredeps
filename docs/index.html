@@ -377,10 +377,38 @@
             return `https://github.com/${REPO}/releases/download/${release.tag_name}/moredeps.json`;
         }
 
-        function loadRelease(release, localManifest) {
+        // Fetch the moredeps.json manifest for a non-latest release through
+        // the GitHub API (api.github.com sets CORS headers, unlike
+        // release-assets.githubusercontent.com which is where direct download
+        // URLs redirect).
+        async function fetchRemoteManifest(release) {
+            const apiUrl = `https://api.github.com/repos/${REPO}/releases/tags/${release.tag_name}`;
+            const res = await fetch(apiUrl);
+            if (!res.ok) return null;
+            const releaseData = await res.json();
+            const asset = releaseData.assets.find(a => a.name === 'moredeps.json');
+            if (!asset) return null;
+            const manifestRes = await fetch(asset.url, {
+                headers: { 'Accept': 'application/octet-stream' }
+            });
+            if (!manifestRes.ok) return null;
+            return manifestRes.json();
+        }
+
+        async function loadRelease(release, localManifest) {
             document.getElementById('manifestLink').href = manifestUrl(release);
+
+            let manifest;
             if (localManifest && release.tag_name === 'latest') {
-                contentDiv.innerHTML = renderTable(localManifest, release);
+                // Same-origin fetch – no CORS, no API call, always fast.
+                manifest = localManifest;
+            } else {
+                contentDiv.innerHTML = '<p class="loading">Loading manifest…</p>';
+                manifest = await fetchRemoteManifest(release).catch(() => null);
+            }
+
+            if (manifest) {
+                contentDiv.innerHTML = renderTable(manifest, release);
                 bindDownloadUI();
             } else {
                 contentDiv.innerHTML = renderAssetList(release);
