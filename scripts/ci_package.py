@@ -220,7 +220,7 @@ def compute_build_hash(dep_name: str, platform: str, dep_commit: str) -> str:
     logic changes in a zip-contents-affecting way.
     Mirrored in scripts/cache_restore.py.
     """
-    PACKAGING_VERSION = 4  # bump when packaging logic changes zip contents
+    PACKAGING_VERSION = 5  # bump when packaging logic changes zip contents
     def _file_hash(f: Path) -> str:
         h = hashlib.sha256()
         with open(f, "rb") as fh:
@@ -331,12 +331,18 @@ def find_lib_files(dep_name: str, platform_dir: Path) -> list[Path]:
                     if base.startswith("lib"):
                         candidates.append(base[3:])
             elif "." in stem:
-                # .X.dylib file: strip .X from stem (libcurl.4 -> libcurl)
-                parts = stem.rsplit(".", 1)
-                if parts[-1].isdigit():
-                    candidates.append(parts[0])
-                    if parts[0].startswith("lib"):
-                        candidates.append(parts[0][3:])
+                # .X.Y.Z.dylib: strip all trailing numeric parts
+                base = stem
+                while "." in base:
+                    head, tail = base.rsplit(".", 1)
+                    if tail.isdigit():
+                        base = head
+                    else:
+                        break
+                if base != stem:
+                    candidates.append(base)
+                    if base.startswith("lib"):
+                        candidates.append(base[3:])
             if any(c in expected_names for c in candidates):
                 files.append(f)
 
