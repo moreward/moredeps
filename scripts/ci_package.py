@@ -236,6 +236,10 @@ def compute_build_hash(dep_name: str, platform: str, dep_commit: str) -> str:
         if f.is_file():
             h.update(_file_hash(f).encode())
 
+    # KNOWN_HEADERS for this dep — a change in header detection means
+    # different zip contents.
+    h.update(repr(sorted(KNOWN_HEADERS.get(dep_name, []))).encode())
+
     # Dep-specific patches.
     patches_dir = repo_root / "patches"
     for pf in sorted(patches_dir.glob(f"{dep_name}_*.patch")):
@@ -359,7 +363,7 @@ KNOWN_HEADERS = {
     "stb": ["stb"],
     "tracy": ["tracy"],
     "utf8proc": ["utf8proc"],
-    "zlib": ["zlib"],
+    "zlib": ["zlib", "zconf"],
     "zstd": ["zstd"],
 }
 

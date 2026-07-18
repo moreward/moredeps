@@ -321,6 +321,10 @@ def compute_build_hash(repo_root: Path, dep_name: str, platform: str,
         if f.is_file():
             h.update(_file_hash(f).encode())
 
+    # KNOWN_HEADERS affects zip contents — a change means different artifacts.
+    from ci_package import KNOWN_HEADERS
+    h.update(repr(sorted(KNOWN_HEADERS.get(dep_name, []))).encode())
+
     # Dep-specific patches.
     patches_dir = repo_root / "patches"
     for pf in sorted(patches_dir.glob(f"{dep_name}_*.patch")):
