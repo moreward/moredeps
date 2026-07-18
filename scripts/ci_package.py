@@ -357,7 +357,7 @@ KNOWN_HEADERS = {
     "libunibreak": ["linebreak", "unibreak", "wordbreak", "graphemebreak",
                     "eastasianwidth", "emojidef", "indicconjunctbreak"],
     "libwebsockets": ["libwebsockets", "lws_config", "lws_map"],
-    "lua": ["lua"],
+    "lua": ["lua", "lauxlib", "luaconf", "lualib"],
     "mtcc": ["libtcc", "tcc"],
     "sdl3": ["SDL3"],
     "sdl3webgpu": ["sdl3webgpu"],
