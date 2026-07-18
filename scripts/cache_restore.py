@@ -35,6 +35,7 @@ ExternalProject stamp files so that CMake skips rebuilding.
 
 import argparse
 import hashlib
+import io
 import json
 import os
 import sys
@@ -178,7 +179,7 @@ def extract_platform_files(
     """
     prefix = f"{linkage}/{platform}/"
     count = 0
-    with zipfile.ZipFile(zipfile.BytesIO(zip_data)) as zf:
+    with zipfile.ZipFile(io.BytesIO(zip_data)) as zf:
         for info in zf.infolist():
             if info.is_dir():
                 continue
