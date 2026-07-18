@@ -197,7 +197,9 @@ def _complete_stamp(build_dir: Path, ep_name: str) -> Path:
 
 
 # The ExternalProject steps whose stamps must exist for CMake to skip the EP.
+# Must match the steps that CMake's ExternalProject.cmake creates.
 _STAMP_STEPS = [
+    "mkdir",
     "download",
     "update",
     "patch",
@@ -209,11 +211,36 @@ _STAMP_STEPS = [
 
 
 def create_stamps(build_dir: Path, ep_name: str) -> None:
-    """Create all ExternalProject stamp files for *ep_name* so CMake skips it."""
+    """Create all ExternalProject stamp and info files for *ep_name*.
+
+    CMake's ExternalProject uses Make with stamp-file dependencies.
+    Every stamp depends on an info file (e.g. <ep>-source_dirinfo.txt);
+    if the info file is missing, Make considers the stamp out-of-date and
+    runs the step recipe anyway.  We create everything so all steps are
+    skipped.
+    """
     sdir = _stamp_dir(build_dir, ep_name)
     sdir.mkdir(parents=True, exist_ok=True)
+
+    # Step stamps (empty marker files).
     for step in _STAMP_STEPS:
         (sdir / f"{ep_name}-{step}").touch()
+
+    # Info files that the stamp targets depend on.
+    # They can be empty — Make only checks existence, not content.
+    for info in [
+        f"{ep_name}-source_dirinfo.txt",
+        f"{ep_name}-update-info.txt",
+        f"{ep_name}-patch-info.txt",
+    ]:
+        (sdir / info).touch()
+
+    # cfgcmd.txt lives in <ep>-prefix/tmp/, not the stamp dir.
+    tmp_dir = build_dir / f"{ep_name}-prefix" / "tmp"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    (tmp_dir / f"{ep_name}-cfgcmd.txt").touch()
+
+    # Top-level complete stamp.
     complete = _complete_stamp(build_dir, ep_name)
     complete.parent.mkdir(parents=True, exist_ok=True)
     complete.touch()
