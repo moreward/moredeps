@@ -209,15 +209,18 @@ def get_submodule_commit(dep_name: str) -> str:
 def compute_build_hash(dep_name: str, platform: str, dep_commit: str) -> str:
     """Compute a hash that captures everything affecting this dep's build.
 
-    Hash = SHA256(dep_commit + platform +
+    Hash = SHA256(PACKAGING_VERSION + dep_commit + platform +
                   hash(CMakeLists.txt) +
                   hash(toolchain/<platform>.cmake) +
                   hash(patches/<dep>_*.patch) +
                   hash(src/<dep>/ directory tree))
 
-    If this hash matches between two builds, the compiled artifacts are
-    identical.  Mirrored in scripts/cache_restore.py.
+    If this hash matches between two builds, the compiled AND PACKAGED
+    artifacts are identical.  Bump PACKAGING_VERSION whenever packaging
+    logic changes in a zip-contents-affecting way.
+    Mirrored in scripts/cache_restore.py.
     """
+    PACKAGING_VERSION = 1  # bump when packaging logic changes zip contents
     def _file_hash(f: Path) -> str:
         h = hashlib.sha256()
         with open(f, "rb") as fh:
@@ -227,6 +230,7 @@ def compute_build_hash(dep_name: str, platform: str, dep_commit: str) -> str:
 
     repo_root = Path(__file__).resolve().parent.parent
     h = hashlib.sha256()
+    h.update(str(PACKAGING_VERSION).encode())
     h.update(dep_commit.encode())
     h.update(platform.encode())
 
@@ -301,7 +305,11 @@ def find_lib_files(dep_name: str, platform_dir: Path) -> list[Path]:
         for f in d.iterdir():
             if not f.is_file():
                 continue
-            if f.suffix not in (static_exts | shared_exts):
+            sfx = f.suffix.lower()
+            # Versioned .so files (e.g. libreproc.so.14) are shared libs.
+            is_static = sfx in static_exts
+            is_shared = sfx in shared_exts or (".so" in f.name and sfx not in static_exts)
+            if not is_static and not is_shared:
                 continue
             # Match both the raw stem and the stem without a "lib" prefix:
             # libSDL3.a vs SDL3-static.lib, liblibunibreak.a vs libunibreak.lib

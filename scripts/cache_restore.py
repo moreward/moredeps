@@ -322,15 +322,18 @@ def compute_build_hash(repo_root: Path, dep_name: str, platform: str,
                        dep_commit: str) -> str:
     """Compute a hash that captures everything affecting this dep's build.
 
-    Hash = SHA256(dep_commit + platform +
+    Hash = SHA256(PACKAGING_VERSION + dep_commit + platform +
                   hash(CMakeLists.txt) +
                   hash(toolchain/<platform>.cmake) +
                   hash(patches/<dep>_*.patch) +
                   hash(src/<dep>/ directory tree))
 
-    If this hash matches between two builds, the compiled artifacts are
-    identical.  Used as a per-dependency cache key.
+    If this hash matches between two builds, the compiled AND PACKAGED
+    artifacts are identical.  Bump PACKAGING_VERSION when packaging
+    logic changes.  Must match ci_package.py's compute_build_hash.
     """
+    PACKAGING_VERSION = 1  # bump when packaging logic changes zip contents
+
     def _file_hash(f: Path) -> str:
         h = hashlib.sha256()
         with open(f, "rb") as fh:
@@ -339,6 +342,7 @@ def compute_build_hash(repo_root: Path, dep_name: str, platform: str,
         return h.hexdigest()
 
     h = hashlib.sha256()
+    h.update(str(PACKAGING_VERSION).encode())
     h.update(dep_commit.encode())
     h.update(platform.encode())
 
