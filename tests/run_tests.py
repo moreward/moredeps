@@ -154,7 +154,7 @@ def find_cmake_package(platform_dir: Path, dep_name: str) -> tuple[str, str] | N
         "libwebsockets": ("libwebsockets", "websockets"),
         "libunibreak": ("libunibreak", "libunibreak::libunibreak"),
         "cglm": ("cglm", "cglm::cglm"),
-        "reproc": ("reproc", "reproc::reproc"),
+        "reproc": ("reproc", "reproc"),
         "box3d": ("box3d", "box3d::box3d"),
         "budouxc": ("budouxc", "budouxc::budouxc"),
         "SheenBidi": ("SheenBidi", "SheenBidi::SheenBidi"),
@@ -312,11 +312,11 @@ def build_test(build_dir: Path, platform: str, toolchain: Path | None = None,
     """
     cfg_args = ["cmake", "-S", str(build_dir), "-B", str(build_dir / "_b")]
     if toolchain:
-        cfg_args.extend(["-DCMAKE_TOOLCHAIN_FILE", str(toolchain)])
+        cfg_args.append(f"-DCMAKE_TOOLCHAIN_FILE={toolchain}")
     elif is_wasm(platform):
         default_tc = ROOT / "toolchain" / f"{platform}.cmake"
         if default_tc.exists():
-            cfg_args.extend(["-DCMAKE_TOOLCHAIN_FILE", str(default_tc)])
+            cfg_args.append(f"-DCMAKE_TOOLCHAIN_FILE={default_tc}")
     if sys.platform == "win32":
         if shutil.which("ninja"):
             cfg_args.extend(["-G", "Ninja"])

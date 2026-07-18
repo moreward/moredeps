@@ -1,3 +1,4 @@
 {
-  "link_libs": ["reproc"]
+  "link_libs": ["reproc"],
+  "use_cmake_config": true
 }

@@ -120,6 +120,7 @@ fi
 # Validate the host environment.
 "${SCRIPT_DIR}/validate_dev_env.sh" "${PLATFORM}"
 
+REPO_COMMIT="$(git -C "${REPO_ROOT}" rev-parse HEAD)"
 BUILD_DIR="${REPO_ROOT}/_b/${PLATFORM}"
 OUT_DIR="${REPO_ROOT}/_out/${PLATFORM}"
 
@@ -150,6 +151,15 @@ if [[ ! -f "${BUILD_DIR}/CMakeCache.txt" ]]; then
         -G "${GENERATOR}" \
         -DCMAKE_TOOLCHAIN_FILE="${TOOLCHAIN}" \
         -DCMAKE_BUILD_TYPE=Release
+fi
+
+# Restore unchanged deps from the previous GitHub Release so we don't rebuild them.
+if command -v python3 &> /dev/null; then
+  python3 "${SCRIPT_DIR}/cache_restore.py" \
+    --platform "${PLATFORM}" \
+    --out-dir "${OUT_DIR}" \
+    --build-dir "${BUILD_DIR}" \
+    --repo-commit "${REPO_COMMIT}" || true
 fi
 
 # Build all targets. Respect MOREDEPS_TOP_LEVEL_PARALLEL to limit top-level parallelism.
@@ -191,6 +201,17 @@ if [[ "${BUILD_SHARED}" == "1" && "${PLATFORM}" != "wasm_emscripten" ]]; then
         -DCMAKE_BUILD_TYPE=Release \
         -DMOREDEPS_BUILD_SHARED=ON \
         -DCMAKE_INSTALL_PREFIX="${SHARED_TMP}"
+
+  # Restore unchanged shared deps from cache.
+  # Shared libs install to SHARED_TMP, then get merged into OUT_DIR later.
+  if command -v python3 &> /dev/null; then
+    python3 "${SCRIPT_DIR}/cache_restore.py" \
+      --platform "${PLATFORM}" \
+      --out-dir "${SHARED_TMP}" \
+      --build-dir "${SHARED_BUILD_DIR}" \
+      --repo-commit "${REPO_COMMIT}" \
+      --shared || true
+  fi
 
   cmake --build "${SHARED_BUILD_DIR}" ${BUILD_PARALLEL}
 
