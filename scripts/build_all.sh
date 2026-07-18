@@ -154,22 +154,30 @@ if [[ ! -f "${BUILD_DIR}/CMakeCache.txt" ]]; then
 fi
 
 # Restore unchanged deps from the previous GitHub Release so we don't rebuild them.
-if command -v python3 &> /dev/null; then
-  echo "--- cache_restore: attempting to restore from cache ---"
-  python3 --version 2>&1 || true
-  python3 "${SCRIPT_DIR}/cache_restore.py" \
-    --platform "${PLATFORM}" \
-    --out-dir "${OUT_DIR}" \
-    --build-dir "${BUILD_DIR}" \
-    --repo-commit "${REPO_COMMIT}"
-  _cache_rc=$?
-  if [[ ${_cache_rc} -ne 0 ]]; then
-    echo "--- cache_restore: exited with code ${_cache_rc} ---"
+_restore_cache() {
+  local _py=""
+  if command -v python3 &> /dev/null; then _py=python3
+  elif command -v python &> /dev/null; then _py=python
   fi
-  echo "--- cache_restore: done ---"
-else
-  echo "--- cache_restore: python3 not found, skipping ---"
-fi
+  if [[ -n "${_py}" ]]; then
+    echo "--- cache_restore: attempting to restore from cache ---"
+    "${_py}" --version 2>&1 || true
+    "${_py}" "${SCRIPT_DIR}/cache_restore.py" \
+      --platform "${PLATFORM}" \
+      --out-dir "$1" \
+      --build-dir "$2" \
+      --repo-commit "${REPO_COMMIT}" \
+      $3
+    _cache_rc=$?
+    if [[ ${_cache_rc} -ne 0 ]]; then
+      echo "--- cache_restore: exited with code ${_cache_rc} ---"
+    fi
+    echo "--- cache_restore: done ---"
+  else
+    echo "--- cache_restore: python not found, skipping ---"
+  fi
+}
+_restore_cache "${OUT_DIR}" "${BUILD_DIR}" ""
 
 # Build all targets. Respect MOREDEPS_TOP_LEVEL_PARALLEL to limit top-level parallelism.
 BUILD_PARALLEL=""
@@ -213,19 +221,7 @@ if [[ "${BUILD_SHARED}" == "1" && "${PLATFORM}" != "wasm_emscripten" ]]; then
 
   # Restore unchanged shared deps from cache.
   # Shared libs install to SHARED_TMP, then get merged into OUT_DIR later.
-  if command -v python3 &> /dev/null; then
-    echo "--- cache_restore (shared): attempting to restore from cache ---"
-    python3 "${SCRIPT_DIR}/cache_restore.py" \
-      --platform "${PLATFORM}" \
-      --out-dir "${SHARED_TMP}" \
-      --build-dir "${SHARED_BUILD_DIR}" \
-      --repo-commit "${REPO_COMMIT}" \
-      --shared
-    _cache_rc=$?
-    if [[ ${_cache_rc} -ne 0 ]]; then
-      echo "--- cache_restore (shared): exited with code ${_cache_rc} ---"
-    fi
-  fi
+  _restore_cache "${SHARED_TMP}" "${SHARED_BUILD_DIR}" "--shared"
 
   cmake --build "${SHARED_BUILD_DIR}" ${BUILD_PARALLEL}
 
