@@ -206,6 +206,51 @@ def get_submodule_commit(dep_name: str) -> str:
         return "unknown"
 
 
+def compute_build_hash(dep_name: str, platform: str, dep_commit: str) -> str:
+    """Compute a hash that captures everything affecting this dep's build.
+
+    Hash = SHA256(dep_commit + platform +
+                  hash(CMakeLists.txt) +
+                  hash(toolchain/<platform>.cmake) +
+                  hash(patches/<dep>_*.patch) +
+                  hash(src/<dep>/ directory tree))
+
+    If this hash matches between two builds, the compiled artifacts are
+    identical.  Mirrored in scripts/cache_restore.py.
+    """
+    def _file_hash(f: Path) -> str:
+        h = hashlib.sha256()
+        with open(f, "rb") as fh:
+            for chunk in iter(lambda: fh.read(65536), b""):
+                h.update(chunk)
+        return h.hexdigest()
+
+    repo_root = Path(__file__).resolve().parent.parent
+    h = hashlib.sha256()
+    h.update(dep_commit.encode())
+    h.update(platform.encode())
+
+    # Global build context.
+    for rel in ["CMakeLists.txt", f"toolchain/{platform}.cmake"]:
+        f = repo_root / rel
+        if f.is_file():
+            h.update(_file_hash(f).encode())
+
+    # Dep-specific patches.
+    patches_dir = repo_root / "patches"
+    for pf in sorted(patches_dir.glob(f"{dep_name}_*.patch")):
+        h.update(_file_hash(pf).encode())
+
+    # Dep wrapper directory (src/<dep>/).
+    wrapper_dir = repo_root / "src" / dep_name
+    if wrapper_dir.is_dir():
+        for f in sorted(wrapper_dir.rglob("*")):
+            if f.is_file():
+                h.update(_file_hash(f).encode())
+
+    return h.hexdigest()
+
+
 def sha256_file(path: Path) -> str:
     """Compute SHA-256 hash of a file."""
     h = hashlib.sha256()
@@ -446,6 +491,7 @@ def package_dependency(dep_name: str, out_dir: Path, repo_sha: str,
             per_platform[platform] = {
                 "commit": dep_commit,
                 "built": True,
+                "build_hash": compute_build_hash(dep_name, platform, dep_commit),
                 "files": platform_files,
                 "filename": zip_name,
                 **({"repo_url": repo_url} if repo_url else {}),

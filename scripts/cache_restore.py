@@ -299,6 +299,51 @@ def get_dep_commit(repo_root: Path, dep_name: str) -> Optional[str]:
         return None
 
 
+def compute_build_hash(repo_root: Path, dep_name: str, platform: str,
+                       dep_commit: str) -> str:
+    """Compute a hash that captures everything affecting this dep's build.
+
+    Hash = SHA256(dep_commit + platform +
+                  hash(CMakeLists.txt) +
+                  hash(toolchain/<platform>.cmake) +
+                  hash(patches/<dep>_*.patch) +
+                  hash(src/<dep>/ directory tree))
+
+    If this hash matches between two builds, the compiled artifacts are
+    identical.  Used as a per-dependency cache key.
+    """
+    def _file_hash(f: Path) -> str:
+        h = hashlib.sha256()
+        with open(f, "rb") as fh:
+            for chunk in iter(lambda: fh.read(65536), b""):
+                h.update(chunk)
+        return h.hexdigest()
+
+    h = hashlib.sha256()
+    h.update(dep_commit.encode())
+    h.update(platform.encode())
+
+    # Global build context — files that affect every dep.
+    for rel in ["CMakeLists.txt", f"toolchain/{platform}.cmake"]:
+        f = repo_root / rel
+        if f.is_file():
+            h.update(_file_hash(f).encode())
+
+    # Dep-specific patches.
+    patches_dir = repo_root / "patches"
+    for pf in sorted(patches_dir.glob(f"{dep_name}_*.patch")):
+        h.update(_file_hash(pf).encode())
+
+    # Dep wrapper directory (src/<dep>/).
+    wrapper_dir = repo_root / "src" / dep_name
+    if wrapper_dir.is_dir():
+        for f in sorted(wrapper_dir.rglob("*")):
+            if f.is_file():
+                h.update(_file_hash(f).encode())
+
+    return h.hexdigest()
+
+
 def download_zip_for_dep(repo: str, manifest_entry: dict) -> Optional[bytes]:
     """Download the zip referenced by a per-platform manifest entry.
 
@@ -329,14 +374,6 @@ def restore_cache(
     manifest = get_latest_release_manifest(repo)
     if manifest is None:
         print("No previous release manifest available; building from scratch.")
-        return 0
-
-    prev_repo_commit = manifest.get("repo_commit", "")
-    if prev_repo_commit != repo_commit:
-        print(
-            f"Repo commit changed ({prev_repo_commit[:8]} -> {repo_commit[:8]}); "
-            "all deps must be rebuilt."
-        )
         return 0
 
     artifacts = manifest.get("artifacts", {})
@@ -373,20 +410,24 @@ def restore_cache(
             skipped += len(ep_list)
             continue
 
-        if prev_dep_commit != current_dep_commit:
+        # Compute the per-dep build hash and compare with the stored one.
+        current_hash = compute_build_hash(repo_root, mf_dep, platform, current_dep_commit)
+        stored_hash = plat_entry.get("build_hash", "")
+        if stored_hash and stored_hash == current_hash:
+            # Cache hit!
             print(
-                f"  {mf_dep}: commit changed "
-                f"({prev_dep_commit[:8]} -> {current_dep_commit[:8]})"
+                f"  {mf_dep}: cache hit "
+                f"(build_hash {current_hash[:12]}…, "
+                f"{len(ep_list)} EP(s): {', '.join(ep_list)})"
             )
+        else:
+            if not stored_hash:
+                reason = "no build_hash in manifest (old format)"
+            else:
+                reason = f"build_hash changed ({stored_hash[:12]}… -> {current_hash[:12]}…)"
+            print(f"  {mf_dep}: {reason}")
             skipped += len(ep_list)
             continue
-
-        # Cache hit! Download the zip and extract.
-        print(
-            f"  {mf_dep}: cache hit "
-            f"(commit {current_dep_commit[:8]}, "
-            f"{len(ep_list)} EP(s): {', '.join(ep_list)})"
-        )
 
         zip_data = download_zip_for_dep(repo, plat_entry)
         if zip_data is None:
