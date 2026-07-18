@@ -220,7 +220,7 @@ def compute_build_hash(dep_name: str, platform: str, dep_commit: str) -> str:
     logic changes in a zip-contents-affecting way.
     Mirrored in scripts/cache_restore.py.
     """
-    PACKAGING_VERSION = 3  # bump when packaging logic changes zip contents
+    PACKAGING_VERSION = 4  # bump when packaging logic changes zip contents
     def _file_hash(f: Path) -> str:
         h = hashlib.sha256()
         with open(f, "rb") as fh:
@@ -273,11 +273,13 @@ def classify_lib(path: Path) -> str:
 
     On Windows, import libraries for DLLs are staged under lib/import/ and are
     considered shared linkage artifacts. Static .lib files live directly in lib/.
+    Versioned .so / .dylib files are detected correctly.
     """
+    name = path.name
     suffix = path.suffix.lower()
     if suffix == ".a":
         return "static"
-    if suffix in (".so", ".dylib"):
+    if suffix in (".so", ".dylib") or ".so." in name or suffix.lstrip(".").isdigit():
         return "shared"
     if suffix == ".dll":
         return "shared"
@@ -433,6 +435,43 @@ def find_header_files(dep_name: str, platform_dir: Path) -> list[Path]:
     return files
 
 
+def find_config_files(dep_name: str, platform_dir: Path) -> list[Path]:
+    """Find cmake and pkgconfig files for a dependency.
+
+    These are needed by dependents that use find_package / pkg-config.
+    We look for cmake subdirectories whose name matches the dep or a known
+    alias, and for .pc files mentioning the dep.
+    """
+    # Known cmake package name aliases (what find_package looks for).
+    _CMAKE_ALIASES = {
+        "boringssl": ["OpenSSL"],
+        "glfw": ["glfw3"],
+        "sdl3": ["SDL3"],
+    }
+    cmake_names = [dep_name] + _CMAKE_ALIASES.get(dep_name, [])
+
+    files: list[Path] = []
+
+    # cmake configs: lib/cmake/<name>/*
+    cmake_dir = platform_dir / "lib" / "cmake"
+    if cmake_dir.is_dir():
+        for name in cmake_names:
+            pkg_dir = cmake_dir / name
+            if pkg_dir.is_dir():
+                files.extend(sorted(pkg_dir.rglob("*")))
+
+    # pkgconfig: lib/pkgconfig/*.pc
+    pc_dir = platform_dir / "lib" / "pkgconfig"
+    if pc_dir.is_dir():
+        for f in sorted(pc_dir.glob("*.pc")):
+            if f.stem.startswith(dep_name) or any(
+                f.stem.startswith(n) for n in cmake_names
+            ):
+                files.append(f)
+
+    return files
+
+
 def collect_files_for_platform(dep_name: str, platform: str, platform_dir: Path) -> list[tuple[Path, str, str]]:
     """Collect files for one dep/platform and return (disk_path, zip_arcname, kind) tuples.
 
@@ -479,6 +518,14 @@ def collect_files_for_platform(dep_name: str, platform: str, platform_dir: Path)
         # include headers under static/ for discoverability.
         if not has_static and not has_shared:
             result.append((f, f"static/{platform}/include/{rel}", "header"))
+
+    # cmake configs and pkgconfig files — needed by dependent deps.
+    for f in find_config_files(dep_name, platform_dir):
+        rel = f.relative_to(platform_dir / "lib")
+        if has_static:
+            result.append((f, f"static/{platform}/lib/{rel}", "config"))
+        if has_shared:
+            result.append((f, f"dynamic/{platform}/lib/{rel}", "config"))
 
     return result
 
