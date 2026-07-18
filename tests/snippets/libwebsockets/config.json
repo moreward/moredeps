@@ -1,5 +1,4 @@
 {
-  "link_libs": [
-    "websockets"
-  ]
+  "link_libs": ["websockets"],
+  "extra_static_libs": ["ssl", "crypto", "z"]
 }

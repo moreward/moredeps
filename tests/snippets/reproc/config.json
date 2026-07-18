@@ -1,5 +1,5 @@
 {
-  "link_libs": [
-    "reproc"
-  ]
+  "link_libs": ["reproc"],
+  "extra_static_libs_windows": ["ws2_32"],
+  "extra_dynamic_libs_windows": ["ws2_32"]
 }

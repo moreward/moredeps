@@ -1,1 +1,5 @@
-{"link_libs": ["minigamepad"]}
+{
+  "link_libs": ["minigamepad"],
+  "skip_static_windows": true,
+  "skip_dynamic_windows": true
+}

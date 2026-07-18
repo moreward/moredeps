@@ -160,7 +160,7 @@ def find_cmake_package(platform_dir: Path, dep_name: str) -> tuple[str, str] | N
         "SheenBidi": ("SheenBidi", "SheenBidi::SheenBidi"),
         "physfs": ("PhysFS", "PhysFS::PhysFS"),
         "tracy": ("Tracy", "Tracy::TracyClient"),
-        "dawn": ("Dawn", "Dawn::webgpu_dawn"),
+        "dawn": ("Dawn", "dawn::webgpu_dawn"),
     }
     if dep_name in known:
         pkg, target = known[dep_name]
