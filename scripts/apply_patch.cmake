@@ -20,6 +20,6 @@ execute_process(
 )
 
 execute_process(
-  COMMAND git -C "${SOURCE_DIR}" apply "${PATCH_FILE}"
+  COMMAND git -C "${SOURCE_DIR}" apply --ignore-whitespace "${PATCH_FILE}"
   COMMAND_ERROR_IS_FATAL ANY
 )
