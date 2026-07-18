@@ -340,6 +340,9 @@ def find_license_files(dep_name: str) -> list[Path]:
 
 
 # Header names/dirs that differ from the dependency name.
+# Maps dep_name -> list of search terms.  The CI packaging finds headers
+# by (a) looking for include/<term>/ subdirectories, then (b) files in
+# include/ whose stem contains <term>.  Case matters for subdirectories.
 KNOWN_HEADERS = {
     "boringssl": ["openssl"],
     "budouxc": ["budoux"],
@@ -349,11 +352,11 @@ KNOWN_HEADERS = {
     "enet": ["enet"],
     "flecs": ["flecs"],
     "freetype": ["freetype2"],
-    "glfw": ["glfw"],
+    "glfw": ["GLFW"],
     "harfbuzz": ["harfbuzz"],
     "libunibreak": ["linebreak", "unibreak", "wordbreak", "graphemebreak",
                     "eastasianwidth", "emojidef", "indicconjunctbreak"],
-    "libwebsockets": ["libwebsockets"],
+    "libwebsockets": ["libwebsockets", "lws_config", "lws_map"],
     "lua": ["lua"],
     "mtcc": ["libtcc", "tcc"],
     "sdl3": ["SDL3"],
