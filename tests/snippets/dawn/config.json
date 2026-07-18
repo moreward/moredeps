@@ -1,6 +1,5 @@
 {
   "link_libs": ["webgpu_dawn"],
   "frameworks_macos": ["Metal", "MetalKit", "Cocoa", "QuartzCore", "Foundation", "IOSurface"],
-  "extra_static_libs_windows": ["dxguid"],
-  "extra_dynamic_libs_windows": ["dxguid"]
+  "use_cmake_config": true
 }

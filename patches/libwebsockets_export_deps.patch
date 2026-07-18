@@ -1,0 +1,45 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 8059e834c..3f65505f5 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1096,6 +1096,13 @@ endif()
+ #
+ # Append the "at end" pieces to the lib list
+ #
++if (UNIX AND LWS_HAVE_PTHREAD_H AND NOT (${CMAKE_SYSTEM_NAME} MATCHES "QNX"))
++	list(APPEND LIB_LIST_AT_END pthread)
++endif()
++if (CMAKE_DL_LIBS)
++	list(APPEND LIB_LIST_AT_END ${CMAKE_DL_LIBS})
++endif()
++
+ list(APPEND LIB_LIST ${LIB_LIST_AT_END})
+ 
+ #
+diff --git a/cmake/libwebsockets-config.cmake.in b/cmake/libwebsockets-config.cmake.in
+index 7967706b8..8ba97e6f5 100644
+--- a/cmake/libwebsockets-config.cmake.in
++++ b/cmake/libwebsockets-config.cmake.in
+@@ -11,10 +11,7 @@ list(APPEND CMAKE_MODULE_PATH ${libwebsockets_DIR})
+ set(LIBWEBSOCKETS_INCLUDE_DIRS "@LWS__INCLUDE_DIRS@" "@LWS_PUBLIC_INCLUDES@")
+ 
+ # Include the project Targets file, this contains definitions for IMPORTED targets.
+-if (LIB_LIST_AT_END)
+-else()
+ include(${LWS_CMAKE_DIR}/LibwebsocketsTargets.cmake)
+-endif()
+ include(${LWS_CMAKE_DIR}/LwsCheckRequirements.cmake)
+ 
+ # IMPORTED targets from LibwebsocketsTargets.cmake
+diff --git a/lib/tls/CMakeLists.txt b/lib/tls/CMakeLists.txt
+index 13cb71493..560495ec3 100644
+--- a/lib/tls/CMakeLists.txt
++++ b/lib/tls/CMakeLists.txt
+@@ -290,6 +290,7 @@ if (LWS_WITH_SSL)
+ 		endif()
+ 		if (NOT LWS_PLAT_FREERTOS)
+ 			list(INSERT LIB_LIST 0 ${OPENSSL_LIBRARIES})
++			list(APPEND LIB_LIST_AT_END ${OPENSSL_LIBRARIES})
+ 		endif()
+ 
+ 		if (NOT LWS_WITH_MBEDTLS)

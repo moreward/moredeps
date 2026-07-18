@@ -1,0 +1,13 @@
+diff --git a/reproc/CMakeLists.txt b/reproc/CMakeLists.txt
+index 1bb4798..7460290 100644
+--- a/reproc/CMakeLists.txt
++++ b/reproc/CMakeLists.txt
+@@ -14,7 +14,7 @@ endif()
+ if(WIN32)
+   set(PLATFORM windows)
+   target_compile_definitions(reproc PRIVATE WIN32_LEAN_AND_MEAN)
+-  target_link_libraries(reproc PRIVATE ${REPROC_WINSOCK_LIBRARY})
++  target_link_libraries(reproc PUBLIC ${REPROC_WINSOCK_LIBRARY})
+ else()
+   set(PLATFORM posix)
+   if(NOT APPLE)

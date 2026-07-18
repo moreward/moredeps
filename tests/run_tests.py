@@ -151,7 +151,7 @@ def find_cmake_package(platform_dir: Path, dep_name: str) -> tuple[str, str] | N
         "utf8proc": ("utf8proc", "utf8proc::utf8proc"),
         "zstd": ("zstd", "zstd::libzstd_static"),
         "xxhash": ("xxHash", "xxHash::xxhash"),
-        "libwebsockets": ("libwebsockets", "libwebsockets::websockets"),
+        "libwebsockets": ("libwebsockets", "websockets"),
         "libunibreak": ("libunibreak", "libunibreak::libunibreak"),
         "cglm": ("cglm", "cglm::cglm"),
         "reproc": ("reproc", "reproc::reproc"),

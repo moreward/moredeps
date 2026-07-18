@@ -1,4 +1,4 @@
 {
   "link_libs": ["websockets"],
-  "extra_static_libs": ["ssl", "crypto", "z"]
+  "use_cmake_config": true
 }

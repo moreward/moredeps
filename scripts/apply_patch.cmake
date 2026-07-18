@@ -12,10 +12,10 @@ endif()
 
 message(STATUS "Applying patch ${PATCH_FILE} to ${SOURCE_DIR}")
 
-# Reset the file we are about to patch so that repeated applications (e.g.
-# static then shared variant) do not conflict.
+# Reset tracked files so repeated applications (e.g. static then shared
+# variant) do not conflict.
 execute_process(
-  COMMAND git -C "${SOURCE_DIR}" checkout -- CMakeLists.txt
+  COMMAND git -C "${SOURCE_DIR}" checkout -- .
   COMMAND_ERROR_IS_FATAL ANY
 )
 

@@ -1,0 +1,23 @@
+diff --git a/src/cmake/DawnConfig.cmake.in b/src/cmake/DawnConfig.cmake.in
+index 8bfeda55bc..92bba39743 100644
+--- a/src/cmake/DawnConfig.cmake.in
++++ b/src/cmake/DawnConfig.cmake.in
+@@ -31,4 +31,6 @@
+ # 2. https://cmake.org/cmake/help/latest/guide/tutorial/Adding%20Export%20Configuration.html
+ 
+ @PACKAGE_INIT@
++include(CMakeFindDependencyMacro)
++find_dependency(Threads)
+ include ("${CMAKE_CURRENT_LIST_DIR}/DawnTargets.cmake")
+diff --git a/src/dawn/native/CMakeLists.txt b/src/dawn/native/CMakeLists.txt
+index 3341b17385..7f069313e0 100644
+--- a/src/dawn/native/CMakeLists.txt
++++ b/src/dawn/native/CMakeLists.txt
+@@ -1064,7 +1064,6 @@ if (DAWN_BUILD_MONOLITHIC_LIBRARY)
+       webgpu_dawn
+       PUBLIC
+         dawn_public_config
+-      PRIVATE
+         ${conditional_private_platform_depends}
+     )
+ 

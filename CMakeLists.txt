@@ -386,6 +386,11 @@ moredeps_add_dep(curl
 # Emscripten options). Dependencies are pre-populated as git submodules in
 # deps/dawn_third_party (they cannot be nested inside the deps/dawn submodule).
 moredeps_add_dep(dawn
+  PATCH_COMMAND
+    ${CMAKE_COMMAND}
+    -DSOURCE_DIR=<SOURCE_DIR>
+    -DPATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/patches/dawn_export_deps.patch
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/scripts/apply_patch.cmake
   CMAKE_ARGS
     "-DDAWN_THIRD_PARTY_DIR=${CMAKE_CURRENT_SOURCE_DIR}/deps/dawn_third_party"
     "-DDAWN_EMDAWNWEBGPU_DIR=${CMAKE_CURRENT_SOURCE_DIR}/deps/dawn/third_party/emdawnwebgpu"
@@ -736,6 +741,11 @@ endif()
 # Process spawning is not supported on the web.
 if(NOT EMSCRIPTEN)
   moredeps_add_dep(reproc
+    PATCH_COMMAND
+      ${CMAKE_COMMAND}
+      -DSOURCE_DIR=<SOURCE_DIR>
+      -DPATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/patches/reproc_export_deps.patch
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/scripts/apply_patch.cmake
     CMAKE_ARGS
       "-DREPROC_MULTITHREADED=ON"
   )
