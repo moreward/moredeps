@@ -155,11 +155,20 @@ fi
 
 # Restore unchanged deps from the previous GitHub Release so we don't rebuild them.
 if command -v python3 &> /dev/null; then
+  echo "--- cache_restore: attempting to restore from cache ---"
+  python3 --version 2>&1 || true
   python3 "${SCRIPT_DIR}/cache_restore.py" \
     --platform "${PLATFORM}" \
     --out-dir "${OUT_DIR}" \
     --build-dir "${BUILD_DIR}" \
-    --repo-commit "${REPO_COMMIT}" || true
+    --repo-commit "${REPO_COMMIT}"
+  _cache_rc=$?
+  if [[ ${_cache_rc} -ne 0 ]]; then
+    echo "--- cache_restore: exited with code ${_cache_rc} ---"
+  fi
+  echo "--- cache_restore: done ---"
+else
+  echo "--- cache_restore: python3 not found, skipping ---"
 fi
 
 # Build all targets. Respect MOREDEPS_TOP_LEVEL_PARALLEL to limit top-level parallelism.
@@ -205,12 +214,17 @@ if [[ "${BUILD_SHARED}" == "1" && "${PLATFORM}" != "wasm_emscripten" ]]; then
   # Restore unchanged shared deps from cache.
   # Shared libs install to SHARED_TMP, then get merged into OUT_DIR later.
   if command -v python3 &> /dev/null; then
+    echo "--- cache_restore (shared): attempting to restore from cache ---"
     python3 "${SCRIPT_DIR}/cache_restore.py" \
       --platform "${PLATFORM}" \
       --out-dir "${SHARED_TMP}" \
       --build-dir "${SHARED_BUILD_DIR}" \
       --repo-commit "${REPO_COMMIT}" \
-      --shared || true
+      --shared
+    _cache_rc=$?
+    if [[ ${_cache_rc} -ne 0 ]]; then
+      echo "--- cache_restore (shared): exited with code ${_cache_rc} ---"
+    fi
   fi
 
   cmake --build "${SHARED_BUILD_DIR}" ${BUILD_PARALLEL}
