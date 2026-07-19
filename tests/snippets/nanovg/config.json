@@ -1,3 +1,4 @@
 {
-  "link_libs": ["nanovg"]
+  "link_libs": ["nanovg"],
+  "no_run": true
 }

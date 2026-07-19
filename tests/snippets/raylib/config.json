@@ -8,5 +8,6 @@
     "CoreAudio", "AudioToolbox", "CoreMedia",
     "ForceFeedback", "GameController"
   ],
+  "skip_static_linux": true,
   "no_run": true
 }
