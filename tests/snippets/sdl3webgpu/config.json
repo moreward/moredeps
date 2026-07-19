@@ -3,7 +3,7 @@
   "extra_static_libs": ["SDL3", "webgpu_dawn"],
   "extra_static_libs_windows": ["SDL3-static", "webgpu_dawn"],
   "system_libs_macos": ["usb-1.0"],
-  "system_libs_windows": ["winmm", "setupapi", "cfgmgr32", "version", "imm32", "dxguid", "kernelbase"],
+  "system_libs_windows": ["winmm", "setupapi", "cfgmgr32", "version", "imm32", "dxguid", "api-ms-win-core-handle-l1-1-0"],
   "frameworks_macos": [
     "Cocoa", "IOKit", "Carbon", "Metal", "MetalKit", "QuartzCore", "Foundation",
     "CoreVideo", "CoreAudio", "AudioToolbox", "CoreMedia", "IOSurface",
