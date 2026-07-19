@@ -329,16 +329,22 @@ def compute_build_hash(repo_root: Path, dep_name: str, platform: str,
                   hash(src/<dep>/ directory tree))
 
     If this hash matches between two builds, the compiled AND PACKAGED
-    artifacts are identical.  Bump PACKAGING_VERSION when packaging
+    artifacts are identical. Bump PACKAGING_VERSION when packaging
     logic changes.  Must match ci_package.py's compute_build_hash.
+
+    File hashes are computed from LF-normalized text so that Linux and
+    Windows runners produce identical hashes for the same file content.
     """
-    PACKAGING_VERSION = 5  # bump when packaging logic changes zip contents
+    PACKAGING_VERSION = 1  # reset: hashing is now line-ending normalized
 
     def _file_hash(f: Path) -> str:
         h = hashlib.sha256()
-        with open(f, "rb") as fh:
-            for chunk in iter(lambda: fh.read(65536), b""):
-                h.update(chunk)
+        # Normalize line endings so the same file hashes identically on
+        # Linux (LF) and Windows (CRLF). The manifest is generated on Linux,
+        # but Windows builds consume it.
+        with open(f, "r", encoding="utf-8", errors="surrogateescape") as fh:
+            for chunk in iter(lambda: fh.read(65536), ""):
+                h.update(chunk.replace("\r\n", "\n").encode("utf-8"))
         return h.hexdigest()
 
     h = hashlib.sha256()

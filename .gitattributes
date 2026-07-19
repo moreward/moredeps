@@ -1,0 +1,8 @@
+# Force LF line endings for files that feed into the per-dependency build_hash.
+# This keeps hashes identical between Linux (where the manifest is generated)
+# and Windows (where builds consume the manifest).
+/CMakeLists.txt text eol=lf
+/toolchain/*.cmake text eol=lf
+/patches/*.patch text eol=lf
+/src/** text eol=lf
+/scripts/*.py text eol=lf
