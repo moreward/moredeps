@@ -2,6 +2,6 @@
   "extra_static_libs_macos": ["idn2"],
   "extra_static_libs_wasm": ["crypto", "ssl", "z"],
   "extra_static_libs_windows": ["crypto", "ssl", "z", "zs"],
-  "system_libs_windows": ["ws2_32", "crypt32"],
+  "system_libs_windows": ["ws2_32", "crypt32", "iphlpapi", "bcrypt"],
   "defines_static_windows": ["CURL_STATICLIB"]
 }
