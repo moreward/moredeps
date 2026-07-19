@@ -1,0 +1,87 @@
+# examples/vendor-release.yml
+#
+# A GitHub Actions workflow that downloads selected moredeps packages and
+# re-publishes them to a release in your own repository. This pins the
+# binaries so they are not affected by the moredeps last-3-builds rotation.
+#
+# Copy this file to .github/workflows/vendor-release.yml in your repo.
+# The dep list is passed as a workflow input when you trigger the workflow.
+#
+# The workflow can be triggered manually, or on a schedule:
+#   schedule:
+#     - cron: '0 0 * * 0'  # weekly
+
+name: Vendor moredeps packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      moredeps_release:
+        description: 'moredeps release tag to fetch'
+        default: 'latest'
+        required: true
+      dep_list:
+        description: 'Comma-separated dependency names'
+        default: 'sokol,glfw,cglm'
+        required: true
+      vendor_tag:
+        description: 'Release tag in this repo'
+        default: 'moredeps-vendor'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    env:
+      MOREDEPS_REPO: moreward/moredeps
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download moredeps.json
+        run: |
+          curl -fsSL "https://github.com/${MOREDEPS_REPO}/releases/download/${{ inputs.moredeps_release }}/moredeps.json" \
+            -o moredeps.json
+
+      - name: Download selected packages
+        run: |
+          mkdir -p vendor_assets
+          IFS=',' read -ra DEPS <<< "${{ inputs.dep_list }}"
+          for dep in "${DEPS[@]}"; do
+            dep=$(echo "$dep" | tr -d '[:space:]')
+            filename=$(jq -r --arg dep "$dep" '
+              .artifacts[$dep] // {}
+              | to_entries[]
+              | select(.value.built == true)
+              | .value.filename
+            ' moredeps.json | head -n1)
+
+            if [[ -z "$filename" || "$filename" == "null" ]]; then
+              echo "Warning: no built artifact for $dep; skipping"
+              continue
+            fi
+
+            url="https://github.com/${MOREDEPS_REPO}/releases/download/${{ inputs.moredeps_release }}/${filename}"
+            echo "Downloading $dep: $url"
+            curl -fsSL "$url" -o "vendor_assets/${filename}"
+          done
+
+          # Include the manifest so consumers can discover the vendored files.
+          cp moredeps.json vendor_assets/moredeps.json
+
+      - name: Create vendored release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.vendor_tag }}
+          name: moredeps vendor
+          body: |
+            Vendored moredeps packages from ${{ env.MOREDEPS_REPO }}@${{ inputs.moredeps_release }}.
+
+            Included: ${{ inputs.dep_list }}
+          files: vendor_assets/*
+          force: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
