@@ -944,7 +944,6 @@ moredeps_add_dep(zstd
 set(MOREDEPS_WRAPPER_NAMES
   cgltf
   FastNoiseLite
-  fontstash
   microui
   minigamepad
   nanovg

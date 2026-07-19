@@ -136,6 +136,8 @@
         <small>🕐 Only the <strong>last 3 builds</strong> are retained. Older releases are pruned automatically by CI.</small>
         <br>
         <small>📋 <a href="https://github.com/moreward/moredeps/releases/download/latest/moredeps.json">Download moredeps.json</a> (machine-readable, with SHA256 hashes)</small>
+        <br>
+        <small>📦 <a href="https://github.com/moreward/moredeps/tree/main/examples">Examples</a>: download, unpack, and even vendor moredeps into your own GitHub releases.</small>
     </div>
 
     <div class="release-selector">
@@ -153,7 +155,8 @@
     <footer>
         <a href="https://github.com/moreward/moredeps">GitHub Repo</a> ·
         <a href="https://github.com/moreward/moredeps/blob/main/docs/build_plan.md">Build Plan</a> ·
-        <a href="https://github.com/moreward/moredeps/blob/main/docs/build_options.md">Build Options</a>
+        <a href="https://github.com/moreward/moredeps/blob/main/docs/build_options.md">Build Options</a> ·
+        <a href="https://github.com/moreward/moredeps/tree/main/examples">Examples</a>
         <br>
         <a href="https://morew4rd.com">morew4rd.com</a> ·
         <a href="https://x.com/morew4rd">@morew4rd</a> on X ·
@@ -288,7 +291,50 @@
                         } else {
                             badge = '<span style="font-size:0.7rem;color:#888">hdr</span>';
                         }
-                        html += `<td>${badge}</td>`;
+
+                        // Test status icon
+                        const ts = info.test_status || {};
+                        const staticStatus = ts.static || 'not-tested';
+                        const dynamicStatus = ts.dynamic || 'not-tested';
+                        const statusIcons = {
+                            'passed': '✅',
+                            'skipped': '⏭️',
+                            'failed': '❌',
+                            'excluded': '⛔',
+                            'not-tested': '⚪'
+                        };
+                        const statusLabels = {
+                            'passed': 'passed',
+                            'skipped': 'skipped',
+                            'failed': 'failed',
+                            'excluded': 'excluded',
+                            'not-tested': 'not tested'
+                        };
+                        // Combined status: worst wins (failed > not-tested > skipped > passed)
+                        const statuses = [staticStatus, dynamicStatus];
+                        let combinedStatus = 'passed';
+                        if (statuses.includes('failed')) {
+                            combinedStatus = 'failed';
+                        } else if (statuses.includes('not-tested')) {
+                            combinedStatus = 'not-tested';
+                        } else if (statuses.includes('skipped')) {
+                            combinedStatus = 'skipped';
+                        }
+                        const testIcon = statusIcons[combinedStatus] || '⚪';
+                        const testTitle = `static test: ${statusLabels[staticStatus]}\ndynamic test: ${statusLabels[dynamicStatus]}`;
+
+                        // Library list for tooltip
+                        const libs = info.libraries || {static: [], dynamic: []};
+                        let libTooltip = '';
+                        if (libs.static && libs.static.length) {
+                            libTooltip += `static: ${libs.static.join(', ')}\n`;
+                        }
+                        if (libs.dynamic && libs.dynamic.length) {
+                            libTooltip += `dynamic: ${libs.dynamic.join(', ')}\n`;
+                        }
+                        const fullTitle = escapeHtml((libTooltip + testTitle).trim());
+
+                        html += `<td title="${fullTitle}">${badge} <span style="font-size:0.85rem;cursor:help" title="${fullTitle}">${testIcon}</span></td>`;
                     } else {
                         html += '<td class="status-fail">fail</td>';
                     }
@@ -297,6 +343,15 @@
             }
 
             html += '</table>';
+
+            // Legend
+            html += '<div style="margin-top:1rem;font-size:0.85rem;color:#666;">';
+            html += '<strong>Legend:</strong> ';
+            html += '<span style="font-size:0.7rem;background:#e3f2fd;color:#1565c0;padding:0 3px;border-radius:2px">sta</span> static only · ';
+            html += '<span style="font-size:0.7rem;background:#fff3e0;color:#e65100;padding:0 3px;border-radius:2px">shr</span> shared only · ';
+            html += '<span style="font-size:0.7rem;background:#e8f5e9;color:#2e7d32;padding:0 3px;border-radius:2px">s+s</span> static + shared · ';
+            html += '✅ passed · ⏭️ skipped · ❌ failed · ⛔ excluded · ⚪ not tested';
+            html += '</div>';
             const commitLink = manifest.repo_commit
                 ? `<a href="https://github.com/${REPO}/commit/${manifest.repo_commit}"><code>${manifest.repo_commit.substring(0, 8)}</code></a>`
                 : 'unknown';

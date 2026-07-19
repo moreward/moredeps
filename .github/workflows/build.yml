@@ -105,7 +105,7 @@ jobs:
 
       - name: Run link tests
         run: |
-          python tests/run_tests.py --platform linux_x64
+          python tests/run_tests.py --platform linux_x64 --json-out _out/test_results_linux_x64.json
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -160,7 +160,7 @@ jobs:
 
       - name: Run link tests
         run: |
-          python tests/run_tests.py --platform linux_arm64
+          python tests/run_tests.py --platform linux_arm64 --json-out _out/test_results_linux_arm64.json
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -231,7 +231,7 @@ jobs:
       - name: Run link tests
         run: |
           source ~/emsdk/emsdk_env.sh
-          python tests/run_tests.py --platform wasm_emscripten
+          python tests/run_tests.py --platform wasm_emscripten --json-out _out/test_results_wasm_emscripten.json
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -281,7 +281,7 @@ jobs:
 
       - name: Run link tests
         run: |
-          python tests/run_tests.py --platform macos_arm64
+          python tests/run_tests.py --platform macos_arm64 --json-out _out/test_results_macos_arm64.json
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -336,7 +336,7 @@ jobs:
       - name: Run link tests
         run: |
           source scripts/setup_vcvars.sh x64
-          python tests/run_tests.py --platform windows_x64
+          python tests/run_tests.py --platform windows_x64 --json-out _out/test_results_windows_x64.json
         shell: bash
 
       - name: Upload artifacts
@@ -392,7 +392,7 @@ jobs:
       - name: Run link tests
         run: |
           source scripts/setup_vcvars.sh arm64 || source scripts/setup_vcvars.sh x64_arm64
-          python tests/run_tests.py --platform windows_arm64
+          python tests/run_tests.py --platform windows_arm64 --json-out _out/test_results_windows_arm64.json
         shell: bash
 
       - name: Upload artifacts

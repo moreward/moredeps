@@ -21,6 +21,7 @@ CI builds all platforms and publishes per-dependency zips (library + headers + l
 
 - Releases: `build-<sha>` (immutable per commit) and `latest` (rolling alias). Only the **last 3 builds** are retained; older releases are pruned automatically.
 - `moredeps.json` (attached to each release) lists every artifact with the dependency's pinned upstream commit and repo URL.
+- **[Examples](https://github.com/moreward/moredeps/tree/main/examples)** show how to download, unpack, and vendor moredeps into your own GitHub releases so you control the binary lifetime.
 
 ## Quick start
 
@@ -67,6 +68,15 @@ git submodule update --init deps/<name>
 ```
 
 Artifacts are staged in `_out/<platform>/lib/` and `_out/<platform>/include/`.
+
+## Examples
+
+See the [`examples/`](https://github.com/moreward/moredeps/tree/main/examples) directory for ready-to-use scripts and workflows that show how to consume moredeps:
+
+- **Download and unpack** a few packages locally (Bash or Python).
+- **Vendor to your own GitHub release** so the binaries are pinned under your
+  control and not lost when moredeps rotates its last-3-builds window.
+- **Fetch at configure time** from a CMake project.
 
 ## Documentation
 

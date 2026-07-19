@@ -77,7 +77,6 @@ DEP_LIBRARY_NAMES = {
     "enet": ["enet"],
     "FastNoiseLite": ["FastNoiseLite"],
     "flecs": ["flecs_static"],
-    "fontstash": ["fontstash"],
     "freetype": ["freetype"],
     "glfw": ["glfw3"],
     "harfbuzz": ["harfbuzz", "harfbuzz-subset"],
@@ -263,6 +262,43 @@ def compute_build_hash(dep_name: str, platform: str, dep_commit: str) -> str:
                 h.update(_file_hash(f).encode())
 
     return h.hexdigest()
+
+
+def load_test_results(out_dir: Path) -> dict[str, dict]:
+    """Load per-platform test results written by tests/run_tests.py --json-out.
+
+    Returns {platform: {dep_name: {static: status, dynamic: status}}}."""
+    results: dict[str, dict] = {}
+    for f in sorted(out_dir.glob("test_results_*.json")):
+        platform = f.stem.replace("test_results_", "")
+        try:
+            data = json.loads(f.read_text())
+            results[platform] = data.get("results", {})
+        except (json.JSONDecodeError, OSError):
+            results[platform] = {}
+    return results
+
+
+def get_test_status(dep_name: str, platform: str,
+                    test_results: dict[str, dict]) -> dict[str, str]:
+    """Return test status for a dep/platform, normalized for the manifest."""
+    platform_results = test_results.get(platform, {})
+    dep_results = platform_results.get(dep_name, {})
+    status: dict[str, str] = {}
+    for linkage in ("static", "dynamic"):
+        value = dep_results.get(linkage)
+        if value == "ok":
+            status[linkage] = "passed"
+        elif value == "skipped":
+            status[linkage] = "skipped"
+        elif value in ("build-failed", "run-failed"):
+            status[linkage] = "failed"
+        elif value is None or value == "":
+            # No snippet or no test recorded for this dep/platform.
+            status[linkage] = "not-tested"
+        else:
+            status[linkage] = value
+    return status
 
 
 def sha256_file(path: Path) -> str:
@@ -543,7 +579,8 @@ def collect_files_for_platform(dep_name: str, platform: str, platform_dir: Path)
 
 
 def package_dependency(dep_name: str, out_dir: Path, repo_sha: str,
-                       submodule_urls: dict[str, str]) -> dict[str, dict | None]:
+                       submodule_urls: dict[str, str],
+                       test_results: dict[str, dict]) -> dict[str, dict | None]:
     """Create a single zip for a dependency and return per-platform manifest entries."""
     dep_commit = get_submodule_commit(dep_name)
     dep_dir = f"deps/{DIR_ALIAS.get(dep_name, dep_name)}"
@@ -565,6 +602,7 @@ def package_dependency(dep_name: str, out_dir: Path, repo_sha: str,
                     "commit": dep_commit,
                     "built": False,
                     "reason": reason,
+                    "test_status": {"static": "excluded", "dynamic": "excluded"},
                 }
                 continue
 
@@ -575,16 +613,21 @@ def package_dependency(dep_name: str, out_dir: Path, repo_sha: str,
 
             has_any_files = True
             platform_files: list[dict[str, str]] = []
+            libraries: dict[str, list[str]] = {"static": [], "dynamic": []}
             for disk_path, arcname, kind in files:
                 zf.write(disk_path, arcname)
                 seen_arcnames.add(arcname)
                 platform_files.append({"path": arcname, "kind": kind})
+                if kind in ("static", "shared"):
+                    libraries["static" if kind == "static" else "dynamic"].append(disk_path.name)
 
             per_platform[platform] = {
                 "commit": dep_commit,
                 "built": True,
                 "build_hash": compute_build_hash(dep_name, platform, dep_commit),
                 "files": platform_files,
+                "libraries": libraries,
+                "test_status": get_test_status(dep_name, platform, test_results),
                 "filename": zip_name,
                 **({"repo_url": repo_url} if repo_url else {}),
             }
@@ -619,7 +662,7 @@ def package_dependency(dep_name: str, out_dir: Path, repo_sha: str,
 def generate_manifest(out_dir: Path, repo_sha: str) -> dict:
     """Generate the full manifest from built artifacts."""
     manifest = {
-        "manifest_version": 1,
+        "manifest_version": 2,
         "repo_commit": repo_sha,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "artifacts": {},
@@ -630,9 +673,10 @@ def generate_manifest(out_dir: Path, repo_sha: str) -> dict:
     # imgui checkout) as empty, non-shippable rows.
     deps = sorted(DEP_LIBRARY_NAMES.keys())
     submodule_urls = get_submodule_urls()
+    test_results = load_test_results(out_dir)
 
     for dep in deps:
-        manifest["artifacts"][dep] = package_dependency(dep, out_dir, repo_sha, submodule_urls)
+        manifest["artifacts"][dep] = package_dependency(dep, out_dir, repo_sha, submodule_urls, test_results)
 
     return manifest
 

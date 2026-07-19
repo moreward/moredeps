@@ -33,13 +33,10 @@
 	url = https://github.com/moreward/mtcc.git
 [submodule "deps/physfs"]
 	path = deps/physfs
-	url = https://github.com/icculus/physfs.git
+	url = https://github.com/moreward/physfs.git
 [submodule "deps/reproc"]
 	path = deps/reproc
 	url = https://github.com/daandemeyer/reproc.git
-[submodule "deps/sqlite-amalgamation"]
-	path = deps/sqlite-amalgamation
-	url = https://github.com/azadkuh/sqlite-amalgamation.git
 [submodule "deps/tinycsocket"]
 	path = deps/tinycsocket
 	url = https://github.com/dosshell/tinycsocket.git
@@ -67,9 +64,6 @@
 [submodule "deps/sokol_gp"]
 	path = deps/sokol_gp
 	url = https://github.com/edubart/sokol_gp.git
-[submodule "deps/fontstash"]
-	path = deps/fontstash
-	url = https://github.com/memononen/fontstash.git
 [submodule "deps/freetype"]
 	path = deps/freetype
 	url = https://github.com/freetype/freetype.git
@@ -142,3 +136,6 @@
 [submodule "deps/dawn_third_party"]
 	path = deps/dawn_third_party
 	url = https://github.com/moreward/dawn-third-party.git
+[submodule "deps/sqlite-amalgamation"]
+	path = deps/sqlite-amalgamation
+	url = https://github.com/moreward/sqlite-amalgamation.git
