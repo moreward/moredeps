@@ -1,5 +1,6 @@
 {
   "link_libs": [
     "ubench"
-  ]
+  ],
+  "skip_static_wasm": true
 }
