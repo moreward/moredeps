@@ -270,21 +270,21 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
             lib_paths = ' '.join(f'"{lib.as_posix()}"' for lib in libs)
             lines.append(f"target_link_libraries({target} PRIVATE {lib_paths})")
 
-        # Extra system libs from per-dep config.
+        # Extra system/project libs from per-dep config.
         # Config keys can be platform-specific: extra_static_libs_windows, etc.
-        # Platform-specific keys take precedence over generic keys.
-        generic_key = f"extra_{linkage}_libs"
-        platform_key = f"extra_{linkage}_libs_{os_prefix}"
-        fallback_key = "extra_libs"
-        fallback_platform_key = f"extra_libs_{os_prefix}"
+        # Platform-specific keys are prepended; generic keys fill in gaps.
+        extra_generic = (config.get(f"extra_{linkage}_libs", [])
+                         or config.get("extra_libs", []))
+        extra_platform = (config.get(f"extra_{linkage}_libs_{os_prefix}", [])
+                          or config.get(f"extra_libs_{os_prefix}", []))
+        extra = extra_platform + [e for e in extra_generic if e not in extra_platform]
 
-        if platform_key in config or fallback_platform_key in config:
-            extra = (config.get(platform_key, [])
-                     or config.get(fallback_platform_key, []))
-        else:
-            extra = (config.get(generic_key, [])
-                     or config.get(fallback_key, []))
-        if extra:
+        # System libs are passed directly to the linker (e.g. ws2_32, winmm, crypt32, m, pthread).
+        sys_generic = config.get("system_libs", [])
+        sys_platform = config.get(f"system_libs_{os_prefix}", [])
+        system_libs = sys_platform + [s for s in sys_generic if s not in sys_platform]
+
+        if extra or system_libs:
             resolved = []
             for name in extra:
                 if linkage == "static":
@@ -304,9 +304,11 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
                         if found:
                             break
                     if not found:
-                        resolved.append(name)
+                        # Project lib not present on this platform (e.g. z vs zs on Windows).
+                        continue
                 else:
                     resolved.append(name)
+            resolved.extend(system_libs)
             if resolved:
                 lines.append(f"target_link_libraries({target} PRIVATE {' '.join(resolved)})")
 
