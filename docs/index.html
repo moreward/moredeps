@@ -127,7 +127,7 @@
         <code>static/</code> and <code>dynamic/</code> folders, then per-platform
         subfolders containing the libraries and headers. Download the zip for the
         libraries you need, or
-        <a href="https://github.com/moreward/moredeps">build from source</a>.
+        <a href="https://github.com/moreward/moredeps" target="_blank" rel="noopener noreferrer">build from source</a>.
         <br><br>
         <code>git clone https://github.com/moreward/moredeps.git</code><br>
         <code>cd moredeps && git submodule update --init --jobs 4</code><br>
@@ -135,9 +135,9 @@
         <br><br>
         <small>🕐 Only the <strong>last 3 builds</strong> are retained. Older releases are pruned automatically by CI.</small>
         <br>
-        <small>📋 <a href="https://github.com/moreward/moredeps/releases/download/latest/moredeps.json">Download moredeps.json</a> (machine-readable, with SHA256 hashes)</small>
+        <small>📋 <a href="https://github.com/moreward/moredeps/releases/download/latest/moredeps.json" target="_blank" rel="noopener noreferrer">Download moredeps.json</a> (machine-readable, with SHA256 hashes)</small>
         <br>
-        <small>📦 <a href="https://github.com/moreward/moredeps/tree/main/examples">Examples</a>: download, unpack, and even vendor moredeps into your own GitHub releases.</small>
+        <small>📦 <a href="https://github.com/moreward/moredeps/tree/main/examples" target="_blank" rel="noopener noreferrer">Examples</a>: download, unpack, and even vendor moredeps into your own GitHub releases.</small>
     </div>
 
     <div class="release-selector">
@@ -153,14 +153,14 @@
     </div>
 
     <footer>
-        <a href="https://github.com/moreward/moredeps">GitHub Repo</a> ·
-        <a href="https://github.com/moreward/moredeps/blob/main/docs/build_plan.md">Build Plan</a> ·
-        <a href="https://github.com/moreward/moredeps/blob/main/docs/build_options.md">Build Options</a> ·
-        <a href="https://github.com/moreward/moredeps/tree/main/examples">Examples</a>
+        <a href="https://github.com/moreward/moredeps" target="_blank" rel="noopener noreferrer">GitHub Repo</a> ·
+        <a href="https://github.com/moreward/moredeps/blob/main/docs/build_plan.md" target="_blank" rel="noopener noreferrer">Build Plan</a> ·
+        <a href="https://github.com/moreward/moredeps/blob/main/docs/build_options.md" target="_blank" rel="noopener noreferrer">Build Options</a> ·
+        <a href="https://github.com/moreward/moredeps/tree/main/examples" target="_blank" rel="noopener noreferrer">Examples</a>
         <br>
-        <a href="https://morew4rd.com">morew4rd.com</a> ·
-        <a href="https://x.com/morew4rd">@morew4rd</a> on X ·
-        <a href="https://github.com/moreward">@moreward</a> on GitHub
+        <a href="https://morew4rd.com" target="_blank" rel="noopener noreferrer">morew4rd.com</a> ·
+        <a href="https://x.com/morew4rd" target="_blank" rel="noopener noreferrer">@morew4rd</a> on X ·
+        <a href="https://github.com/moreward" target="_blank" rel="noopener noreferrer">@moreward</a> on GitHub
     </footer>
 
     <script>
@@ -233,7 +233,7 @@
             for (const dep of deps) {
                 const firstInfo = Object.values(manifest.artifacts[dep]).find(e => e && e.commit);
                 const depLabel = (firstInfo && firstInfo.repo_url && firstInfo.commit)
-                    ? `<a href="${firstInfo.repo_url}/tree/${firstInfo.commit}" target="_blank" title="${firstInfo.repo_url} @ ${firstInfo.commit}">${dep}</a>`
+                    ? `<a href="${firstInfo.repo_url}/tree/${firstInfo.commit}" target="_blank" rel="noopener noreferrer" title="${firstInfo.repo_url} @ ${firstInfo.commit}">${dep}</a>`
                     : dep;
 
                 // Find a built entry for download info (all platforms share the same zip).
@@ -353,7 +353,7 @@
             html += '✅ passed · ⏭️ skipped · ❌ failed · ⛔ excluded · ⚪ not tested';
             html += '</div>';
             const commitLink = manifest.repo_commit
-                ? `<a href="https://github.com/${REPO}/commit/${manifest.repo_commit}"><code>${manifest.repo_commit.substring(0, 8)}</code></a>`
+                ? `<a href="https://github.com/${REPO}/commit/${manifest.repo_commit}" target="_blank" rel="noopener noreferrer"><code>${manifest.repo_commit.substring(0, 8)}</code></a>`
                 : 'unknown';
             html += `<p style="margin-top:1rem;color:#666;font-size:0.9rem;">Repo commit: ${commitLink} · Generated: ${manifest.generated_at || 'unknown'}</p>`;
             return html;
@@ -413,11 +413,11 @@
         function renderAssetList(release) {
             const zips = release.assets.filter(a => a.name.endsWith('.zip')).sort((a, b) => a.name.localeCompare(b.name));
             if (zips.length === 0) {
-                return `<p class="error">No downloadable artifacts in this release. <a href="${release.html_url}">View on GitHub</a></p>`;
+                return `<p class="error">No downloadable artifacts in this release. <a href="${release.html_url}" target="_blank" rel="noopener noreferrer">View on GitHub</a></p>`;
             }
             let html = `<p>Per-dependency status is only shown for the latest build. ` +
-                `<a href="${release.html_url}">View this release on GitHub</a> · ` +
-                `<a href="${manifestUrl(release)}">Download manifest</a></p>`;
+                `<a href="${release.html_url}" target="_blank" rel="noopener noreferrer">View this release on GitHub</a> · ` +
+                `<a href="${manifestUrl(release)}" target="_blank" rel="noopener noreferrer">Download manifest</a></p>`;
             html += '<table><tr><th>Artifact</th><th>Size</th><th></th></tr>';
             for (const asset of zips) {
                 const sizeMB = (asset.size / (1024 * 1024)).toFixed(1);
