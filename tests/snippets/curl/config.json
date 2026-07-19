@@ -1,5 +1,6 @@
 {
   "extra_static_libs_macos": ["idn2"],
   "extra_static_libs_wasm": ["crypto", "ssl", "z"],
+  "extra_static_libs_windows": ["crypto", "ssl", "ws2_32", "crypt32"],
   "defines_static_windows": ["CURL_STATICLIB"]
 }

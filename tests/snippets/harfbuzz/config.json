@@ -1,6 +1,6 @@
 {
   "link_libs": ["harfbuzz", "harfbuzz-subset"],
   "extra_static_libs": ["freetype", "z"],
-  "extra_static_libs_windows": ["freetype", "z", "zs"],
+  "extra_static_libs_windows": ["freetype", "zs"],
   "frameworks_macos": ["CoreText", "CoreFoundation", "CoreGraphics"]
 }

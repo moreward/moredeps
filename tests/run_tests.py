@@ -272,11 +272,18 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
 
         # Extra system libs from per-dep config.
         # Config keys can be platform-specific: extra_static_libs_windows, etc.
-        extra_generic = (config.get(f"extra_{linkage}_libs", [])
-                         or config.get("extra_libs", []))
-        extra_platform = (config.get(f"extra_{linkage}_libs_{os_prefix}", [])
-                          or config.get(f"extra_libs_{os_prefix}", []))
-        extra = extra_platform + [e for e in extra_generic if e not in extra_platform]
+        # Platform-specific keys take precedence over generic keys.
+        generic_key = f"extra_{linkage}_libs"
+        platform_key = f"extra_{linkage}_libs_{os_prefix}"
+        fallback_key = "extra_libs"
+        fallback_platform_key = f"extra_libs_{os_prefix}"
+
+        if platform_key in config or fallback_platform_key in config:
+            extra = (config.get(platform_key, [])
+                     or config.get(fallback_platform_key, []))
+        else:
+            extra = (config.get(generic_key, [])
+                     or config.get(fallback_key, []))
         if extra:
             resolved = []
             for name in extra:
