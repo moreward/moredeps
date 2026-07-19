@@ -8,7 +8,5 @@
     "AVFoundation", "ForceFeedback", "GameController",
     "UniformTypeIdentifiers", "CoreHaptics"
   ],
-  "skip_static_linux": true,
-  "skip_static_windows": true,
   "no_run": true
 }
