@@ -12,5 +12,6 @@
   ],
   "skip_static_linux": true,
   "skip_static_wasm": true,
+  "skip_static_windows": true,
   "no_run": true
 }
