@@ -1,6 +1,7 @@
 {
   "link_libs": ["sdl3webgpu"],
   "extra_static_libs": ["SDL3", "webgpu_dawn"],
+  "extra_static_libs_windows": ["SDL3-static", "webgpu_dawn"],
   "extra_static_libs_macos": ["usb-1.0"],
   "frameworks_macos": [
     "Cocoa", "IOKit", "Carbon", "Metal", "MetalKit", "QuartzCore", "Foundation",
@@ -9,5 +10,6 @@
     "UniformTypeIdentifiers", "CoreHaptics"
   ],
   "skip_static_linux": true,
+  "skip_static_wasm": true,
   "no_run": true
 }

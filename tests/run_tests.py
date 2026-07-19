@@ -222,6 +222,17 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
     else:
         lines.append(f"set_property(TARGET {target} PROPERTY CXX_STANDARD 17)")
 
+    # Per-dep compile definitions.
+    defs_generic = config.get("defines", [])
+    defs_linkage = config.get(f"defines_{linkage}", [])
+    defs_platform = config.get(f"defines_{os_prefix}", [])
+    defs_linkage_platform = config.get(f"defines_{linkage}_{os_prefix}", [])
+    all_defs = list(dict.fromkeys(
+        defs_generic + defs_platform + defs_linkage + defs_linkage_platform
+    ))
+    if all_defs:
+        lines.append(f"target_compile_definitions({target} PRIVATE {' '.join(all_defs)})")
+
     # Set rpath so dynamic executables can find their .so/.dylib at runtime.
     # Use --disable-new-dtags on Linux to emit DT_RPATH (transitive) rather
     # than DT_RUNPATH (non-transitive): libskribidi.so → libharfbuzz.so needs

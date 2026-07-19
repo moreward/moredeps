@@ -1,4 +1,5 @@
 {
   "link_libs": ["SDL3"],
-  "use_cmake_config": true
+  "use_cmake_config": true,
+  "skip_static_wasm": true
 }

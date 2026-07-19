@@ -1,3 +1,4 @@
 {
-  "link_libs": ["mimalloc"]
+  "link_libs": ["mimalloc"],
+  "skip_static_wasm": true
 }

@@ -1,6 +1,6 @@
 {
   "link_libs": ["skribidi"],
   "extra_static_libs": ["harfbuzz", "harfbuzz-subset", "freetype", "z"],
-  "extra_static_libs_windows": ["harfbuzz", "harfbuzz-subset", "freetype", "zlibstatic"],
+  "extra_static_libs_windows": ["harfbuzz", "harfbuzz-subset", "freetype", "z", "zs"],
   "frameworks_macos": ["CoreFoundation", "CoreGraphics", "CoreText"]
 }
