@@ -284,7 +284,22 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
         sys_platform = config.get(f"system_libs_{os_prefix}", [])
         system_libs = sys_platform + [s for s in sys_generic if s not in sys_platform]
 
-        if extra or system_libs:
+        # On macOS, system libraries installed by Homebrew (e.g. libusb-1.0)
+        # may not be on the default linker search path. Use find_library with
+        # common Homebrew locations, falling back to the raw library name.
+        sys_var_names = []
+        if sys.platform == "darwin" and system_libs:
+            for i, name in enumerate(system_libs):
+                var = f"MOREDEPS_SYS_LIB_{i}"
+                lines.append(f"find_library({var} NAMES {name} PATHS /opt/homebrew/lib /usr/local/lib)")
+                lines.append(f"if(NOT {var})")
+                lines.append(f"  set({var} {name})")
+                lines.append("endif()")
+                sys_var_names.append(f"${{{var}}}")
+        else:
+            sys_var_names = system_libs
+
+        if extra or sys_var_names:
             resolved = []
             for name in extra:
                 if linkage == "static":
@@ -308,7 +323,7 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
                         continue
                 else:
                     resolved.append(name)
-            resolved.extend(system_libs)
+            resolved.extend(sys_var_names)
             if resolved:
                 lines.append(f"target_link_libraries({target} PRIVATE {' '.join(resolved)})")
 
@@ -489,6 +504,7 @@ def main():
     parser.add_argument("--out-dir", type=Path, default=ROOT / "_out", help="Directory containing _out/<platform>")
     parser.add_argument("--toolchain", type=Path, help="CMake toolchain file to use")
     parser.add_argument("--deps", help="Comma-separated deps to test (default: all with snippets)")
+    parser.add_argument("--json-out", type=Path, help="Write per-dep test results to this JSON file")
     parser.add_argument("--verbose", action="store_true", help="Print CMake output")
     args = parser.parse_args()
 
@@ -519,6 +535,11 @@ def main():
     for dep in deps:
         results[dep] = {}
         test_dep(dep, platform, args.out_dir, platform_dir / "bin", args.toolchain, args.verbose, results)
+
+    # Write machine-readable results if requested.
+    if args.json_out:
+        args.json_out.parent.mkdir(parents=True, exist_ok=True)
+        args.json_out.write_text(json.dumps({"platform": platform, "results": results}, indent=2))
 
     # Print summary
     print(f"\n{'='*60}")

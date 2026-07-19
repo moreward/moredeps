@@ -2,13 +2,13 @@
   "link_libs": ["sdl3webgpu"],
   "extra_static_libs": ["SDL3", "webgpu_dawn"],
   "extra_static_libs_windows": ["SDL3-static", "webgpu_dawn"],
+  "system_libs_macos": ["usb-1.0"],
   "frameworks_macos": [
     "Cocoa", "IOKit", "Carbon", "Metal", "MetalKit", "QuartzCore", "Foundation",
     "CoreVideo", "CoreAudio", "AudioToolbox", "CoreMedia", "IOSurface",
     "AVFoundation", "ForceFeedback", "GameController",
     "UniformTypeIdentifiers", "CoreHaptics"
   ],
-  "skip_static_macos": true,
   "skip_static_linux": true,
   "skip_static_wasm": true,
   "no_run": true
