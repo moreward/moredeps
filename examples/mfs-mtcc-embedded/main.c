@@ -125,6 +125,23 @@ static int extract_dir(const char *src_dir, const char *dst_dir)
     return ctx.ok;
 }
 
+static int make_temp_dir(char *out, size_t out_len)
+{
+#if defined(_WIN32)
+    char tmp_path[MAX_PATH];
+    DWORD n = GetTempPathA(MAX_PATH, tmp_path);
+    if (n == 0 || n >= MAX_PATH) return 0;
+    char template[] = "mfs_mtcc_embedded_XXXXXX";
+    if (!GetTempFileNameA(tmp_path, "mfs", 0, out)) return 0;
+    /* GetTempFileNameA creates a file; delete it and create a directory. */
+    DeleteFileA(out);
+    return _mkdir(out) == 0;
+#else
+    snprintf(out, out_len, "/tmp/mfs_mtcc_embedded_XXXXXX");
+    return mkdtemp(out) != NULL;
+#endif
+}
+
 int main(int argc, char *argv[])
 {
     if (argc < 2) {
@@ -144,9 +161,9 @@ int main(int argc, char *argv[])
     }
 
     /* Create a temporary host directory for the mtcc runtime files. */
-    char tmpdir[] = "/tmp/mfs_mtcc_embedded_XXXXXX";
-    if (!mkdtemp(tmpdir)) {
-        fprintf(stderr, "mkdtemp failed: %s\n", strerror(errno));
+    char tmpdir[512];
+    if (!make_temp_dir(tmpdir, sizeof(tmpdir))) {
+        fprintf(stderr, "make_temp_dir failed: %s\n", strerror(errno));
         PHYSFS_deinit();
         return 1;
     }
