@@ -12,18 +12,9 @@
  * Thread safety: PhysFS is not thread-safe by default. If you use mfs from
  * multiple threads, either serialize access or use per-thread PhysFS states.
  *
- * What is intentionally NOT wrapped here (use PhysFS directly if you need it):
- *   - Library lifecycle: PHYSFS_init, PHYSFS_deinit.
- *   - Mount / search path management: PHYSFS_mount, PHYSFS_unmount,
- *     PHYSFS_addToSearchPath, PHYSFS_removeFromSearchPath,
- *     PHYSFS_getSearchPath, PHYSFS_getMountPoint, PHYSFS_getRealDir,
- *     PHYSFS_mountIo, PHYSFS_mountMemory, PHYSFS_mountHandle.
- *   - Write directory configuration: PHYSFS_getWriteDir, PHYSFS_setWriteDir,
- *     PHYSFS_setSaneConfig, PHYSFS_getBaseDir, PHYSFS_getUserDir,
- *     PHYSFS_getPrefDir, PHYSFS_getDirSeparator.
- *   - CD-ROM enumeration: PHYSFS_getCdRomDirs, PHYSFS_getCdRomDirsCallback.
- *   - Symlink policy: PHYSFS_permitSymbolicLinks,
- *     PHYSFS_symbolicLinksPermitted.
+ * This header wraps the vast majority of the PhysFS API surface.  The only
+ * things intentionally left out are:
+ *   - Library lifecycle: PHYSFS_init, PHYSFS_deinit, PHYSFS_isInit.
  *   - Allocator hooks: PHYSFS_setAllocator, PHYSFS_getAllocator.
  *   - String/list helpers: PHYSFS_freeList, PHYSFS_utf8FromUcs2,
  *     PHYSFS_utf8ToUcs2, PHYSFS_ucs2FromUtf8.
@@ -31,9 +22,7 @@
  *     PHYSFS_getLinkedVersion.
  *   - Byte-swap helpers: the PHYSFS_swap* family.
  *   - All deprecated PhysFS functions.
- *
- * What IS wrapped: the file/directory/stat API you would expect from a WASI
- * or Node.js-like filesystem surface, plus whole-file convenience helpers.
+ *   - PHYSFS_mountIo, PHYSFS_mountMemory, PHYSFS_mountHandle (advanced).
  */
 
 #ifndef MFS_H
@@ -62,9 +51,9 @@ static inline void *mfs__read_all(PHYSFS_File *f, size_t *out_size)
     if (len64 < 0) return NULL;
 
     size_t len = (size_t)len64;
-    /* Allocate at least one byte so an empty file is distinguishable from
-     * an out-of-memory error. */
-    /* Allocate one extra byte so callers can null-terminate if they want. */
+    /* Allocate one extra byte: (a) callers can null-terminate when
+     * treating the buffer as text, and (b) an empty file returns a
+     * non-NULL pointer so it's distinguishable from out-of-memory. */
     void *buf = malloc(len + 1);
     if (!buf) return NULL;
 
@@ -124,27 +113,25 @@ static inline void *mfs_load(const char *path, size_t *out_size)
 }
 
 /* Write data to the PhysFS write directory, replacing the file if it exists.
- * Returns non-zero on success, 0 on failure.
- */
+ * Returns non-zero on success, 0 on failure. */
 static inline int mfs_write_file(const char *path, const void *data, size_t len)
 {
     PHYSFS_File *f = PHYSFS_openWrite(path);
     if (!f) return 0;
     PHYSFS_sint64 wrote = PHYSFS_writeBytes(f, data, (PHYSFS_uint64)len);
-    PHYSFS_close(f);
-    return wrote == (PHYSFS_sint64)len;
+    int closed = PHYSFS_close(f);
+    return (wrote == (PHYSFS_sint64)len) && closed;
 }
 
 /* Append data to an existing file in the PhysFS write directory.
- * Returns non-zero on success, 0 on failure.
- */
+ * Returns non-zero on success, 0 on failure. */
 static inline int mfs_append_file(const char *path, const void *data, size_t len)
 {
     PHYSFS_File *f = PHYSFS_openAppend(path);
     if (!f) return 0;
     PHYSFS_sint64 wrote = PHYSFS_writeBytes(f, data, (PHYSFS_uint64)len);
-    PHYSFS_close(f);
-    return wrote == (PHYSFS_sint64)len;
+    int closed = PHYSFS_close(f);
+    return (wrote == (PHYSFS_sint64)len) && closed;
 }
 
 /* Check if a path exists in the mounted PhysFS virtual filesystem. */
@@ -257,6 +244,14 @@ static inline int mfs_is_file(const char *path)
     return st.filetype == PHYSFS_FILETYPE_REGULAR;
 }
 
+/* Return non-zero if path is a symbolic link. */
+static inline int mfs_is_symlink(const char *path)
+{
+    PHYSFS_Stat st;
+    if (!mfs_stat(path, &st)) return 0;
+    return st.filetype == PHYSFS_FILETYPE_SYMLINK;
+}
+
 /* ========================================================================= */
 /* Directory operations                                                      */
 /* ========================================================================= */
@@ -355,6 +350,178 @@ static inline int mfs_mkdir(const char *path)
 static inline int mfs_remove(const char *path)
 {
     return PHYSFS_delete(path) != 0;
+}
+
+/* ========================================================================= */
+/* Mount / search path management                                           */
+/* ========================================================================= */
+
+/* Add an archive or directory to the search path.
+ * mountPoint may be NULL (equivalent to "/").
+ * Returns non-zero on success. */
+static inline int mfs_mount(const char *dir, const char *mountPoint, int append)
+{
+    return PHYSFS_mount(dir, mountPoint, append) != 0;
+}
+
+/* Remove a directory or archive from the search path.
+ * Returns non-zero on success. */
+static inline int mfs_unmount(const char *dir)
+{
+    return PHYSFS_unmount(dir) != 0;
+}
+
+/* Get the real filesystem path where a file resides.
+ * Returns a READ-ONLY string, or NULL if not found. */
+static inline const char *mfs_get_real_dir(const char *path)
+{
+    return PHYSFS_getRealDir(path);
+}
+
+/* Get the mount point for a previously-added archive/dir.
+ * Returns a READ-ONLY string, or NULL on failure. */
+static inline const char *mfs_get_mount_point(const char *dir)
+{
+    return PHYSFS_getMountPoint(dir);
+}
+
+/* Collect search path entries via callback.
+ * Return 0 from cb to stop, non-zero to continue.
+ * cb is called once per entry with the userdata and the path string. */
+typedef int (*mfs_search_path_callback)(void *userdata, const char *entry);
+
+struct mfs__sp_ctx {
+    mfs_search_path_callback cb;
+    void *userdata;
+    int cont;
+};
+
+static void mfs__sp_cb(void *data, const char *str)
+{
+    struct mfs__sp_ctx *ctx = (struct mfs__sp_ctx *)data;
+    if (ctx->cont) {
+        ctx->cont = ctx->cb(ctx->userdata, str);
+    }
+}
+
+/* Iterate the current search path. Calls cb for each entry.
+ * Returns non-zero if all entries were visited (cb never returned 0). */
+static inline int mfs_get_search_path(mfs_search_path_callback cb, void *userdata)
+{
+    struct mfs__sp_ctx ctx = { cb, userdata, 1 };
+    PHYSFS_getSearchPathCallback(mfs__sp_cb, &ctx);
+    return ctx.cont;
+}
+
+/* ========================================================================= */
+/* Write / base / user / pref directories                                   */
+/* ========================================================================= */
+
+/* Get the application base directory (where the app was run from).
+ * Returns a READ-ONLY string, never NULL after PHYSFS_init(). */
+static inline const char *mfs_get_base_dir(void)
+{
+    return PHYSFS_getBaseDir();
+}
+
+/* Get the current write directory, or NULL if none set. */
+static inline const char *mfs_get_write_dir(void)
+{
+    return PHYSFS_getWriteDir();
+}
+
+/* Set the write directory. Returns non-zero on success. */
+static inline int mfs_set_write_dir(const char *path)
+{
+    return PHYSFS_setWriteDir(path) != 0;
+}
+
+/* Get the user's home directory (deprecated in PhysFS, but provided for LFS compat).
+ * Returns a READ-ONLY string. */
+static inline const char *mfs_get_user_dir(void)
+{
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#elif defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#endif
+    return PHYSFS_getUserDir();
+#ifdef __clang__
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+}
+
+/* Get the platform-specific preferences directory.
+ * org and app must be valid non-NULL strings.
+ * Returns a READ-ONLY string. */
+static inline const char *mfs_get_pref_dir(const char *org, const char *app)
+{
+    return PHYSFS_getPrefDir(org, app);
+}
+
+/* Get the platform-dependent directory separator. */
+static inline const char *mfs_get_dir_separator(void)
+{
+    return PHYSFS_getDirSeparator();
+}
+
+/* ========================================================================= */
+/* Symlink policy                                                            */
+/* ========================================================================= */
+
+/* Enable or disable following of symbolic links. */
+static inline void mfs_permit_symlinks(int allow)
+{
+    PHYSFS_permitSymbolicLinks(allow);
+}
+
+/* Return non-zero if symlinks are currently permitted. */
+static inline int mfs_symlinks_permitted(void)
+{
+    return PHYSFS_symbolicLinksPermitted();
+}
+
+/* ========================================================================= */
+/* Touch: update file modification time                                      */
+/* ========================================================================= */
+
+/* Touch a file: open for append and close to update modification time.
+ * If the file does not exist, it is created (empty) in the write directory.
+ * Returns non-zero on success, 0 on failure. */
+static inline int mfs_touch(const char *path)
+{
+    if (mfs_exists(path)) {
+        PHYSFS_File *f = PHYSFS_openAppend(path);
+        if (!f) return 0;
+        int ok = PHYSFS_close(f);
+        return ok != 0;
+    }
+    /* Create a new empty file. */
+    PHYSFS_File *f = PHYSFS_openWrite(path);
+    if (!f) return 0;
+    int ok = PHYSFS_close(f);
+    return ok != 0;
+}
+
+/* ========================================================================= */
+/* setRoot: offset the root of a mounted archive                             */
+/* ========================================================================= */
+
+/* Set the root of an already-mounted archive to a subdirectory.
+ * Useful on Android for APK assets: mfs_set_root(apk_path, "/assets")
+ * Returns non-zero on success. */
+static inline int mfs_set_root(const char *archive, const char *subdir)
+{
+    return PHYSFS_setRoot(archive, subdir) != 0;
 }
 
 #ifdef __cplusplus

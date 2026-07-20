@@ -91,6 +91,7 @@ static void push_mfs_config(lua_State *L)
     /* lua_pushboolean(L, 1); lua_setfield(L, -2, "os_rename"); */
     lua_pushboolean(L, 1); lua_setfield(L, -2, "os_setlocale");
     lua_pushboolean(L, 1); lua_setfield(L, -2, "os_tmpname");
+    lua_pushboolean(L, 1); lua_setfield(L, -2, "os_getenv");
     /* lua_pushboolean(L, 1); lua_setfield(L, -2, "bytecode"); */
     /* lua_pushboolean(L, 1); lua_setfield(L, -2, "native_modules"); */
     lua_setfield(L, -2, "capabilities");

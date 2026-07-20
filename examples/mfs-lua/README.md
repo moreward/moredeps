@@ -47,6 +47,7 @@ __MFS_CONFIG = {
         os_rename   = true,
         os_setlocale = true,
         os_tmpname  = true,
+        os_getenv   = true,   -- host env vars (info leak if enabled)
 
         -- debug
         debug       = true,
@@ -81,6 +82,24 @@ __MFS_CONFIG = {
         mfs_load_text   = { ... },
         mfs_write_file  = { ... },
         mfs_append_file = { ... },
+        mfs_mount       = { ... },
+        mfs_unmount     = { ... },
+        mfs_lock        = { ... },
+        mfs_unlock      = { ... },
+        mfs_lock_dir    = { ... },
+        mfs_unlock_dir  = { ... },
+        mfs_touch       = { ... },
+        mfs_attributes  = { ... },
+        mfs_symlinkattributes = { ... },
+        mfs_currentdir  = { ... },
+        mfs_chdir       = { ... },
+        mfs_dir         = { ... },
+        mfs_rmdir       = { ... },
+        mfs_is_symlink  = { ... },
+        mfs_get_base_dir  = { ... },
+        mfs_get_write_dir = { ... },
+        mfs_set_write_dir = { ... },
+        mfs_set_root      = { ... },
 
         -- File methods (called on the opened file object)
         file_read   = { ... },
@@ -150,6 +169,64 @@ hooks = {
     },
 }
 ```
+
+## MFS module API (LFS-compatible)
+
+The `mfs` Lua module is a superset of LuaFileSystem.  Every LFS function is
+available, plus PhysFS-specific extensions for mount management, symlink
+policy, and platform directory discovery.
+
+### LFS-compatible functions
+
+| Function | Notes |
+|---|---|
+| `mfs.attributes(path, [field])` | Returns a table or a single field. Fields: `mode`, `size`, `modification`, `access`, `change`, `permissions`, `nlink`, `dev`, `ino`, `uid`, `gid`, `rdev`. |
+| `mfs.symlinkattributes(path, [field])` | Like `attributes()`.  `target` field is unsupported (PhysFS does not resolve link targets). |
+| `mfs.currentdir()` | Returns the virtual CWD (`/` by default). |
+| `mfs.chdir(path)` | Changes the virtual CWD.  Paths are resolved relative to the current virtual CWD. |
+| `mfs.dir(path)` | Returns an iterator over directory entries (like `lfs.dir`). |
+| `mfs.mkdir(path)` | Creates a directory (and parents) in the write dir. |
+| `mfs.rmdir(path)` | Alias for `mfs.remove()`.  Removes an empty directory or file. |
+| `mfs.touch(path)` | Updates modification time (open/append/close), or creates an empty file. |
+| `mfs.link(old, new, [symlink])` | Returns error – not supported in PhysFS sandbox. |
+| `mfs.setmode(file, mode)` | Returns error – PhysFS is always binary. |
+| `mfs.lock(file, mode, start, len)` | In-process advisory region lock.  Tracks read/write locks per file handle. |
+| `mfs.unlock(file, start, len)` | Release a region lock. |
+| `mfs.lock_dir(path, [stale_seconds])` | Creates a `lockfile.lfs` marker in the write dir.  Returns a lock object. |
+| `mfs.unlock_dir(lock)` | Removes the lockfile created by `lock_dir`. |
+
+### PhysFS-specific extensions
+
+| Function | Notes |
+|---|---|
+| `mfs.load_text(path)` | Read entire text file, null-terminated. |
+| `mfs.load(path)` | Read entire binary file. |
+| `mfs.write_file(path, data)` | Write data to a file in the write dir. |
+| `mfs.append_file(path, data)` | Append data to a file. |
+| `mfs.exists(path)` | Check if a path exists. |
+| `mfs.is_dir(path)` | Check if path is a directory. |
+| `mfs.is_file(path)` | Check if path is a regular file. |
+| `mfs.is_symlink(path)` | Check if path is a symlink. |
+| `mfs.stat(path)` | Returns table: `size`, `modtime`, `createtime`, `accesstime`, `type`, `readonly`. |
+| `mfs.list(path)` | Returns 1-indexed array of entry names. |
+| `mfs.list_ex(path)` | Returns 1-indexed array of `{name, is_dir, is_file, is_symlink, size, readonly}` tables. |
+| `mfs.remove(path)` | Delete file or empty directory. |
+| `mfs.last_error()` | Human-readable PhysFS error string. |
+| `mfs.open_read(path)` / `open_write` / `open_append` | Streaming file handles. |
+| `mfs.mount(dir, [mountPoint], [append])` | Add archive/dir to search path. |
+| `mfs.unmount(dir)` | Remove from search path. |
+| `mfs.get_real_dir(path)` | Real filesystem location of a virtual path. |
+| `mfs.get_mount_point(dir)` | Mount point for a previously-added archive. |
+| `mfs.get_search_path()` | Returns 1-indexed array of search path entries. |
+| `mfs.get_base_dir()` | Application base directory. |
+| `mfs.get_write_dir()` | Current write directory (or nil). |
+| `mfs.set_write_dir(path)` | Change the write directory. |
+| `mfs.get_user_dir()` | User home directory. |
+| `mfs.get_pref_dir(org, app)` | Platform preferences directory. |
+| `mfs.get_dir_separator()` | Platform directory separator. |
+| `mfs.permit_symlinks(allow)` | Enable/disable symlink following. |
+| `mfs.symlinks_permitted()` | Check if symlinks are permitted. |
+| `mfs.set_root(archive, subdir)` | Offset root of a mounted archive. |
 
 ## Security notes
 

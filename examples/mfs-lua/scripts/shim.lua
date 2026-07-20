@@ -50,6 +50,8 @@ caps.os_rename   = bool(rcaps.os_rename,   false)
 caps.os_setlocale = bool(rcaps.os_setlocale, false)
 caps.os_tmpname  = bool(rcaps.os_tmpname,  false)
 
+caps.os_getenv   = bool(rcaps.os_getenv,   false)  -- host env info leak
+
 caps.debug       = bool(rcaps.debug,       false)
 
 caps.loadstring  = bool(rcaps.loadstring,  false)
@@ -114,7 +116,18 @@ for _, name in ipairs({
     "load_text", "load", "write_file", "append_file",
     "exists", "last_error",
     "open_read", "open_write", "open_append",
-    "stat", "is_dir", "is_file", "list", "list_ex", "mkdir", "remove",
+    "stat", "is_dir", "is_file", "is_symlink",
+    "list", "list_ex", "mkdir", "remove", "touch",
+    "mount", "unmount", "get_real_dir", "get_mount_point",
+    "get_search_path", "get_base_dir", "get_write_dir",
+    "set_write_dir", "get_user_dir", "get_pref_dir",
+    "get_dir_separator", "permit_symlinks",
+    "symlinks_permitted", "set_root",
+    -- LFS-compatible high-level wrappers (implemented in Lua on the module):
+    "attributes", "symlinkattributes", "currentdir", "chdir",
+    "dir", "rmdir",
+    -- Stubs (return error messages in PhysFS sandbox):
+    "link", "setmode", "lock", "unlock", "lock_dir", "unlock_dir",
 }) do
     mfs[name] = wrap_with_hooks("mfs_" .. name, mfs_orig[name])
 end
@@ -387,6 +400,24 @@ function io_shim.write(...)
     return nil, "io.write: stdout is not available in the sandbox"
 end
 
+-- Explicitly blocked io functions (not available in PhysFS sandbox).
+function io_shim.popen(...)
+    return nil, "io.popen is not available in the sandbox"
+end
+function io_shim.tmpfile(...)
+    return nil, "io.tmpfile is not available in the sandbox"
+end
+function io_shim.input(...)
+    return nil, "io.input is not available in the sandbox"
+end
+function io_shim.output(...)
+    return nil, "io.output is not available in the sandbox"
+end
+
+-- Also override the default input/output file vars so we don't leak the
+-- originals through io.stdout etc.  They're set above via caps.io_std*.  If
+-- those caps are off, the fields are nil.
+
 -- ---------------------------------------------------------------------------
 -- os shim
 -- ---------------------------------------------------------------------------
@@ -396,11 +427,10 @@ local os_shim = {
     date = os_orig.date,
     clock = os_orig.clock,
     difftime = os_orig.difftime,
-    getenv = os_orig.getenv,
 }
 
 -- Safe passthrough wrappers (always allowed, but hookable).
-for _, name in ipairs({"time", "date", "clock", "difftime", "getenv"}) do
+for _, name in ipairs({"time", "date", "clock", "difftime"}) do
     local n = "os_" .. name
     local fn = os_shim[name]
     os_shim[name] = function(...) return wrap_with_hooks(n, fn)(...) end
@@ -422,6 +452,7 @@ os_shim.remove    = controlled_os("os_remove",    "os_remove",    os_orig.remove
 os_shim.rename    = controlled_os("os_rename",    "os_rename",    os_orig.rename)
 os_shim.setlocale = controlled_os("os_setlocale", "os_setlocale", os_orig.setlocale)
 os_shim.tmpname   = controlled_os("os_tmpname",   "os_tmpname",   os_orig.tmpname)
+os_shim.getenv    = controlled_os("os_getenv",    "os_getenv",    os_orig.getenv)
 
 -- ---------------------------------------------------------------------------
 -- debug shim
@@ -544,6 +575,35 @@ end
 if not caps.native_modules then
     _G.package.loadlib = nil
 end
+
+-- CRITICAL: clear package.loaded entries that hold the originals, so a script
+-- cannot escape via  package.loaded.io.open("/etc/passwd").
+package.loaded.io = nil
+package.loaded.os = nil
+package.loaded.debug = nil
+package.loaded.lfs = nil    -- just in case
+package.loaded.mfs = mfs    -- our hooked version
+package.loaded.package = package  -- our modified version
+
+-- Clear preload table (could contain native module loaders).
+if not caps.native_modules then
+    package.preload = {}
+end
+
+-- If bytecode is disabled, neuter string.dump so bytecode can't be extracted
+-- and fed to a potential future escape.
+if not caps.bytecode then
+    string.dump = function() error("string.dump is disabled in the sandbox", 2) end
+end
+
+-- print() writes through C stdout.  At minimum make it hookable.
+local print_orig = print
+_G.print = wrap_with_hooks("print", function(...)
+    if caps.io_stdout then
+        return print_orig(...)
+    end
+    return nil, "print: stdout is not available in the sandbox"
+end)
 
 -- Mark the shim as loaded so main.lua can rely on the environment.
 return true
