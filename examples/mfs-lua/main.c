@@ -2,15 +2,19 @@
  * examples/mfs-lua/main.c
  *
  * Demonstrates a sandboxed Lua state where scripts are loaded from a
- * PhysicsFS-mounted archive. Direct filesystem access is removed from the Lua
+ * PhysFS-mounted archive.  Direct filesystem access is removed from the Lua
  * global environment and replaced with PhysFS-backed shims loaded from
  * scripts/shim.lua.
+ *
+ * The host controls the sandbox by setting the global __MFS_CONFIG *before*
+ * scripts/shim.lua is loaded.  Capabilities can be turned on/off and every
+ * filesystem/io/os/debug/load operation can be observed with pre/post hooks.
  *
  * Usage: mfs-lua <archive-or-dir> [write-dir]
  *
  * The optional write-dir argument sets the PhysFS write directory. If omitted,
- * the current working directory is used. The write directory is also mounted so
- * the io shim can read back what it writes.
+ * the current working directory is used.  The write directory is also mounted
+ * so the io shim can read back what it writes.
  */
 
 #include <stdio.h>
@@ -46,6 +50,82 @@ static int run_lua_file(lua_State *L, const char *path)
 
     free(buf);
     return status == LUA_OK ? 0 : 1;
+}
+
+/* Compile a short Lua function body and push it as a closure. */
+static int push_lua_fn(lua_State *L, const char *body)
+{
+    char buf[1024];
+    snprintf(buf, sizeof(buf), "return function(...) %s end", body);
+    if (luaL_loadstring(L, buf) != LUA_OK) {
+        fprintf(stderr, "hook compile error: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1);
+        return 0;
+    }
+    if (lua_pcall(L, 0, 1, 0) != LUA_OK) {
+        fprintf(stderr, "hook creation error: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1);
+        return 0;
+    }
+    return 1;
+}
+
+/* Push __MFS_CONFIG onto the Lua stack.  The host controls every optional
+ * capability and can register pre/post hooks for any filesystem/io/os/debug/load
+ * operation. */
+static void push_mfs_config(lua_State *L)
+{
+    lua_newtable(L);                    /* __MFS_CONFIG */
+
+    lua_newtable(L);                    /* capabilities */
+    /* The following are safe-ish host features that can be delegated. */
+    lua_pushboolean(L, 1); lua_setfield(L, -2, "io_stdin");
+    lua_pushboolean(L, 1); lua_setfield(L, -2, "io_stdout");
+    lua_pushboolean(L, 1); lua_setfield(L, -2, "io_stderr");
+    lua_pushboolean(L, 1); lua_setfield(L, -2, "debug");
+    lua_pushboolean(L, 1); lua_setfield(L, -2, "loadstring");
+    /* The following are more dangerous; enable only when you really need them. */
+    /* lua_pushboolean(L, 1); lua_setfield(L, -2, "os_execute"); */
+    /* lua_pushboolean(L, 1); lua_setfield(L, -2, "os_exit"); */
+    /* lua_pushboolean(L, 1); lua_setfield(L, -2, "os_remove"); */
+    /* lua_pushboolean(L, 1); lua_setfield(L, -2, "os_rename"); */
+    lua_pushboolean(L, 1); lua_setfield(L, -2, "os_setlocale");
+    lua_pushboolean(L, 1); lua_setfield(L, -2, "os_tmpname");
+    /* lua_pushboolean(L, 1); lua_setfield(L, -2, "bytecode"); */
+    /* lua_pushboolean(L, 1); lua_setfield(L, -2, "native_modules"); */
+    lua_setfield(L, -2, "capabilities");
+
+    lua_newtable(L);                    /* hooks */
+
+    lua_newtable(L);                    /* mfs_open_read */
+    if (push_lua_fn(L, "print('[hook] pre mfs_open_read', ...)") == 1) {
+        lua_setfield(L, -2, "pre");
+    }
+    if (push_lua_fn(L, "print('[hook] post mfs_open_read', ...)") == 1) {
+        lua_setfield(L, -2, "post");
+    }
+    lua_setfield(L, -2, "mfs_open_read");
+
+    lua_newtable(L);                    /* file_read */
+    if (push_lua_fn(L, "print('[hook] pre file_read', ...)") == 1) {
+        lua_setfield(L, -2, "pre");
+    }
+    lua_setfield(L, -2, "file_read");
+
+    lua_newtable(L);                    /* io_open */
+    if (push_lua_fn(L, "print('[hook] pre io_open', ...)") == 1) {
+        lua_setfield(L, -2, "pre");
+    }
+    lua_setfield(L, -2, "io_open");
+
+    lua_newtable(L);                    /* os_execute */
+    if (push_lua_fn(L, "print('[hook] pre os_execute', ...)") == 1) {
+        lua_setfield(L, -2, "pre");
+    }
+    lua_setfield(L, -2, "os_execute");
+
+    lua_setfield(L, -2, "hooks");
+    lua_setglobal(L, "__MFS_CONFIG");
 }
 
 int main(int argc, char *argv[])
@@ -95,7 +175,10 @@ int main(int argc, char *argv[])
     luaL_requiref(L, "mfs", luaopen_mfs, 1);
     lua_pop(L, 1);
 
-    /* Load scripts/shim.lua first. It captures the original io/os/debug/etc.,
+    /* Configure the sandbox before shim.lua is loaded. */
+    push_mfs_config(L);
+
+    /* Load scripts/shim.lua. It captures the original io/os/debug/etc.,
      * removes the unsafe parts, and installs PhysFS-backed shims. */
     if (run_lua_file(L, "shim.lua") != 0) {
         lua_close(L);

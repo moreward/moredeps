@@ -1,22 +1,165 @@
 -- examples/mfs-lua/scripts/shim.lua
 --
--- Sandbox setup: capture the original io/os/debug/load globals, then replace
--- them with PhysFS-backed (MFS) shims. This is intentionally loaded before
--- main.lua so the application runs in a sandboxed environment.
+-- Configurable sandbox setup.  Captures the original Lua globals before they
+-- are replaced, then installs PhysFS-backed (MFS) shims and optional
+-- controlled host features.
 --
--- NOTE: This is a first version. Later it can be made configurable or hot-
--- swappable by the host application.
+-- The host controls the sandbox by setting the global __MFS_CONFIG *before*
+-- this file is loaded.  If the global is absent, every optional capability
+-- defaults to OFF (safe mode) and no hooks are installed.
 
-local mfs = require("mfs")
+-- Capture the original modules before we touch anything.  These are the only
+-- host-facing escape hatches we keep around.
+local io_orig = io
+local os_orig = os
+local debug_orig = debug
+local load_orig = load
+local loadstring_orig = loadstring
+local package_orig = package
 
--- Capture originals before we replace them.
-local io = io
-local os = os
-local debug = debug
-local load = load
-local package = package
+local mfs_orig = require("mfs")
 
--- ===== File handle wrapper ================================================
+-- ---------------------------------------------------------------------------
+-- Configuration
+-- ---------------------------------------------------------------------------
+
+local function bool(v, default)
+    if v == nil then return default end
+    return not not v
+end
+
+local raw_cfg = _G.__MFS_CONFIG or {}
+
+local cfg = {
+    capabilities = {},
+    hooks = raw_cfg.hooks or {},
+}
+
+local caps = cfg.capabilities
+local rcaps = raw_cfg.capabilities or {}
+
+-- Default everything to OFF.  The host must explicitly enable capabilities.
+caps.io_stdin    = bool(rcaps.io_stdin,    false)
+caps.io_stdout   = bool(rcaps.io_stdout,   false)
+caps.io_stderr   = bool(rcaps.io_stderr,   false)
+
+caps.os_execute  = bool(rcaps.os_execute,  false)
+caps.os_exit     = bool(rcaps.os_exit,     false)
+caps.os_remove   = bool(rcaps.os_remove,   false)
+caps.os_rename   = bool(rcaps.os_rename,   false)
+caps.os_setlocale = bool(rcaps.os_setlocale, false)
+caps.os_tmpname  = bool(rcaps.os_tmpname,  false)
+
+caps.debug       = bool(rcaps.debug,       false)
+
+caps.loadstring  = bool(rcaps.loadstring,  false)
+caps.bytecode    = bool(rcaps.bytecode,    false)
+caps.native_modules = bool(rcaps.native_modules, false)
+
+-- ---------------------------------------------------------------------------
+-- Hook helper
+--
+-- Each hook entry is { pre = fn, post = fn }.
+--
+-- pre(...)  -> (skip, ...)
+--   If skip is true, the wrapped function is NOT called and the extra returns
+--   become the result of the operation.
+--
+-- post(result_table, ...) -> new_result_table | nil
+--   Called after the wrapped function.  May return a new table to replace the
+--   result.  A nil return keeps the original result.
+-- ---------------------------------------------------------------------------
+
+local function wrap_with_hooks(name, fn)
+    local hook = cfg.hooks[name]
+    if not hook then return fn end
+
+    return function(...)
+        local pre = hook.pre
+        local post = hook.post
+
+        if pre then
+            local ok, skip, a, b, c, d, e = pcall(pre, ...)
+            if not ok then
+                error("pre-hook error for " .. name .. ": " .. tostring(skip), 2)
+            end
+            if skip then
+                return a, b, c, d, e
+            end
+        end
+
+        local result = { fn(...) }
+
+        if post then
+            local ok, new_result = pcall(post, result, ...)
+            if not ok then
+                error("post-hook error for " .. name .. ": " .. tostring(new_result), 2)
+            end
+            if new_result ~= nil then
+                result = new_result
+            end
+        end
+
+        return table.unpack(result)
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- MFS module wrappers (low-level hooks + capability passthrough)
+-- ---------------------------------------------------------------------------
+
+local mfs = {}
+
+for _, name in ipairs({
+    "load_text", "load", "write_file", "append_file",
+    "exists", "last_error",
+    "open_read", "open_write", "open_append",
+    "stat", "is_dir", "is_file", "list", "list_ex", "mkdir", "remove",
+}) do
+    mfs[name] = wrap_with_hooks("mfs_" .. name, mfs_orig[name])
+end
+
+-- File handle methods are wrapped individually so each operation can be
+-- observed/blocked from the host.
+local FILE_METHODS = {
+    "read", "write", "close", "flush", "seek", "tell", "eof", "size"
+}
+
+-- We need to intercept construction of mfs file handles so the method
+-- table can be installed.  The C module returns a userdata with a metatable;
+-- we wrap those constructors and return a tiny Lua proxy that forwards
+-- method calls to the wrapped methods.
+local function wrap_file_handle(raw)
+    if type(raw) ~= "userdata" then return raw end
+    local proxy = { __raw = raw }
+    for _, method in ipairs(FILE_METHODS) do
+        local raw_method = raw[method]
+        if raw_method then
+            proxy[method] = function(self, ...)
+                return wrap_with_hooks("file_" .. method, raw_method)(raw, ...)
+            end
+        end
+    end
+    -- Forward __tostring and __gc if needed; keep the proxy table simple.
+    return proxy
+end
+
+for _, name in ipairs({ "open_read", "open_write", "open_append" }) do
+    local raw_fn = mfs[name]
+    mfs[name] = function(...)
+        local ok, a, b = raw_fn(...)
+        if not ok then return ok, a end
+        return wrap_file_handle(ok), a
+    end
+end
+
+-- Replace the global mfs module with the hooked version.
+package.loaded.mfs = mfs
+_G.mfs = mfs
+
+-- ---------------------------------------------------------------------------
+-- File handle wrapper for the io shim
+-- ---------------------------------------------------------------------------
 
 local file_mt = {}
 
@@ -36,7 +179,6 @@ function file_methods:read(...)
 
     for _, fmt in ipairs(args) do
         if fmt == "*a" then
-            -- Read rest of file in chunks.
             local parts = {}
             while true do
                 local chunk = self.__handle:read(4096)
@@ -58,7 +200,6 @@ function file_methods:read(...)
             table.insert(results, got and table.concat(parts) or nil)
 
         elseif fmt == "*n" then
-            -- Skip whitespace, then read a number.
             local chars = {}
             while true do
                 local ch = self.__handle:read(1)
@@ -75,7 +216,6 @@ function file_methods:read(...)
                     if ch:match("[%+%-%.%deE]") or ch:match("%d") then
                         table.insert(chars, ch)
                     else
-                        -- Push back one byte if possible.
                         local pos = self.__handle:tell()
                         if pos and pos > 0 then
                             self.__handle:seek("set", pos - 1)
@@ -158,131 +298,252 @@ file_mt.__gc = function(self)
 end
 
 local function new_file(handle)
-    local f = { __handle = handle }
+    local f = { __handle = wrap_file_handle(handle) }
     setmetatable(f, file_mt)
     return f
 end
 
--- ===== io shim ============================================================
+-- ---------------------------------------------------------------------------
+-- io shim
+-- ---------------------------------------------------------------------------
 
 local io_shim = {}
 
 function io_shim.open(path, mode)
-    mode = mode or "r"
-    local handle
-    if mode == "r" or mode == "rb" then
-        handle = mfs.open_read(path)
-    elseif mode == "w" or mode == "wb" then
-        handle = mfs.open_write(path)
-    elseif mode == "a" or mode == "ab" then
-        handle = mfs.open_append(path)
-    else
-        error("unsupported mode: " .. mode)
-    end
-    if not handle then
-        return nil, mfs.last_error()
-    end
-    return new_file(handle)
+    return wrap_with_hooks("io_open", function(p, m)
+        m = m or "r"
+        local handle
+        if m == "r" or m == "rb" then
+            handle = mfs.open_read(p)
+        elseif m == "w" or m == "wb" then
+            handle = mfs.open_write(p)
+        elseif m == "a" or m == "ab" then
+            handle = mfs.open_append(p)
+        else
+            error("unsupported mode: " .. m)
+        end
+        if not handle then
+            return nil, mfs.last_error()
+        end
+        return new_file(handle)
+    end)(path, mode)
 end
 
 function io_shim.close(file)
-    if file then
-        return file:close()
-    end
-    return true
+    return wrap_with_hooks("io_close", function(f)
+        if f then
+            return f:close()
+        end
+        return true
+    end)(file)
 end
 
 function io_shim.lines(path, ...)
-    local f, err = io_shim.open(path, "r")
-    if not f then return nil, err end
-    return f:lines()
+    return wrap_with_hooks("io_lines", function(p)
+        local f, err = io_shim.open(p, "r")
+        if not f then return nil, err end
+        return f:lines()
+    end)(path)
 end
 
 function io_shim.type(obj)
-    if type(obj) ~= "table" then return nil end
-    if getmetatable(obj) == file_mt then
-        return obj.__handle and "file" or "closed file"
-    end
-    return nil
+    return wrap_with_hooks("io_type", function(o)
+        if type(o) ~= "table" then return nil end
+        if getmetatable(o) == file_mt then
+            return o.__handle and "file" or "closed file"
+        end
+        return nil
+    end)(obj)
 end
 
--- stdin/stdout/stderr are not backed by PhysFS. To keep the sandbox tight,
--- we do not expose the OS-backed originals here. print() still works through
--- the C runtime, but io.read/io.write without a file argument will fail.
+-- stdin/stdout/stderr are controlled capabilities.  When enabled, the original
+-- host-backed handles are exposed.  io.read/io.write without a file argument
+-- map to stdin/stdout respectively.
+-- stdin/stdout/stderr are controlled capabilities.  When enabled, the original
+-- host-backed handles are exposed.  io.read/io.write without a file argument
+-- map to stdin/stdout respectively, and are hookable.
+if caps.io_stdin then
+    io_shim.stdin = io_orig.stdin
+end
+if caps.io_stdout then
+    io_shim.stdout = io_orig.stdout
+end
+if caps.io_stderr then
+    io_shim.stderr = io_orig.stderr
+end
 
 function io_shim.read(...)
+    if caps.io_stdin then
+        return wrap_with_hooks("io_read", function(...)
+            return io_shim.stdin:read(...)
+        end)(...)
+    end
     return nil, "io.read: stdin is not available in the sandbox"
 end
 
 function io_shim.write(...)
+    if caps.io_stdout then
+        return wrap_with_hooks("io_write", function(...)
+            return io_shim.stdout:write(...)
+        end)(...)
+    end
     return nil, "io.write: stdout is not available in the sandbox"
 end
 
--- ===== os shim ============================================================
+-- ---------------------------------------------------------------------------
+-- os shim
+-- ---------------------------------------------------------------------------
 
 local os_shim = {
-    time = os.time,
-    date = os.date,
-    clock = os.clock,
-    difftime = os.difftime,
-    getenv = os.getenv,
-    -- Intentionally NOT provided: execute, exit, remove, rename, setlocale, tmpname.
+    time = os_orig.time,
+    date = os_orig.date,
+    clock = os_orig.clock,
+    difftime = os_orig.difftime,
+    getenv = os_orig.getenv,
 }
 
--- ===== loadfile / dofile / safe load ======================================
+-- Safe passthrough wrappers (always allowed, but hookable).
+for _, name in ipairs({"time", "date", "clock", "difftime", "getenv"}) do
+    local n = "os_" .. name
+    local fn = os_shim[name]
+    os_shim[name] = function(...) return wrap_with_hooks(n, fn)(...) end
+end
 
-function loadfile(path)
+-- Controlled capabilities.
+local function controlled_os(name, capability, orig_fn)
+    if caps[capability] then
+        return function(...)
+            return wrap_with_hooks(name, orig_fn)(...)
+        end
+    end
+    return nil
+end
+
+os_shim.execute   = controlled_os("os_execute",   "os_execute",   os_orig.execute)
+os_shim.exit      = controlled_os("os_exit",      "os_exit",      os_orig.exit)
+os_shim.remove    = controlled_os("os_remove",    "os_remove",    os_orig.remove)
+os_shim.rename    = controlled_os("os_rename",    "os_rename",    os_orig.rename)
+os_shim.setlocale = controlled_os("os_setlocale", "os_setlocale", os_orig.setlocale)
+os_shim.tmpname   = controlled_os("os_tmpname",   "os_tmpname",   os_orig.tmpname)
+
+-- ---------------------------------------------------------------------------
+-- debug shim
+-- ---------------------------------------------------------------------------
+
+local debug_shim
+if caps.debug then
+    -- Install the original debug module, but wrap every function for hooks.
+    debug_shim = {}
+    for k, v in pairs(debug_orig) do
+        if type(v) == "function" then
+            debug_shim[k] = wrap_with_hooks("debug_" .. k, v)
+        else
+            debug_shim[k] = v
+        end
+    end
+else
+    debug_shim = { traceback = wrap_with_hooks("debug_traceback", debug_orig.traceback) }
+end
+
+-- ---------------------------------------------------------------------------
+-- loadfile / dofile / safe load
+-- ---------------------------------------------------------------------------
+
+local function loadfile_impl(path)
     local src, err = mfs.load_text(path)
     if not src then return nil, err end
-    return load(src, "@" .. path, "t")
+    local mode = caps.bytecode and "bt" or "t"
+    return load_orig(src, "@" .. path, mode)
+end
+
+function loadfile(path)
+    return wrap_with_hooks("loadfile", loadfile_impl)(path)
 end
 
 function dofile(path)
-    local f, err = loadfile(path)
-    if not f then error(err) end
-    return f()
+    return wrap_with_hooks("dofile", function(p)
+        local f, err = loadfile(p)
+        if not f then error(err) end
+        return f()
+    end)(path)
 end
 
--- Restrict load() to text mode only (no bytecode).
 local function safe_load(chunk, name, mode, env)
-    return load(chunk, name, "t", env)
+    if caps.bytecode then
+        return wrap_with_hooks("load", load_orig)(chunk, name, mode or "bt", env)
+    else
+        return wrap_with_hooks("load", load_orig)(chunk, name, "t", env)
+    end
 end
 
--- ===== package searcher ===================================================
+-- ---------------------------------------------------------------------------
+-- package / require
+-- ---------------------------------------------------------------------------
 
 local function module_to_path(name)
     return name:gsub("%.", "/") .. ".lua"
 end
 
 local function mfs_searcher(name)
-    local path = module_to_path(name)
-    local src, err = mfs.load_text(path)
-    if not src then
-        return "\n\tno MFS module '" .. path .. "'"
-    end
-    local f, err2 = load(src, "@" .. path, "t")
-    if not f then
-        error("error loading module '" .. name .. "' from '" .. path .. "':\n\t" .. err2)
-    end
-    return f, path
+    return wrap_with_hooks("require", function(n)
+        local path = module_to_path(n)
+        local src, err = mfs.load_text(path)
+        if not src then
+            return "\n\tno MFS module '" .. path .. "'"
+        end
+        local mode = caps.bytecode and "bt" or "t"
+        local f, err2 = load_orig(src, "@" .. path, mode)
+        if not f then
+            error("error loading module '" .. n .. "' from '" .. path .. ":\n\t" .. err2)
+        end
+        return f, path
+    end)(name)
 end
 
 package.searchers = { mfs_searcher }
 package.cpath = ""
 package.path = ""
 
--- ===== Install globals ====================================================
+if caps.native_modules then
+    -- Re-enable native module loading.  The pre-existing all-in searcher is
+    -- index 4 in standard Lua; keep the MFS searcher first and append the
+    -- default C searchers.
+    table.insert(package.searchers, package_orig.searchers[2]) -- lib loader
+    table.insert(package.searchers, package_orig.searchers[3]) -- root loader
+    table.insert(package.searchers, package_orig.searchers[4]) -- all-in loader
+    package.cpath = package_orig.cpath
+end
+
+-- Hookable loadlib (only usable if native_modules is on).
+package.loadlib = caps.native_modules
+    and wrap_with_hooks("package_loadlib", package_orig.loadlib)
+    or nil
+
+-- ---------------------------------------------------------------------------
+-- Install globals
+-- ---------------------------------------------------------------------------
 
 _G.io = io_shim
 _G.os = os_shim
-_G.debug = { traceback = debug.traceback }
+_G.debug = debug_shim
 _G.loadfile = loadfile
 _G.dofile = dofile
 _G.load = safe_load
 
--- Remove anything that could escape the sandbox.
-_G.loadstring = nil
-_G.package.loadlib = nil
+if caps.loadstring then
+    _G.loadstring = caps.bytecode
+        and wrap_with_hooks("loadstring", loadstring_orig)
+        or wrap_with_hooks("loadstring", function(chunk, name)
+            return load_orig(chunk, name, "t")
+        end)
+else
+    _G.loadstring = nil
+end
 
--- Mark the shim as loaded so main.lua can rely on the environment being set up.
+-- Remove anything that could escape the sandbox if not explicitly enabled.
+if not caps.native_modules then
+    _G.package.loadlib = nil
+end
+
+-- Mark the shim as loaded so main.lua can rely on the environment.
 return true
