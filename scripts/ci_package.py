@@ -136,6 +136,11 @@ EXCLUDED = {
     ("mtcc", "windows_arm64"): "TinyCC PE backend lacks ARM64 support",
 }
 
+# Bundles: combined distribution zips containing multiple deps plus helpers/examples.
+BUNDLES = {
+    "lua-mtcc-physfs": ["lua", "mtcc", "physfs"],
+}
+
 
 def get_submodule_urls() -> dict[str, str]:
     """Map deps/<dir> -> remote URL from .gitmodules (normalized to https)."""
@@ -299,6 +304,28 @@ def get_test_status(dep_name: str, platform: str,
         else:
             status[linkage] = value
     return status
+
+
+def combine_test_status(dep_names: list[str], platform: str,
+                        test_results: dict[str, dict]) -> dict[str, str]:
+    """Combine per-dep test status into a single bundle status.
+
+    Priority: failed > not-tested > skipped > passed.
+    """
+    priority = {"passed": 0, "skipped": 1, "not-tested": 2, "failed": 3, "excluded": -1}
+    combined: dict[str, str] = {}
+    for linkage in ("static", "dynamic"):
+        worst = "passed"
+        worst_rank = 0
+        for dep_name in dep_names:
+            status = get_test_status(dep_name, platform, test_results)
+            value = status.get(linkage, "not-tested")
+            rank = priority.get(value, 2)
+            if rank > worst_rank:
+                worst_rank = rank
+                worst = value
+        combined[linkage] = worst
+    return combined
 
 
 def sha256_file(path: Path) -> str:
@@ -659,6 +686,104 @@ def package_dependency(dep_name: str, out_dir: Path, repo_sha: str,
     return per_platform
 
 
+def package_bundle(bundle_name: str, dep_names: list[str], out_dir: Path, repo_sha: str,
+                     submodule_urls: dict[str, str],
+                     test_results: dict[str, dict]) -> dict[str, dict | None]:
+    """Create a single zip containing all artifacts for a set of deps.
+
+    The bundle layout matches the per-dependency zip layout so consumers can
+    use the same toolchain configuration. It also includes the thin VFS helper
+    (src/vfs/md_vfs.h) and the related VFS examples.
+    """
+    zip_name = f"moredeps-{repo_sha[:8]}-bundle-{bundle_name}.zip"
+    zip_path = out_dir / zip_name
+
+    per_platform: dict[str, dict | None] = {}
+    has_any_files = False
+
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        seen_arcnames: set[str] = set()
+
+        for platform in PLATFORMS:
+            files: list[tuple[Path, str, str]] = []
+            for dep_name in dep_names:
+                reason = EXCLUDED.get((dep_name, platform))
+                if reason:
+                    continue
+                files.extend(collect_files_for_platform(dep_name, platform, out_dir / platform))
+
+            if not files:
+                per_platform[platform] = None
+                continue
+
+            has_any_files = True
+            platform_files: list[dict[str, str]] = []
+            libraries: dict[str, list[str]] = {"static": [], "dynamic": []}
+            for disk_path, arcname, kind in files:
+                if arcname in seen_arcnames:
+                    continue
+                zf.write(disk_path, arcname)
+                seen_arcnames.add(arcname)
+                platform_files.append({"path": arcname, "kind": kind})
+                if kind in ("static", "shared"):
+                    libraries["static" if kind == "static" else "dynamic"].append(disk_path.name)
+
+            per_platform[platform] = {
+                "built": True,
+                "files": platform_files,
+                "libraries": libraries,
+                "test_status": combine_test_status(dep_names, platform, test_results),
+                "filename": zip_name,
+            }
+
+        # Include the VFS helper so consumers can use it immediately.
+        md_vfs = Path("src/vfs/md_vfs.h")
+        if md_vfs.exists():
+            arcname = "vfs/md_vfs.h"
+            zf.write(md_vfs, arcname)
+            seen_arcnames.add(arcname)
+
+        # Include the VFS examples so the bundle is self-contained.
+        examples_dir = Path("examples")
+        for example in ("vfs-lua", "vfs-mtcc"):
+            example_dir = examples_dir / example
+            if not example_dir.is_dir():
+                continue
+            for f in sorted(example_dir.rglob("*")):
+                if not f.is_file():
+                    continue
+                rel = f.relative_to(examples_dir)
+                arcname = f"examples/{rel}"
+                if arcname not in seen_arcnames:
+                    zf.write(f, arcname)
+                    seen_arcnames.add(arcname)
+
+        # Add license files for all bundled deps.
+        for dep_name in dep_names:
+            license_files = find_license_files(dep_name)
+            for f in license_files:
+                if f.name == "lua.h" and dep_name == "lua":
+                    arcname = "licenses/lua-LICENSE"
+                elif f.name.upper().startswith(("LICEN", "COPY", "LICENS")):
+                    arcname = f"licenses/{dep_name}-{f.name}"
+                else:
+                    arcname = f"licenses/{dep_name}-LICENSE.{f.suffix.lstrip('.') or 'txt'}"
+                if arcname not in seen_arcnames:
+                    zf.write(f, arcname)
+                    seen_arcnames.add(arcname)
+
+    if not has_any_files:
+        zip_path.unlink(missing_ok=True)
+        return {p: None for p in PLATFORMS}
+
+    artifact_hash = sha256_file(zip_path)
+    for entry in per_platform.values():
+        if entry and entry.get("built") is True:
+            entry["artifact_hash"] = artifact_hash
+
+    return per_platform
+
+
 def generate_manifest(out_dir: Path, repo_sha: str) -> dict:
     """Generate the full manifest from built artifacts."""
     manifest = {
@@ -666,6 +791,7 @@ def generate_manifest(out_dir: Path, repo_sha: str) -> dict:
         "repo_commit": repo_sha,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "artifacts": {},
+        "bundles": {},
     }
 
     # Enumerate dependencies from the curated list. Scanning deps/ directly
@@ -677,6 +803,11 @@ def generate_manifest(out_dir: Path, repo_sha: str) -> dict:
 
     for dep in deps:
         manifest["artifacts"][dep] = package_dependency(dep, out_dir, repo_sha, submodule_urls, test_results)
+
+    for bundle_name, dep_names in BUNDLES.items():
+        manifest["bundles"][bundle_name] = package_bundle(
+            bundle_name, dep_names, out_dir, repo_sha, submodule_urls, test_results
+        )
 
     return manifest
 
