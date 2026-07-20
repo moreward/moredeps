@@ -1,9 +1,9 @@
--- examples/vfs-lua/scripts/main.lua
+-- examples/mfs-lua/scripts/main.lua
 -- A sample entry point loaded from the PhysFS archive.
 
 print("hello from sandboxed PhysFS Lua!")
 
--- This module load will be resolved by the custom VFS searcher.
+-- This module load will be resolved by the custom MFS searcher.
 local helper = require("helper")
 helper.greet()
 

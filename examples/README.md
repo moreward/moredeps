@@ -11,8 +11,8 @@ re-publish them to your own GitHub release for safe-keeping.
 | [`vendor-release.sh`](vendor-release.sh) | Local script using the `gh` CLI to download deps and create a release in *your* repo. |
 | [`vendor-release.yml`](vendor-release.yml) | GitHub Actions workflow that does the same thing on a schedule or on demand. |
 | [`cmake-fetch/`](cmake-fetch/) | A tiny CMake project that fetches and unpacks deps at configure time. |
-| [`vfs-lua/`](vfs-lua/) | A sandboxed Lua example that loads scripts from a PhysFS-mounted archive instead of the host filesystem. |
-| [`vfs-mtcc/`](vfs-mtcc/) | An mtcc example that reads C source from PhysFS, compiles it in memory, and runs it with a whitelisted symbol set. |
+| [`mfs-lua/`](mfs-lua/) | A sandboxed Lua example that loads scripts from a PhysFS-mounted archive instead of the host filesystem. |
+| [`mfs-mtcc/`](mfs-mtcc/) | An mtcc example that reads C source from PhysFS, compiles it in memory, and runs it with a whitelisted symbol set. |
 
 ## Why re-publish?
 

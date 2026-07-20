@@ -90,7 +90,7 @@ DEP_LIBRARY_NAMES = {
                    "miniaudio_libvorbis", "miniaudio_ltrim_node", "miniaudio_reverb_node",
                    "miniaudio_vocoder_node"],
     "minigamepad": ["minigamepad"],
-    "mtcc": ["tcc"],  # libtcc.a
+    "mtcc": ["tcc", "tcc1"],  # libtcc.a + libtcc1.a runtime support
     "nanovg": ["nanovg"],
     "physfs": ["physfs", "physfs-static"],
     "raudio": ["raudio"],
@@ -138,7 +138,7 @@ EXCLUDED = {
 
 # Bundles: combined distribution zips containing multiple deps plus helpers/examples.
 BUNDLES = {
-    "lua-mtcc-physfs": ["lua", "mtcc", "physfs"],
+    "mfs": ["lua", "mtcc", "physfs"],
 }
 
 
@@ -310,14 +310,17 @@ def combine_test_status(dep_names: list[str], platform: str,
                         test_results: dict[str, dict]) -> dict[str, str]:
     """Combine per-dep test status into a single bundle status.
 
+    Only deps that are actually built for this platform are considered.
     Priority: failed > not-tested > skipped > passed.
     """
-    priority = {"passed": 0, "skipped": 1, "not-tested": 2, "failed": 3, "excluded": -1}
+    priority = {"passed": 0, "skipped": 1, "not-tested": 2, "failed": 3}
     combined: dict[str, str] = {}
     for linkage in ("static", "dynamic"):
         worst = "passed"
-        worst_rank = 0
+        worst_rank = -1
         for dep_name in dep_names:
+            if EXCLUDED.get((dep_name, platform)):
+                continue
             status = get_test_status(dep_name, platform, test_results)
             value = status.get(linkage, "not-tested")
             rank = priority.get(value, 2)
@@ -369,11 +372,10 @@ def find_lib_files(dep_name: str, platform_dir: Path) -> list[Path]:
     shared_exts = {".so", ".dylib", ".dll"}
     files = []
 
-    for search_dir in ("lib", "lib/import", "bin"):
-        d = platform_dir / search_dir
-        if not d.exists():
+    for search_dir in (platform_dir / "lib", platform_dir / "bin"):
+        if not search_dir.exists():
             continue
-        for f in d.iterdir():
+        for f in search_dir.rglob("*"):
             if not f.is_file():
                 continue
             sfx = f.suffix.lower()
@@ -567,19 +569,22 @@ def collect_files_for_platform(dep_name: str, platform: str, platform_dir: Path)
     has_static = False
     has_shared = False
 
+    lib_dir = platform_dir / "lib"
+    bin_dir = platform_dir / "bin"
     for f in lib_files:
         kind = classify_lib(f)
         if kind == "static":
             has_static = True
-            arcname = f"static/{platform}/lib/{f.name}"
+            rel = f.relative_to(lib_dir)
+            arcname = f"static/{platform}/lib/{rel}"
         else:
             has_shared = True
-            if f.suffix.lower() == ".dll":
-                arcname = f"dynamic/{platform}/bin/{f.name}"
-            elif f.parent.name == "import" and f.parent.parent.name == "lib":
-                arcname = f"dynamic/{platform}/lib/import/{f.name}"
+            if f.is_relative_to(bin_dir):
+                rel = f.relative_to(bin_dir)
+                arcname = f"dynamic/{platform}/bin/{rel}"
             else:
-                arcname = f"dynamic/{platform}/lib/{f.name}"
+                rel = f.relative_to(lib_dir)
+                arcname = f"dynamic/{platform}/lib/{rel}"
         result.append((f, arcname, kind))
 
     for f in header_files:
@@ -692,8 +697,8 @@ def package_bundle(bundle_name: str, dep_names: list[str], out_dir: Path, repo_s
     """Create a single zip containing all artifacts for a set of deps.
 
     The bundle layout matches the per-dependency zip layout so consumers can
-    use the same toolchain configuration. It also includes the thin VFS helper
-    (src/vfs/md_vfs.h) and the related VFS examples.
+    use the same toolchain configuration. It also includes the thin MFS helper
+    (src/mfs/mfs.h) and the related MFS examples.
     """
     zip_name = f"moredeps-{repo_sha[:8]}-bundle-{bundle_name}.zip"
     zip_path = out_dir / zip_name
@@ -736,16 +741,16 @@ def package_bundle(bundle_name: str, dep_names: list[str], out_dir: Path, repo_s
                 "filename": zip_name,
             }
 
-        # Include the VFS helper so consumers can use it immediately.
-        md_vfs = Path("src/vfs/md_vfs.h")
-        if md_vfs.exists():
-            arcname = "vfs/md_vfs.h"
-            zf.write(md_vfs, arcname)
+        # Include the MFS helper so consumers can use it immediately.
+        mfs_header = Path("src/mfs/mfs.h")
+        if mfs_header.exists():
+            arcname = "mfs/mfs.h"
+            zf.write(mfs_header, arcname)
             seen_arcnames.add(arcname)
 
-        # Include the VFS examples so the bundle is self-contained.
+        # Include the MFS examples so the bundle is self-contained.
         examples_dir = Path("examples")
-        for example in ("vfs-lua", "vfs-mtcc"):
+        for example in ("mfs-lua", "mfs-mtcc"):
             example_dir = examples_dir / example
             if not example_dir.is_dir():
                 continue

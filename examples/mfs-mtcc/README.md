@@ -1,11 +1,11 @@
-# vfs-mtcc example
+# mfs-mtcc example
 
 Loads a C source file from a PhysicsFS-mounted archive and compiles/runs it
 in memory with mtcc.
 
 ## What it demonstrates
 
-- `src/vfs/md_vfs.h` — a thin, zero-overhead PhysFS helper layer.
+- `src/mfs/mfs.h` — a thin, zero-overhead PhysFS helper layer.
 - Loading C source from PhysFS instead of the host filesystem.
 - `tcc_compile_string` + `TCC_OUTPUT_MEMORY` to avoid writing files.
 - Whitelisting only the host symbols the JIT code is allowed to call.
@@ -31,7 +31,7 @@ source cannot use `#include`. It must be self-contained.
 Assuming `moredeps` is installed or available via `find_package`:
 
 ```bash
-cd examples/vfs-mtcc
+cd examples/mfs-mtcc
 cmake -B build -S .
 cmake --build build
 ```
@@ -40,7 +40,7 @@ cmake --build build
 
 ```bash
 zip -j -r scripts.zip scripts
-./build/vfs-mtcc scripts.zip
+./build/mfs-mtcc scripts.zip
 ```
 
 The example loads `main.c` from the archive, compiles it, and calls the

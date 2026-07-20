@@ -343,20 +343,25 @@
             }
 
             html += '</table>';
+            return html;
+        }
 
-            // Legend
-            html += '<div style="margin-top:1rem;font-size:0.85rem;color:#666;">';
+        function renderLegend() {
+            let html = '<div style="margin-top:1rem;font-size:0.85rem;color:#666;">';
             html += '<strong>Legend:</strong> ';
             html += '<span style="font-size:0.7rem;background:#e3f2fd;color:#1565c0;padding:0 3px;border-radius:2px">sta</span> static only · ';
             html += '<span style="font-size:0.7rem;background:#fff3e0;color:#e65100;padding:0 3px;border-radius:2px">shr</span> shared only · ';
             html += '<span style="font-size:0.7rem;background:#e8f5e9;color:#2e7d32;padding:0 3px;border-radius:2px">s+s</span> static + shared · ';
             html += '✅ passed · ⏭️ skipped · ❌ failed · ⛔ excluded · ⚪ not tested';
             html += '</div>';
+            return html;
+        }
+
+        function renderFooter(manifest) {
             const commitLink = manifest.repo_commit
                 ? `<a href="https://github.com/${REPO}/commit/${manifest.repo_commit}" target="_blank" rel="noopener noreferrer"><code>${manifest.repo_commit.substring(0, 8)}</code></a>`
                 : 'unknown';
-            html += `<p style="margin-top:1rem;color:#666;font-size:0.9rem;">Repo commit: ${commitLink} · Generated: ${manifest.generated_at || 'unknown'}</p>`;
-            return html;
+            return `<p style="margin-top:1rem;color:#666;font-size:0.9rem;">Repo commit: ${commitLink} · Generated: ${manifest.generated_at || 'unknown'}</p>`;
         }
 
         function renderBundles(manifest, release) {
@@ -549,7 +554,7 @@
             }
 
             if (manifest) {
-                contentDiv.innerHTML = renderTable(manifest, release) + renderBundles(manifest, release);
+                contentDiv.innerHTML = renderTable(manifest, release) + renderBundles(manifest, release) + renderLegend() + renderFooter(manifest);
                 bindDownloadUI();
             } else {
                 contentDiv.innerHTML = renderAssetList(release);

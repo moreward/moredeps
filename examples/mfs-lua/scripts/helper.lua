@@ -1,4 +1,4 @@
--- examples/vfs-lua/scripts/helper.lua
+-- examples/mfs-lua/scripts/helper.lua
 local M = {}
 
 function M.greet()

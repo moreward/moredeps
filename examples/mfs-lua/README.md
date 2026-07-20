@@ -1,13 +1,14 @@
-# vfs-lua example
+# mfs-lua example
 
 Loads and runs Lua scripts from a PhysicsFS-mounted archive, with the host
 filesystem removed from the Lua global environment.
 
 ## What it demonstrates
 
-- `src/vfs/md_vfs.h` — a thin, zero-overhead PhysFS helper layer.
+- `src/mfs/mfs.h` — a thin, zero-overhead PhysFS helper layer.
 - A custom `package.searcher` that resolves `require()` against the VFS.
-- Removal of `io`, `os`, `debug`, `loadfile`, `dofile`, and native module loading.
+- Removal of `io`, `os`, `debug`, `load`, `loadfile`, `dofile`, `loadstring`,
+  native module loading, and the default `package.path`/`package.cpath`.
 
 ## Security notes
 
@@ -27,7 +28,7 @@ For untrusted scripts, add:
 Assuming `moredeps` is installed or available via `find_package`:
 
 ```bash
-cd examples/vfs-lua
+cd examples/mfs-lua
 cmake -B build -S .
 cmake --build build
 ```
@@ -36,7 +37,7 @@ cmake --build build
 
 ```bash
 zip -j -r scripts.zip scripts
-./build/vfs-lua scripts.zip
+./build/mfs-lua scripts.zip
 ```
 
 The example loads `main.lua` from the archive, which in turn `require`s

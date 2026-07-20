@@ -1,5 +1,5 @@
 /*
- * examples/vfs-mtcc/main.c
+ * examples/mfs-mtcc/main.c
  *
  * Demonstrates loading a C source file from a PhysicsFS-mounted archive,
  * compiling it in-memory with mtcc, and running it with only a small,
@@ -17,7 +17,7 @@
 
 #include <libtcc.h>
 #include <physfs.h>
-#include "md_vfs.h"
+#include "mfs.h"
 
 /* A deliberately minimal host function we expose to the JIT code.
  * Nothing else from libc or the host is reachable.
@@ -41,12 +41,12 @@ int main(int argc, char *argv[])
     }
 
     if (!PHYSFS_init(argv[0])) {
-        fprintf(stderr, "PHYSFS_init failed: %s\n", md_vfs_last_error());
+        fprintf(stderr, "PHYSFS_init failed: %s\n", mfs_last_error());
         return 1;
     }
 
     if (!PHYSFS_mount(argv[1], NULL, 1)) {
-        fprintf(stderr, "PHYSFS_mount(%s) failed: %s\n", argv[1], md_vfs_last_error());
+        fprintf(stderr, "PHYSFS_mount(%s) failed: %s\n", argv[1], mfs_last_error());
         PHYSFS_deinit();
         return 1;
     }
@@ -66,9 +66,9 @@ int main(int argc, char *argv[])
      */
 
     size_t len;
-    char *src = md_vfs_load_text("main.c", &len);
+    char *src = mfs_load_text("main.c", &len);
     if (!src) {
-        fprintf(stderr, "could not load main.c: %s\n", md_vfs_last_error());
+        fprintf(stderr, "could not load main.c: %s\n", mfs_last_error());
         tcc_delete(s);
         PHYSFS_deinit();
         return 1;

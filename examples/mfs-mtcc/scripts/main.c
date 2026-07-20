@@ -1,4 +1,4 @@
-/* examples/vfs-mtcc/scripts/main.c */
+/* examples/mfs-mtcc/scripts/main.c */
 
 extern void host_print(const char *msg);
 

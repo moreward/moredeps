@@ -1,5 +1,5 @@
 /*
- * examples/vfs-lua/main.c
+ * examples/mfs-lua/main.c
  *
  * Demonstrates a sandboxed Lua state where scripts are loaded from a
  * PhysicsFS-mounted archive. Direct filesystem access is removed from the Lua
@@ -15,41 +15,36 @@
 #include <lualib.h>
 
 #include <physfs.h>
-#include "md_vfs.h"
+#include "mfs.h"
 
-/* Convert "foo.bar" to "foo/bar.lua" (or platform-appropriate separator). */
-static const char *module_name_to_path(lua_State *L, const char *name,
-                                       char *out, size_t out_len)
+/* Convert "foo.bar" to "foo/bar.lua".
+ *
+ * PhysFS always uses '/' as the path separator, so we ignore the host
+ * filesystem separator from package.config. */
+static const char *module_name_to_path(const char *name, char *out, size_t out_len)
 {
-    /* Use the directory separator reported by package.config. */
-    lua_getglobal(L, "package");
-    lua_getfield(L, -1, "config");
-    const char *config = lua_tostring(L, -1);
-    char dirsep = (config && config[0]) ? config[0] : '/';
-    lua_pop(L, 2);
-
     size_t n = strlen(name);
     if (n + 4 >= out_len) return NULL;
 
     for (size_t i = 0; i < n; ++i)
-        out[i] = (name[i] == '.') ? dirsep : name[i];
+        out[i] = (name[i] == '.') ? '/' : name[i];
     out[n] = '.'; out[n + 1] = 'l'; out[n + 2] = 'u'; out[n + 3] = 'a';
     out[n + 4] = '\0';
     return out;
 }
 
 /* Custom package.searcher that loads Lua modules from PhysFS. */
-static int md_vfs_lua_searcher(lua_State *L)
+static int mfs_lua_searcher(lua_State *L)
 {
     const char *name = luaL_checkstring(L, 1);
     char path[512];
-    if (!module_name_to_path(L, name, path, sizeof(path))) {
+    if (!module_name_to_path(name, path, sizeof(path))) {
         lua_pushfstring(L, "\n\tmodule name too long: '%s'", name);
         return 1;
     }
 
     size_t len;
-    char *buf = md_vfs_load_text(path, &len);
+    char *buf = mfs_load_text(path, &len);
     if (!buf) {
         lua_pushfstring(L, "\n\tno VFS file '%s'", path);
         return 1;
@@ -72,17 +67,22 @@ static void lua_sandbox(lua_State *L)
     lua_pushnil(L); lua_setglobal(L, "io");
     lua_pushnil(L); lua_setglobal(L, "os");
     lua_pushnil(L); lua_setglobal(L, "debug");
+    lua_pushnil(L); lua_setglobal(L, "load");
     lua_pushnil(L); lua_setglobal(L, "loadfile");
     lua_pushnil(L); lua_setglobal(L, "dofile");
+#if LUA_VERSION_NUM < 502
+    lua_pushnil(L); lua_setglobal(L, "loadstring");
+#endif
 
-    /* Prevent loading native C modules. */
+    /* Prevent loading native C modules and searching the host filesystem. */
     lua_getglobal(L, "package");
-    lua_pushnil(L);   lua_setfield(L, -2, "loadlib");
+    lua_pushnil(L); lua_setfield(L, -2, "loadlib");
     lua_pushstring(L, ""); lua_setfield(L, -2, "cpath");
+    lua_pushstring(L, ""); lua_setfield(L, -2, "path");
 
     /* Replace package.searchers with only the VFS searcher. */
     lua_newtable(L);
-    lua_pushcfunction(L, md_vfs_lua_searcher);
+    lua_pushcfunction(L, mfs_lua_searcher);
     lua_rawseti(L, -2, 1);
     lua_setfield(L, -2, "searchers");
     lua_pop(L, 1);
@@ -96,12 +96,12 @@ int main(int argc, char *argv[])
     }
 
     if (!PHYSFS_init(argv[0])) {
-        fprintf(stderr, "PHYSFS_init failed: %s\n", md_vfs_last_error());
+        fprintf(stderr, "PHYSFS_init failed: %s\n", mfs_last_error());
         return 1;
     }
 
     if (!PHYSFS_mount(argv[1], NULL, 1)) {
-        fprintf(stderr, "PHYSFS_mount(%s) failed: %s\n", argv[1], md_vfs_last_error());
+        fprintf(stderr, "PHYSFS_mount(%s) failed: %s\n", argv[1], mfs_last_error());
         PHYSFS_deinit();
         return 1;
     }
@@ -119,9 +119,9 @@ int main(int argc, char *argv[])
 
     /* Load and run main.lua from the PhysFS archive. */
     size_t len;
-    char *main_script = md_vfs_load_text("main.lua", &len);
+    char *main_script = mfs_load_text("main.lua", &len);
     if (!main_script) {
-        fprintf(stderr, "could not load main.lua: %s\n", md_vfs_last_error());
+        fprintf(stderr, "could not load main.lua: %s\n", mfs_last_error());
         lua_close(L);
         PHYSFS_deinit();
         return 1;
