@@ -4,7 +4,7 @@ project(mfs-lua-example LANGUAGES C)
 find_package(PhysFS REQUIRED)
 find_package(lua REQUIRED)
 
-add_executable(mfs-lua main.c)
+add_executable(mfs-lua main.c mfs_lua.c)
 target_link_libraries(mfs-lua PRIVATE PhysFS::PhysFS-static lua::lua)
 target_include_directories(mfs-lua PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/../../src/mfs"
