@@ -109,6 +109,24 @@
             border-radius: 3px;
             font-size: 0.9rem;
         }
+        .bundle-name {
+            vertical-align: top;
+        }
+        .bundle-contents {
+            margin-top: 0.35rem;
+            font-size: 0.8rem;
+            color: #555;
+            line-height: 1.4;
+        }
+        .bundle-contents span {
+            color: #888;
+            font-weight: 500;
+        }
+        .bundle-commit {
+            margin-top: 0.25rem;
+            font-size: 0.75rem;
+            color: #666;
+        }
         footer {
             margin-top: 3rem;
             padding-top: 1rem;
@@ -364,6 +382,22 @@
             return `<p style="margin-top:1rem;color:#666;font-size:0.9rem;">Repo commit: ${commitLink} · Generated: ${manifest.generated_at || 'unknown'}</p>`;
         }
 
+        function renderBundleContents(contents) {
+            if (!contents) return '';
+            let html = '<div class="bundle-contents">';
+            if (contents.dependencies && contents.dependencies.length) {
+                html += '<div><span>deps:</span> ' + contents.dependencies.map(escapeHtml).join(', ') + '</div>';
+            }
+            if (contents.helpers && contents.helpers.length) {
+                html += '<div><span>helpers:</span> ' + contents.helpers.map(escapeHtml).join(', ') + '</div>';
+            }
+            if (contents.examples && contents.examples.length) {
+                html += '<div><span>examples:</span> ' + contents.examples.map(escapeHtml).join(', ') + '</div>';
+            }
+            html += '</div>';
+            return html;
+        }
+
         function renderBundles(manifest, release) {
             if (!manifest || !manifest.bundles || Object.keys(manifest.bundles).length === 0) {
                 return '';
@@ -397,6 +431,13 @@
                 const zipName = builtEntry ? builtEntry.filename : null;
                 const zipHash = builtEntry ? builtEntry.artifact_hash || '' : '';
                 const zipUrl = zipName ? downloadUrl(release, zipName) : '#';
+                const contents = builtEntry ? builtEntry.contents : null;
+                const repoUrl = (builtEntry && builtEntry.repo_url) || `https://github.com/${REPO}`;
+                const repoCommit = builtEntry && builtEntry.repo_commit ? builtEntry.repo_commit : (manifest.repo_commit || '');
+                const commitShort = repoCommit ? repoCommit.substring(0, 7) : '';
+                const commitLink = repoCommit
+                    ? `<a href="${repoUrl}/commit/${repoCommit}" target="_blank" rel="noopener noreferrer" class="sha">${commitShort}</a>`
+                    : '';
 
                 let dlTitle = zipName || '';
                 if (zipHash) dlTitle += '\n' + zipHash;
@@ -409,7 +450,14 @@
                     : '<span class="status-skip">—</span>';
 
                 html += '<tr>';
-                html += `<td><strong>${bundleName}</strong></td>`;
+                html += `<td class="bundle-name"><a href="${repoUrl}/tree/${repoCommit || 'main'}" target="_blank" rel="noopener noreferrer"><strong>${bundleName}</strong></a>`;
+                if (contents) {
+                    html += renderBundleContents(contents);
+                }
+                if (commitLink) {
+                    html += `<div class="bundle-commit">${REPO} @ ${commitLink}</div>`;
+                }
+                html += '</td>';
                 html += `<td>${dlLink}</td>`;
 
                 for (const p of platforms) {

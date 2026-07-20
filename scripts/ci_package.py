@@ -749,8 +749,9 @@ def package_bundle(bundle_name: str, dep_names: list[str], out_dir: Path, repo_s
             seen_arcnames.add(arcname)
 
         # Include the MFS examples so the bundle is self-contained.
+        examples = ["mfs-lua", "mfs-mtcc", "mfs-mtcc-embedded"]
         examples_dir = Path("examples")
-        for example in ("mfs-lua", "mfs-mtcc", "mfs-mtcc-embedded"):
+        for example in examples:
             example_dir = examples_dir / example
             if not example_dir.is_dir():
                 continue
@@ -782,9 +783,17 @@ def package_bundle(bundle_name: str, dep_names: list[str], out_dir: Path, repo_s
         return {p: None for p in PLATFORMS}
 
     artifact_hash = sha256_file(zip_path)
+    repo_url = "https://github.com/moreward/moredeps"
     for entry in per_platform.values():
         if entry and entry.get("built") is True:
             entry["artifact_hash"] = artifact_hash
+            entry["contents"] = {
+                "dependencies": dep_names,
+                "helpers": ["mfs"],
+                "examples": examples,
+            }
+            entry["repo_commit"] = repo_sha
+            entry["repo_url"] = repo_url
 
     return per_platform
 
