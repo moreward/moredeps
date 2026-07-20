@@ -85,8 +85,14 @@ if(WIN32)
   install(DIRECTORY ${MTCC_BUILD_DIR}/include/ DESTINATION include/mtcc)
 else()
   # Run mtcc's configure script in the build directory.
+  # We set --prefix so CONFIG_TCCDIR points to the final install location;
+  # this is where mtcc looks for libtcc1.a at runtime.
   execute_process(
-    COMMAND ${MTCC_SRC_DIR}/configure --cc=${CMAKE_C_COMPILER} --ar=${CMAKE_AR}
+    COMMAND ${MTCC_SRC_DIR}/configure
+      --cc=${CMAKE_C_COMPILER}
+      --ar=${CMAKE_AR}
+      --prefix=${CMAKE_INSTALL_PREFIX}
+      --tccdir=${CMAKE_INSTALL_PREFIX}/lib/tcc
     WORKING_DIRECTORY ${MTCC_BUILD_DIR}
     RESULT_VARIABLE _configure_result
   )
@@ -94,18 +100,23 @@ else()
     message(FATAL_ERROR "mtcc configure failed")
   endif()
 
-  # Build libtcc.a using mtcc's Makefile.
+  # Build libtcc.a and libtcc1.a using mtcc's Makefile.
   add_custom_command(
-    OUTPUT ${MTCC_BUILD_DIR}/libtcc.a
+    OUTPUT ${MTCC_BUILD_DIR}/libtcc.a ${MTCC_BUILD_DIR}/libtcc1.a
     COMMAND ${CMAKE_MAKE_PROGRAM} -C ${MTCC_BUILD_DIR} libtcc.a
+    COMMAND ${CMAKE_MAKE_PROGRAM} -C ${MTCC_BUILD_DIR} libtcc1.a
     DEPENDS ${MTCC_SRC_DIR}/Makefile ${MTCC_SRC_DIR}/libtcc.c
-    COMMENT "Building libtcc.a"
+    COMMENT "Building libtcc.a and libtcc1.a"
   )
 
-  add_custom_target(mtcc_build ALL DEPENDS ${MTCC_BUILD_DIR}/libtcc.a)
+  add_custom_target(mtcc_build ALL DEPENDS
+    ${MTCC_BUILD_DIR}/libtcc.a
+    ${MTCC_BUILD_DIR}/libtcc1.a
+  )
 
   # Install the library and headers.
   install(FILES ${MTCC_BUILD_DIR}/libtcc.a TYPE LIB)
+  install(FILES ${MTCC_BUILD_DIR}/libtcc1.a DESTINATION lib/tcc)
   install(FILES
     ${MTCC_SRC_DIR}/libtcc.h
     ${MTCC_SRC_DIR}/tcc.h

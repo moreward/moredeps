@@ -359,6 +359,92 @@
             return html;
         }
 
+        function renderBundles(manifest, release) {
+            if (!manifest || !manifest.bundles || Object.keys(manifest.bundles).length === 0) {
+                return '';
+            }
+            const platforms = ['macos_arm64', 'linux_x64', 'linux_arm64', 'windows_x64', 'windows_arm64', 'wasm_emscripten'];
+            const platformLabels = {
+                'macos_arm64': 'macOS ARM64',
+                'linux_x64': 'Linux x64',
+                'linux_arm64': 'Linux ARM64',
+                'windows_x64': 'Windows x64',
+                'windows_arm64': 'Windows ARM64',
+                'wasm_emscripten': 'WASM'
+            };
+            const statusIcons = {
+                'passed': '✅', 'skipped': '⏭️', 'failed': '❌', 'excluded': '⛔', 'not-tested': '⚪'
+            };
+            const statusLabels = {
+                'passed': 'passed', 'skipped': 'skipped', 'failed': 'failed', 'excluded': 'excluded', 'not-tested': 'not tested'
+            };
+
+            let html = '<h2 style="margin-top:2rem;">Bundles</h2>';
+            html += '<p style="color:#666;font-size:0.9rem;">Combined distribution zips containing multiple dependencies and examples.</p>';
+            html += '<table>';
+            html += '<tr><th>Bundle</th><th>Download</th>' + platforms.map(p =>
+                `<th title="${platformLabels[p]}">${platformLabels[p].split(' ')[0]}</th>`
+            ).join('') + '</tr>';
+
+            for (const bundleName of Object.keys(manifest.bundles).sort()) {
+                const bundle = manifest.bundles[bundleName];
+                const builtEntry = Object.values(bundle).find(e => e && e.built === true);
+                const zipName = builtEntry ? builtEntry.filename : null;
+                const zipHash = builtEntry ? builtEntry.artifact_hash || '' : '';
+                const zipUrl = zipName ? downloadUrl(release, zipName) : '#';
+
+                let dlTitle = zipName || '';
+                if (zipHash) dlTitle += '\n' + zipHash;
+
+                const dlCheck = zipName
+                    ? `<input type="checkbox" class="dl-check" data-dep="bundle:${bundleName}" data-url="${zipUrl}" data-name="${zipName}" data-hash="${zipHash}"> `
+                    : '';
+                const dlLink = zipName
+                    ? `${dlCheck}<a class="download" href="${zipUrl}" title="${escapeHtml(dlTitle)}">zip</a>`
+                    : '<span class="status-skip">—</span>';
+
+                html += '<tr>';
+                html += `<td><strong>${bundleName}</strong></td>`;
+                html += `<td>${dlLink}</td>`;
+
+                for (const p of platforms) {
+                    const info = bundle[p];
+                    if (!info) {
+                        html += '<td class="status-skip">—</td>';
+                    } else if (info.built === false) {
+                        html += `<td class="status-skip" title="${info.reason || 'excluded'}">N/A</td>`;
+                    } else if (info.built === true) {
+                        const hasStatic = info.libraries && info.libraries.static && info.libraries.static.length;
+                        const hasDynamic = info.libraries && info.libraries.dynamic && info.libraries.dynamic.length;
+                        let badge = '';
+                        if (hasStatic && hasDynamic) {
+                            badge = '<span style="font-size:0.7rem;background:#e8f5e9;color:#2e7d32;padding:0 3px;border-radius:2px" title="static + shared">s+s</span>';
+                        } else if (hasDynamic) {
+                            badge = '<span style="font-size:0.7rem;background:#fff3e0;color:#e65100;padding:0 3px;border-radius:2px" title="shared only">shr</span>';
+                        } else if (hasStatic) {
+                            badge = '<span style="font-size:0.7rem;background:#e3f2fd;color:#1565c0;padding:0 3px;border-radius:2px" title="static only">sta</span>';
+                        }
+                        const ts = info.test_status || {};
+                        const staticStatus = ts.static || 'not-tested';
+                        const dynamicStatus = ts.dynamic || 'not-tested';
+                        const statuses = [staticStatus, dynamicStatus];
+                        let combinedStatus = 'passed';
+                        if (statuses.includes('failed')) combinedStatus = 'failed';
+                        else if (statuses.includes('not-tested')) combinedStatus = 'not-tested';
+                        else if (statuses.includes('skipped')) combinedStatus = 'skipped';
+                        const testIcon = statusIcons[combinedStatus] || '⚪';
+                        const title = escapeHtml(`static test: ${statusLabels[staticStatus]}\ndynamic test: ${statusLabels[dynamicStatus]}`);
+                        html += `<td title="${title}">${badge} <span style="font-size:0.85rem;cursor:help" title="${title}">${testIcon}</span></td>`;
+                    } else {
+                        html += '<td class="status-fail">fail</td>';
+                    }
+                }
+                html += '</tr>';
+            }
+            html += '</table>';
+            return html;
+        }
+
         // Wires up the checkbox UI rendered by renderTable().
         // Each row has one checkbox in the Download column; the checkbox
         // stores the zip URL + filename + hash so the user can batch-copy
@@ -463,7 +549,7 @@
             }
 
             if (manifest) {
-                contentDiv.innerHTML = renderTable(manifest, release);
+                contentDiv.innerHTML = renderTable(manifest, release) + renderBundles(manifest, release);
                 bindDownloadUI();
             } else {
                 contentDiv.innerHTML = renderAssetList(release);
