@@ -206,18 +206,16 @@ function io_shim.type(obj)
     return nil
 end
 
--- stdin/stdout/stderr are not backed by PhysFS. We keep the OS-backed
--- originals for now; this can be made configurable later.
-io_shim.stdin = io.stdin
-io_shim.stdout = io.stdout
-io_shim.stderr = io.stderr
+-- stdin/stdout/stderr are not backed by PhysFS. To keep the sandbox tight,
+-- we do not expose the OS-backed originals here. print() still works through
+-- the C runtime, but io.read/io.write without a file argument will fail.
 
 function io_shim.read(...)
-    return io_shim.stdin:read(...)
+    return nil, "io.read: stdin is not available in the sandbox"
 end
 
 function io_shim.write(...)
-    return io_shim.stdout:write(...)
+    return nil, "io.write: stdout is not available in the sandbox"
 end
 
 -- ===== os shim ============================================================

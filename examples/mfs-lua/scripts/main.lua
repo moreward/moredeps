@@ -21,6 +21,24 @@ else
     print("io.open failed:", ferr)
 end
 
+-- io shim: write and read back a file in the write directory.
+local wf, werr = io.open("write_test.txt", "w")
+if wf then
+    wf:write("written from shim\n")
+    wf:write("line 2\n")
+    wf:close()
+
+    local rf, rerr = io.open("write_test.txt", "r")
+    if rf then
+        print("io.open write/read:", rf:read("*a"))
+        rf:close()
+    else
+        print("io.open read-back failed:", rerr)
+    end
+else
+    print("io.open write failed:", werr)
+end
+
 -- loadfile / dofile shims: load another script from the archive.
 local ok, err = pcall(function()
     local f = loadfile("loaded.lua")

@@ -17,11 +17,13 @@ set_target_properties(mfs-lua PROPERTIES
 
 # A simple test target that creates a zip archive from scripts/ and runs the example.
 add_custom_target(mfs-lua-test
+  COMMAND ${CMAKE_COMMAND} -E rm -rf "${CMAKE_CURRENT_BINARY_DIR}/write_dir"
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/write_dir"
   COMMAND ${CMAKE_COMMAND} -E rm -f "${CMAKE_CURRENT_BINARY_DIR}/scripts.zip"
   COMMAND ${CMAKE_COMMAND} -E chdir
           "${CMAKE_CURRENT_SOURCE_DIR}/scripts"
           zip -r "${CMAKE_CURRENT_BINARY_DIR}/scripts.zip" .
-  COMMAND "$<TARGET_FILE:mfs-lua>" "${CMAKE_CURRENT_BINARY_DIR}/scripts.zip"
+  COMMAND "$<TARGET_FILE:mfs-lua>" "${CMAKE_CURRENT_BINARY_DIR}/scripts.zip" "${CMAKE_CURRENT_BINARY_DIR}/write_dir"
   DEPENDS mfs-lua
   COMMENT "Running sandboxed Lua PhysFS example"
 )
