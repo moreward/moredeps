@@ -138,7 +138,7 @@ EXCLUDED = {
 
 # Bundles: combined distribution zips containing multiple deps plus helpers/examples.
 BUNDLES = {
-    "mfs": ["lua", "mtcc", "physfs"],
+    "mfs": ["lua", "mtcc", "physfs", "mimalloc"],
 }
 
 
