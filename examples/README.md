@@ -13,6 +13,7 @@ re-publish them to your own GitHub release for safe-keeping.
 | [`cmake-fetch/`](cmake-fetch/) | A tiny CMake project that fetches and unpacks deps at configure time. |
 | [`mfs-lua/`](mfs-lua/) | A sandboxed Lua example that loads scripts from a PhysFS-mounted archive instead of the host filesystem. |
 | [`mfs-mtcc/`](mfs-mtcc/) | An mtcc example that reads C source from PhysFS, compiles it in memory, and runs it with a whitelisted symbol set. |
+| [`mfs-mtcc-embedded/`](mfs-mtcc-embedded/) | An mtcc example where `libtcc1.a` and builtin headers also come from the PhysFS-mounted archive. |
 
 ## Why re-publish?
 

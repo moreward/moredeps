@@ -750,7 +750,7 @@ def package_bundle(bundle_name: str, dep_names: list[str], out_dir: Path, repo_s
 
         # Include the MFS examples so the bundle is self-contained.
         examples_dir = Path("examples")
-        for example in ("mfs-lua", "mfs-mtcc"):
+        for example in ("mfs-lua", "mfs-mtcc", "mfs-mtcc-embedded"):
             example_dir = examples_dir / example
             if not example_dir.is_dir():
                 continue
