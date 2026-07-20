@@ -41,6 +41,8 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 #include <physfs.h>
 
 #ifdef __cplusplus
@@ -279,6 +281,63 @@ static inline int mfs_list(const char *path, mfs_list_callback cb, void *userdat
 {
     struct mfs__list_ctx ctx = { cb, userdata };
     return PHYSFS_enumerate(path, mfs__enum_cb, &ctx) != 0;
+}
+
+/* Rich directory listing: metadata per entry. */
+
+typedef struct {
+    const char *name;          /* entry name (only valid during the callback) */
+    int is_dir;                /* non-zero if directory */
+    int is_file;               /* non-zero if regular file */
+    int is_symlink;            /* non-zero if symlink */
+    PHYSFS_sint64 size;        /* file size in bytes, -1 if unknown or not a file */
+    int readonly;              /* non-zero if PhysFS considers it read-only */
+} mfs_dir_entry;
+
+/* Callback for mfs_list_ex. Return 0 to stop, non-zero to continue. */
+typedef int (*mfs_list_ex_callback)(void *userdata, const mfs_dir_entry *entry);
+
+struct mfs__list_ex_ctx {
+    mfs_list_ex_callback cb;
+    void *userdata;
+};
+
+static PHYSFS_EnumerateCallbackResult mfs__enum_ex_cb(void *data, const char *origdir, const char *fname)
+{
+    struct mfs__list_ex_ctx *c = (struct mfs__list_ex_ctx *)data;
+    size_t dir_len = strlen(origdir);
+    size_t full_len = dir_len + strlen(fname) + 2;
+    char *full = (char *)malloc(full_len);
+    if (!full) return PHYSFS_ENUM_ERROR;
+    if (dir_len == 0) {
+        snprintf(full, full_len, "%s", fname);
+    } else {
+        snprintf(full, full_len, "%s/%s", origdir, fname);
+    }
+
+    PHYSFS_Stat st;
+    mfs_dir_entry entry = { fname, 0, 0, 0, -1, 0 };
+    if (PHYSFS_stat(full, &st)) {
+        entry.is_dir = (st.filetype == PHYSFS_FILETYPE_DIRECTORY);
+        entry.is_file = (st.filetype == PHYSFS_FILETYPE_REGULAR);
+        entry.is_symlink = (st.filetype == PHYSFS_FILETYPE_SYMLINK);
+        entry.size = st.filesize;
+        entry.readonly = st.readonly;
+    }
+    free(full);
+
+    int cont = c->cb(c->userdata, &entry);
+    return cont ? PHYSFS_ENUM_OK : PHYSFS_ENUM_STOP;
+}
+
+/* List entries in a directory with metadata.
+ * For each entry, cb is called with an mfs_dir_entry. The name pointer is only
+ * valid during the callback; copy it if you need to keep it.
+ * Returns non-zero on success (even if cb stopped early). */
+static inline int mfs_list_ex(const char *path, mfs_list_ex_callback cb, void *userdata)
+{
+    struct mfs__list_ex_ctx ctx = { cb, userdata };
+    return PHYSFS_enumerate(path, mfs__enum_ex_cb, &ctx) != 0;
 }
 
 /* Create a directory in the PhysFS write directory.

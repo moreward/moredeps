@@ -443,6 +443,46 @@ static int mfs_lua_list(lua_State *L)
     return 1;
 }
 
+struct mfs_lua_list_ex_state {
+    lua_State *L;
+    int idx;
+};
+
+static int mfs_lua_list_ex_cb(void *userdata, const mfs_dir_entry *entry)
+{
+    struct mfs_lua_list_ex_state *st = (struct mfs_lua_list_ex_state *)userdata;
+    lua_State *L = st->L;
+    lua_newtable(L);
+    lua_pushstring(L, entry->name);
+    lua_setfield(L, -2, "name");
+    lua_pushboolean(L, entry->is_dir);
+    lua_setfield(L, -2, "is_dir");
+    lua_pushboolean(L, entry->is_file);
+    lua_setfield(L, -2, "is_file");
+    lua_pushboolean(L, entry->is_symlink);
+    lua_setfield(L, -2, "is_symlink");
+    lua_pushinteger(L, (lua_Integer)entry->size);
+    lua_setfield(L, -2, "size");
+    lua_pushboolean(L, entry->readonly);
+    lua_setfield(L, -2, "readonly");
+    lua_rawseti(L, -2, ++st->idx);
+    return 1;
+}
+
+static int mfs_lua_list_ex(lua_State *L)
+{
+    const char *path = luaL_checkstring(L, 1);
+    lua_newtable(L);
+    struct mfs_lua_list_ex_state st = { L, 0 };
+    if (!mfs_list_ex(path, mfs_lua_list_ex_cb, &st)) {
+        lua_pop(L, 1);
+        lua_pushnil(L);
+        lua_pushstring(L, mfs_last_error());
+        return 2;
+    }
+    return 1;
+}
+
 static const luaL_Reg mfs_lua_funcs[] = {
     { "load_text", mfs_lua_load_text },
     { "load", mfs_lua_load },
@@ -457,6 +497,7 @@ static const luaL_Reg mfs_lua_funcs[] = {
     { "is_dir", mfs_lua_is_dir },
     { "is_file", mfs_lua_is_file },
     { "list", mfs_lua_list },
+    { "list_ex", mfs_lua_list_ex },
     { "mkdir", mfs_lua_mkdir },
     { "remove", mfs_lua_remove },
     { NULL, NULL }

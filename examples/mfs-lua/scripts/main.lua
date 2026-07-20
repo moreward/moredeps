@@ -39,6 +39,14 @@ else
     print("io.open write failed:", werr)
 end
 
+-- mfs.list_ex returns rich directory entries.
+local entries = mfs.list_ex("")
+for i, e in ipairs(entries) do
+    if e.is_file then
+        print("list_ex file:", e.name, "size:", e.size)
+    end
+end
+
 -- loadfile / dofile shims: load another script from the archive.
 local ok, err = pcall(function()
     local f = loadfile("loaded.lua")
