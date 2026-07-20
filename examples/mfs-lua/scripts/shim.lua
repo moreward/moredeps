@@ -358,9 +358,6 @@ end
 
 -- stdin/stdout/stderr are controlled capabilities.  When enabled, the original
 -- host-backed handles are exposed.  io.read/io.write without a file argument
--- map to stdin/stdout respectively.
--- stdin/stdout/stderr are controlled capabilities.  When enabled, the original
--- host-backed handles are exposed.  io.read/io.write without a file argument
 -- map to stdin/stdout respectively, and are hookable.
 if caps.io_stdin then
     io_shim.stdin = io_orig.stdin
@@ -505,12 +502,15 @@ package.cpath = ""
 package.path = ""
 
 if caps.native_modules then
-    -- Re-enable native module loading.  The pre-existing all-in searcher is
-    -- index 4 in standard Lua; keep the MFS searcher first and append the
-    -- default C searchers.
-    table.insert(package.searchers, package_orig.searchers[2]) -- lib loader
-    table.insert(package.searchers, package_orig.searchers[3]) -- root loader
-    table.insert(package.searchers, package_orig.searchers[4]) -- all-in loader
+    -- Re-enable native module loading.  Keep the MFS searcher first, then add
+    -- every standard searcher except the host-Lua-file searcher (which would
+    -- escape the sandbox).  We identify it by its internal name.
+    for i, searcher in ipairs(package_orig.searchers) do
+        local info = debug_orig.getinfo(searcher, "n")
+        if not info or info.name ~= "searcher_Lua" then
+            table.insert(package.searchers, wrap_with_hooks("require_native", searcher))
+        end
+    end
     package.cpath = package_orig.cpath
 end
 

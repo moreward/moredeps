@@ -52,8 +52,9 @@ extern "C" {
 /* Read the whole contents of an open PhysFS file into a caller-owned buffer.
  * On success returns a non-NULL pointer and writes the byte count to *out_size.
  * On failure returns NULL and leaves *out_size unchanged.
- * The returned buffer is NOT null-terminated. If the file is empty, a valid
- * one-byte pointer is returned and *out_size is set to 0.
+ * The returned buffer is NOT null-terminated, but one extra byte is allocated
+ * so text callers can safely append '\0' at index *out_size. If the file is
+ * empty, a valid pointer is returned and *out_size is set to 0.
  */
 static inline void *mfs__read_all(PHYSFS_File *f, size_t *out_size)
 {
@@ -63,7 +64,8 @@ static inline void *mfs__read_all(PHYSFS_File *f, size_t *out_size)
     size_t len = (size_t)len64;
     /* Allocate at least one byte so an empty file is distinguishable from
      * an out-of-memory error. */
-    void *buf = malloc(len ? len : 1);
+    /* Allocate one extra byte so callers can null-terminate if they want. */
+    void *buf = malloc(len + 1);
     if (!buf) return NULL;
 
     if (len == 0) {
