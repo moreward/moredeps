@@ -92,6 +92,7 @@ DEP_LIBRARY_NAMES = {
     "minigamepad": ["minigamepad"],
     "mtcc": ["tcc", "tcc1"],  # libtcc.a + libtcc1.a runtime support
     "nanovg": ["nanovg"],
+    "pcre2": ["pcre2-8"],
     "physfs": ["physfs", "physfs-static"],
     "raudio": ["raudio"],
     "raylib": ["raylib"],
@@ -138,7 +139,7 @@ EXCLUDED = {
 
 # Bundles: combined distribution zips containing multiple deps plus helpers/examples.
 BUNDLES = {
-    "mfs": ["lua", "mtcc", "physfs", "mimalloc"],
+    "mfs": ["lua", "mtcc", "physfs", "mimalloc", "pcre2"],
 }
 
 
@@ -464,6 +465,7 @@ KNOWN_HEADERS = {
     "libwebsockets": ["libwebsockets", "lws_config", "lws_map"],
     "lua": ["lua", "lauxlib", "luaconf", "lualib"],
     "mtcc": ["libtcc", "tcc"],
+    "pcre2": ["pcre2"],
     "sdl3": ["SDL3"],
     "sdl3webgpu": ["sdl3webgpu"],
     "skribidi": ["skb"],

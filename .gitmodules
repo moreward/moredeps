@@ -139,3 +139,6 @@
 [submodule "deps/sqlite-amalgamation"]
 	path = deps/sqlite-amalgamation
 	url = https://github.com/moreward/sqlite-amalgamation.git
+[submodule "deps/pcre2"]
+	path = deps/pcre2
+	url = https://github.com/PCRE2Project/pcre2
