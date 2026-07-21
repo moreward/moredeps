@@ -643,7 +643,7 @@ moredeps_add_dep(mimalloc
     "-DMI_BUILD_SHARED=OFF"
     "-DMI_BUILD_OBJECT=OFF"
     "-DMI_BUILD_TESTS=OFF"
-    "-DMI_OVERRIDE=ON"
+    "-DMI_OVERRIDE=OFF"
     "-DMI_SECURE=OFF"
     "-DMI_SECURE_FULL=OFF"
     "-DMI_GUARDED=OFF"
