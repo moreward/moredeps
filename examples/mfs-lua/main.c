@@ -26,9 +26,20 @@
 #include <lualib.h>
 
 #include <physfs.h>
+#include <mimalloc.h>
 #include "mfs.h"
 
 extern int luaopen_mfs(lua_State *L);
+
+/* mimalloc-backed Lua allocator.  mi_realloc handles malloc/realloc/free
+ * in a single call (nsize==0 frees, ptr==NULL allocates). */
+static void *lua_mimalloc(void *ud, void *ptr, size_t osize, size_t nsize)
+{
+    (void)ud;
+    (void)osize;
+    if (nsize == 0) { mi_free(ptr); return NULL; }
+    return mi_realloc(ptr, nsize);
+}
 
 /* Load a Lua chunk from the PhysFS archive and run it. Returns 0 on success. */
 static int run_lua_file(lua_State *L, const char *path)
@@ -171,6 +182,10 @@ int main(int argc, char *argv[])
 
     /* Keep the base libraries (string, table, math, etc.) available. */
     luaL_openlibs(L);
+
+    /* Use mimalloc for all Lua allocations: heap isolation, guard pages,
+     * and security hardening compared to the system malloc. */
+    lua_setallocf(L, lua_mimalloc, NULL);
 
     /* Register the low-level MFS module so scripts/shim.lua can use it. */
     luaL_requiref(L, "mfs", luaopen_mfs, 1);

@@ -3,9 +3,18 @@ project(mfs-lua-example LANGUAGES C)
 
 find_package(PhysFS REQUIRED)
 find_package(lua REQUIRED)
+find_package(mimalloc REQUIRED)
+find_package(PCRE2 REQUIRED)
+find_package(utf8proc REQUIRED)
 
 add_executable(mfs-lua main.c mfs_lua.c)
-target_link_libraries(mfs-lua PRIVATE PhysFS::PhysFS-static lua::lua)
+target_link_libraries(mfs-lua PRIVATE
+  PhysFS::PhysFS-static
+  lua::lua
+  mimalloc
+  PCRE2::PCRE2
+  utf8proc::utf8proc
+)
 target_include_directories(mfs-lua PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/../../src/mfs"
 )

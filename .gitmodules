@@ -142,3 +142,9 @@
 [submodule "deps/pcre2"]
 	path = deps/pcre2
 	url = https://github.com/PCRE2Project/pcre2
+[submodule "deps/abseil-cpp"]
+	path = deps/abseil-cpp
+	url = https://github.com/abseil/abseil-cpp
+[submodule "deps/re2"]
+	path = deps/re2
+	url = https://github.com/google/re2
