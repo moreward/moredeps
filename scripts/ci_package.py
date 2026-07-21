@@ -65,10 +65,6 @@ DIR_ALIAS = {
 # Mapping of dependency name to the library file stems (without lib prefix and .a/.lib suffix)
 # that belong to that dependency. This is derived from the actual build outputs.
 DEP_LIBRARY_NAMES = {
-    "abseil-cpp": ["absl_base", "absl_strings", "absl_synchronization",
-                    "absl_hash", "absl_flat_hash_map", "absl_flat_hash_set",
-                    "absl_span", "absl_optional", "absl_str_format",
-                    "absl_inlined_vector", "absl_fixed_array"],
     "box3d": ["box3d"],
     "budouxc": ["budouxc"],
     "boringssl": ["crypto", "ssl"],
@@ -100,7 +96,6 @@ DEP_LIBRARY_NAMES = {
     "physfs": ["physfs", "physfs-static"],
     "raudio": ["raudio"],
     "raylib": ["raylib"],
-    "re2": ["re2"],
     "reproc": ["reproc"],
     "sdl3": ["SDL3", "SDL3-static"],
     "sdl3webgpu": ["sdl3webgpu"],
@@ -138,14 +133,13 @@ EXCLUDED = {
     ("libwebsockets", "wasm_emscripten"): "BSD sockets not available in the browser",
     ("reproc", "wasm_emscripten"): "Process spawning not supported on the web",
     ("tinycsocket", "wasm_emscripten"): "No BSD sockets",
-    ("re2", "wasm_emscripten"): "absl::Mutex requires pthreads",
     # Windows ARM64 exclusions
     ("mtcc", "windows_arm64"): "TinyCC PE backend lacks ARM64 support",
 }
 
 # Bundles: combined distribution zips containing multiple deps plus helpers/examples.
 BUNDLES = {
-    "sandbox": ["lua", "mtcc", "physfs", "mimalloc", "re2", "utf8proc"],
+    "sandbox": ["lua", "mtcc", "physfs", "mimalloc", "pcre2", "utf8proc"],
 }
 
 
@@ -456,7 +450,6 @@ def find_license_files(dep_name: str) -> list[Path]:
 # by (a) looking for include/<term>/ subdirectories, then (b) files in
 # include/ whose stem contains <term>.  Case matters for subdirectories.
 KNOWN_HEADERS = {
-    "abseil-cpp": ["absl"],
     "boringssl": ["openssl"],
     "budouxc": ["budoux"],
     "cJSON": ["cjson"],
@@ -473,7 +466,6 @@ KNOWN_HEADERS = {
     "lua": ["lua", "lauxlib", "luaconf", "lualib"],
     "mtcc": ["libtcc", "tcc"],
     "pcre2": ["pcre2"],
-    "re2": ["re2"],
     "sdl3": ["SDL3"],
     "sdl3webgpu": ["sdl3webgpu"],
     "skribidi": ["skb"],

@@ -736,41 +736,6 @@ moredeps_add_dep(physfs
     "-DPHYSFS_BUILD_SHARED=ON"
 )
 
-# --- abseil-cpp ---
-# Google's C++ standard library extensions.  Required by RE2.
-# C++17, header-heavy: only the actual linked .a files (strings, base, sync,
-# hash, etc.) add ~450K of code.
-moredeps_add_dep(abseil-cpp
-  CMAKE_ARGS
-    "-DCMAKE_CXX_STANDARD=17"
-    "-DABSL_BUILD_TESTING=OFF"
-    "-DABSL_ENABLE_INSTALL=ON"
-    "-DABSL_PROPAGATE_CXX_STD=ON"
-    "-DABSL_USE_EXTERNAL_GOOGLETEST=OFF"
-  SHARED_CMAKE_ARGS
-    "-DCMAKE_CXX_STANDARD=17"
-    "-DABSL_BUILD_TESTING=OFF"
-    "-DABSL_ENABLE_INSTALL=ON"
-    "-DABSL_PROPAGATE_CXX_STD=ON"
-    "-DABSL_USE_EXTERNAL_GOOGLETEST=OFF"
-)
-
-# --- re2 ---
-# Linear-time regex engine from Google.  Requires abseil + threads.
-# Excluded on Emscripten: uses absl::Mutex internally (pthreads).
-if(NOT EMSCRIPTEN)
-  moredeps_add_dep(re2
-    CMAKE_ARGS
-      "-DCMAKE_CXX_STANDARD=17"
-      "-DRE2_BUILD_TESTING=OFF"
-      "-DRE2_USE_ICU=OFF"
-    SHARED_CMAKE_ARGS
-      "-DCMAKE_CXX_STANDARD=17"
-      "-DRE2_BUILD_TESTING=OFF"
-      "-DRE2_USE_ICU=OFF"
-  )
-endif()
-
 # --- raylib ---
 if(EMSCRIPTEN)
   moredeps_add_dep(raylib
