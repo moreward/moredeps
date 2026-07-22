@@ -85,6 +85,7 @@ DEP_LIBRARY_NAMES = {
     "libuv": ["uv", "uv_a"],
     "libwebsockets": ["websockets", "websockets_static"],
     "lua": ["lua"],
+    "luv": ["luv", "luv_a"],
     "lz4": ["lz4"],
     "microui": ["microui"],
     "mimalloc": ["mimalloc"],
@@ -135,6 +136,7 @@ EXCLUDED = {
     ("enet", "wasm_emscripten"): "UDP sockets not available in the browser",
     ("libwebsockets", "wasm_emscripten"): "BSD sockets not available in the browser",
     ("libuv", "wasm_emscripten"): "No libuv Emscripten platform backend",
+    ("luv", "wasm_emscripten"): "Depends on libuv (no WASM backend)",
     ("reproc", "wasm_emscripten"): "Process spawning not supported on the web",
     ("tinycsocket", "wasm_emscripten"): "No BSD sockets",
     # Windows ARM64 exclusions
@@ -470,6 +472,7 @@ KNOWN_HEADERS = {
     "libuv": ["uv"],
     "libwebsockets": ["libwebsockets", "lws_config", "lws_map"],
     "lua": ["lua", "lauxlib", "luaconf", "lualib"],
+    "luv": ["luv"],
     "mtcc": ["libtcc", "tcc"],
     "pcre2": ["pcre2"],
     "sdl3": ["SDL3"],

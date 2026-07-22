@@ -1137,6 +1137,25 @@ moredeps_add_dep(lua
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/lua"
 )
 
+# --- luv ---
+# Lua binding for libuv — async I/O from Lua.  MIT, C, ~9K LOC.
+# Builds as a static library that Lua scripts require().
+# Depends on lua + libuv (both already in moredeps).
+# Excluded on Emscripten: libuv has no WASM backend.
+if(NOT EMSCRIPTEN)
+  moredeps_add_dep(luv
+    CMAKE_ARGS
+      "-DBUILD_MODULE=OFF"
+      "-DBUILD_STATIC_LIBS=ON"
+      "-DBUILD_SHARED_LIBS=OFF"
+      "-DWITH_SHARED_LIBUV=ON"
+      "-DWITH_LUA_ENGINE=Lua"
+      "-DLUA_BUILD_TYPE=System"
+      "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
+    DEPENDS lua libuv
+  )
+endif()
+
 # -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------

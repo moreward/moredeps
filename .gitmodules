@@ -151,3 +151,6 @@
 [submodule "deps/libuv"]
 	path = deps/libuv
 	url = https://github.com/libuv/libuv
+[submodule "deps/luv"]
+	path = deps/luv
+	url = https://github.com/luvit/luv

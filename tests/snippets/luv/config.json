@@ -1,0 +1,3 @@
+{
+  "link_libs": ["luv", "lua", "uv"]
+}
