@@ -120,6 +120,7 @@ DEP_LIBRARY_NAMES = {
             "stb_rect_pack", "stb_truetype"],
     "tinycsocket": ["tinycsocket"],
     "tinycthread": ["tinycthread"],
+    "tomlc99": ["tomlc99"],
     "tracy": ["TracyClient"],
     "ubench": ["ubench"],
     "utest": ["utest"],
@@ -148,7 +149,7 @@ BUNDLES = {
                 "sqlite-amalgamation", "tinycthread", "libuv", "luv",
                 "libwebsockets", "boringssl",
                 "curl", "cJSON", "reproc", "zlib", "zstd", "xxhash", "stb",
-                "libyaml", "md4c"],
+                "libyaml", "md4c", "tomlc99"],
 }
 
 

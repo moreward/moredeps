@@ -953,6 +953,13 @@ moredeps_add_dep(tinycthread
       "-DTINYCTHREAD_INSTALL=ON"
   )
 
+# --- tomlc99 ---
+# TOML v1.0 parser.  MIT, C99, single .c + .h, 36K.
+# Wrapped via src/tomlc99/ to add CMake install rules.
+moredeps_add_dep(tomlc99
+  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/tomlc99"
+)
+
 # --- tracy ---
 moredeps_add_dep(tracy
   CMAKE_ARGS
