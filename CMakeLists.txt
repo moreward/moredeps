@@ -1174,17 +1174,13 @@ moredeps_add_dep(lua
 if(NOT EMSCRIPTEN)
   moredeps_add_dep(luv
     STATIC_ONLY
-    PATCH_COMMAND
-      ${CMAKE_COMMAND}
-      -DSOURCE_DIR=<SOURCE_DIR>
-      -DPATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/patches/luv-find-libuv.patch
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/scripts/apply_patch.cmake
     CMAKE_ARGS
       "-DBUILD_MODULE=OFF"
       "-DBUILD_STATIC_LIBS=ON"
       "-DBUILD_SHARED_LIBS=OFF"
       "-DWITH_SHARED_LIBUV=ON"
       "-DLIBUV_INCLUDE_DIR=${CMAKE_INSTALL_PREFIX}/include"
+      "-DLIBUV_LIBRARIES=${CMAKE_INSTALL_PREFIX}/lib/libuv.a"
       "-DWITH_LUA_ENGINE=Lua"
       "-DLUA_BUILD_TYPE=System"
       "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
