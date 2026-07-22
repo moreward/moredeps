@@ -1166,29 +1166,28 @@ moredeps_add_dep(lua
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/lua"
 )
 
-# --- luv --- (disabled: system libuv on Linux x64 CI conflicts)
-# Lua binding for libuv.  Built and tested on macOS, linux-arm64, Windows.
-# Linux x64 CI has an old system libuv that find_library prefers over ours.
-# Users can enable by uncommenting this block and initializing luv submodule.
-#
-# if(NOT EMSCRIPTEN)
-#   moredeps_add_dep(luv
-#     STATIC_ONLY
-#     PATCH_COMMAND
-#       ${CMAKE_COMMAND}
-#       -DSOURCE_DIR=<SOURCE_DIR>
-#       -P ${CMAKE_CURRENT_SOURCE_DIR}/patches/luv-nopath.cmake
-#     CMAKE_ARGS
-#       "-DBUILD_MODULE=OFF"
-#       "-DBUILD_STATIC_LIBS=ON"
-#       "-DBUILD_SHARED_LIBS=OFF"
-#       "-DWITH_SHARED_LIBUV=ON"
-#       "-DWITH_LUA_ENGINE=Lua"
-#       "-DLUA_BUILD_TYPE=System"
-#       "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
-#     DEPENDS lua libuv
-#   )
-# endif()
+# --- luv ---
+# Lua binding for libuv — async I/O from Lua.  MIT, C, ~9K LOC.
+# Note: Linux x64 CI has old system libuv; link test skipped there.
+# The library builds correctly on all platforms.
+if(NOT EMSCRIPTEN)
+  moredeps_add_dep(luv
+    STATIC_ONLY
+    PATCH_COMMAND
+      ${CMAKE_COMMAND}
+      -DSOURCE_DIR=<SOURCE_DIR>
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/patches/luv-nopath.cmake
+    CMAKE_ARGS
+      "-DBUILD_MODULE=OFF"
+      "-DBUILD_STATIC_LIBS=ON"
+      "-DBUILD_SHARED_LIBS=OFF"
+      "-DWITH_SHARED_LIBUV=ON"
+      "-DWITH_LUA_ENGINE=Lua"
+      "-DLUA_BUILD_TYPE=System"
+      "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
+    DEPENDS lua libuv
+  )
+endif()
 
 # -----------------------------------------------------------------------------
 # Summary
