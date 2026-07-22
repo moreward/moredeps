@@ -114,6 +114,7 @@ DEP_LIBRARY_NAMES = {
     "stb": ["stb_ds", "stb_image", "stb_image_resize", "stb_image_write",
             "stb_rect_pack", "stb_truetype"],
     "tinycsocket": ["tinycsocket"],
+    "tinycthread": ["tinycthread"],
     "tracy": ["TracyClient"],
     "ubench": ["ubench"],
     "utest": ["utest"],
@@ -133,13 +134,14 @@ EXCLUDED = {
     ("libwebsockets", "wasm_emscripten"): "BSD sockets not available in the browser",
     ("reproc", "wasm_emscripten"): "Process spawning not supported on the web",
     ("tinycsocket", "wasm_emscripten"): "No BSD sockets",
+    ("tinycthread", "wasm_emscripten"): "Requires pthreads",
     # Windows ARM64 exclusions
     ("mtcc", "windows_arm64"): "TinyCC PE backend lacks ARM64 support",
 }
 
 # Bundles: combined distribution zips containing multiple deps plus helpers/examples.
 BUNDLES = {
-    "sandbox": ["lua", "mtcc", "physfs", "mimalloc", "pcre2", "utf8proc"],
+    "sandbox": ["lua", "mtcc", "physfs", "mimalloc", "pcre2", "utf8proc", "sqlite-amalgamation", "tinycthread"],
 }
 
 
