@@ -82,6 +82,7 @@ DEP_LIBRARY_NAMES = {
     "ggml": ["ggml", "ggml-base", "ggml-cpu", "ggml-blas"],
     "harfbuzz": ["harfbuzz", "harfbuzz-subset"],
     "libunibreak": ["libunibreak"],  # liblibunibreak.a / libunibreak.lib
+    "libuv": ["uv", "uv_a"],
     "libwebsockets": ["websockets", "websockets_static"],
     "lua": ["lua"],
     "lz4": ["lz4"],
@@ -133,6 +134,7 @@ EXCLUDED = {
     ("mtcc", "wasm_emscripten"): "Target-specific C/ASM cannot compile to WASM",
     ("enet", "wasm_emscripten"): "UDP sockets not available in the browser",
     ("libwebsockets", "wasm_emscripten"): "BSD sockets not available in the browser",
+    ("libuv", "wasm_emscripten"): "No libuv Emscripten platform backend",
     ("reproc", "wasm_emscripten"): "Process spawning not supported on the web",
     ("tinycsocket", "wasm_emscripten"): "No BSD sockets",
     ("tinycthread", "wasm_emscripten"): "Requires pthreads",
@@ -466,6 +468,7 @@ KNOWN_HEADERS = {
     "harfbuzz": ["harfbuzz"],
     "libunibreak": ["linebreak", "unibreak", "wordbreak", "graphemebreak",
                     "eastasianwidth", "emojidef", "indicconjunctbreak"],
+    "libuv": ["uv"],
     "libwebsockets": ["libwebsockets", "lws_config", "lws_map"],
     "lua": ["lua", "lauxlib", "luaconf", "lualib"],
     "mtcc": ["libtcc", "tcc"],

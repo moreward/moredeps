@@ -148,3 +148,6 @@
 [submodule "deps/ggml"]
 	path = deps/ggml
 	url = https://github.com/ggml-org/ggml.git
+[submodule "deps/libuv"]
+	path = deps/libuv
+	url = https://github.com/libuv/libuv

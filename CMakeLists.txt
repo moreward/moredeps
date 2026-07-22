@@ -674,6 +674,20 @@ moredeps_add_dep(libunibreak
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/libunibreak"
 )
 
+# --- libuv ---
+# Cross-platform async I/O (epoll/kqueue/IOCP).  Node.js's event loop.
+# MIT, C99, ~1.5MB, supports Emscripten.
+if(NOT EMSCRIPTEN)
+  moredeps_add_dep(libuv
+    CMAKE_ARGS
+      "-DLIBUV_BUILD_SHARED=OFF"
+      "-DLIBUV_BUILD_TESTS=OFF"
+    SHARED_CMAKE_ARGS
+      "-DLIBUV_BUILD_SHARED=ON"
+      "-DLIBUV_BUILD_TESTS=OFF"
+  )
+endif()
+
 # --- mimalloc ---
 moredeps_add_dep(mimalloc
   CMAKE_ARGS
