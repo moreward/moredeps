@@ -14,3 +14,16 @@ index e5556c84..7f30d540 100644
  #
  
  add_subdirectory(src)
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 11583474..0942b7e7 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -495,7 +495,7 @@ endforeach()
+ 
+ target_link_libraries(ggml-base PRIVATE Threads::Threads)
+ 
+-if (DEFINED MATH_LIBRARY)
++if (MATH_LIBRARY)
+     target_link_libraries(ggml-base PRIVATE ${MATH_LIBRARY})
+ elseif (NOT WIN32 AND NOT DEFINED ENV{ONEAPI_ROOT})
+     target_link_libraries(ggml-base PRIVATE m)
