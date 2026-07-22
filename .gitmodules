@@ -163,3 +163,6 @@
 [submodule "deps/tomlc99"]
 	path = deps/tomlc99
 	url = https://github.com/cktan/tomlc99
+[submodule "deps/termbox2"]
+	path = deps/termbox2
+	url = https://github.com/termbox/termbox2

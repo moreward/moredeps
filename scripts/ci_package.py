@@ -149,7 +149,7 @@ BUNDLES = {
                 "sqlite-amalgamation", "tinycthread", "libuv", "luv",
                 "libwebsockets", "boringssl",
                 "curl", "cJSON", "reproc", "zlib", "zstd", "xxhash", "stb",
-                "libyaml", "md4c", "tomlc99"],
+                "libyaml", "md4c", "tomlc99", "ggml"],
 }
 
 
