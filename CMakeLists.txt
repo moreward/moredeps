@@ -1145,6 +1145,7 @@ moredeps_add_dep(lua
 # Excluded on Emscripten: libuv has no WASM backend.
 if(NOT EMSCRIPTEN)
   moredeps_add_dep(luv
+    STATIC_ONLY
     CMAKE_ARGS
       "-DBUILD_MODULE=OFF"
       "-DBUILD_STATIC_LIBS=ON"
