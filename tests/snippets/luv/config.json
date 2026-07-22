@@ -2,5 +2,5 @@
   "link_libs": ["uv", "luv", "lua"],
   "skip_static_wasm": true,
   "skip_dynamic": true,
-  "system_libs_windows": ["ws2_32", "iphlpapi", "userenv", "psapi", "dbghelp", "ole32", "shell32"]
+  "system_libs_windows": ["ws2_32", "iphlpapi", "userenv", "psapi", "dbghelp", "ole32", "shell32", "synchronization"]
 }
