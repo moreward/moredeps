@@ -918,9 +918,9 @@ endif()
 # --- tinycthread ---
 # Minimal C11 threads API (thrd_create, mtx_lock, etc.) wrapping pthreads
 # or Win32 threads.  Single .h + .c, ~500 lines, MIT.
-# Excluded on Emscripten: requires pthreads.
-if(NOT EMSCRIPTEN)
-  moredeps_add_dep(tinycthread
+# On Emscripten: compiles but thrd_create fails at runtime without
+# -sUSE_PTHREADS=1 (threads become no-op stubs).
+moredeps_add_dep(tinycthread
     CMAKE_ARGS
       "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
       "-DTINYCTHREAD_DISABLE_TESTS=ON"
@@ -930,7 +930,6 @@ if(NOT EMSCRIPTEN)
       "-DTINYCTHREAD_DISABLE_TESTS=ON"
       "-DTINYCTHREAD_INSTALL=ON"
   )
-endif()
 
 # --- tracy ---
 moredeps_add_dep(tracy

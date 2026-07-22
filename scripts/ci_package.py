@@ -137,7 +137,6 @@ EXCLUDED = {
     ("libuv", "wasm_emscripten"): "No libuv Emscripten platform backend",
     ("reproc", "wasm_emscripten"): "Process spawning not supported on the web",
     ("tinycsocket", "wasm_emscripten"): "No BSD sockets",
-    ("tinycthread", "wasm_emscripten"): "Requires pthreads",
     # Windows ARM64 exclusions
     ("mtcc", "windows_arm64"): "TinyCC PE backend lacks ARM64 support",
 }
