@@ -1175,6 +1175,8 @@ if(NOT EMSCRIPTEN)
   moredeps_add_dep(luv
     STATIC_ONLY
     PATCH_COMMAND
+      ${CMAKE_COMMAND} -E make_directory <SOURCE_DIR>/deps
+    COMMAND
       ${CMAKE_COMMAND} -E copy_directory
       ${CMAKE_CURRENT_SOURCE_DIR}/deps/libuv
       <SOURCE_DIR>/deps/libuv
