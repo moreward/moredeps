@@ -903,9 +903,7 @@ moredeps_add_dep(sqlite-amalgamation
 # --- tinycsocket ---
 # Upstream CMake builds the library but has no install target. We wrap it
 # to add install rules without patching the submodule.
-# BSD sockets are not available in a browser, so exclude on Emscripten.
-if(NOT EMSCRIPTEN)
-  moredeps_add_dep(tinycsocket
+moredeps_add_dep(tinycsocket
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/tinycsocket"
     CMAKE_ARGS
       "-DTCS_ENABLE_TESTS=OFF"
@@ -913,7 +911,6 @@ if(NOT EMSCRIPTEN)
       "-DTCS_WARNINGS_AS_ERRORS=OFF"
       "-DTCS_GENERATE_COVERAGE=OFF"
   )
-endif()
 
 # --- tinycthread ---
 # Minimal C11 threads API (thrd_create, mtx_lock, etc.) wrapping pthreads

@@ -133,12 +133,9 @@ EXCLUDED = {
     ("glfw", "wasm_emscripten"): "No desktop windowing on the web",
     ("dawn", "wasm_emscripten"): "Browser provides WebGPU (emdawnwebgpu; no prebuilt lib)",
     ("mtcc", "wasm_emscripten"): "Target-specific C/ASM cannot compile to WASM",
-    ("enet", "wasm_emscripten"): "UDP sockets not available in the browser",
-    ("libwebsockets", "wasm_emscripten"): "BSD sockets not available in the browser",
     ("libuv", "wasm_emscripten"): "No libuv Emscripten platform backend",
     ("luv", "wasm_emscripten"): "Depends on libuv (no WASM backend)",
     ("reproc", "wasm_emscripten"): "Process spawning not supported on the web",
-    ("tinycsocket", "wasm_emscripten"): "No BSD sockets",
     # Windows ARM64 exclusions
     ("mtcc", "windows_arm64"): "TinyCC PE backend lacks ARM64 support",
 }
