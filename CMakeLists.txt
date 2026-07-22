@@ -688,6 +688,27 @@ if(NOT EMSCRIPTEN)
   )
 endif()
 
+# --- libyaml ---
+# YAML 1.1 parser/emitter.  MIT, C, ~100K.
+moredeps_add_dep(libyaml
+  CMAKE_ARGS
+    "-DBUILD_SHARED_LIBS=OFF"
+    "-DYAML_STATIC_LIB_NAME=yaml"
+  SHARED_CMAKE_ARGS
+    "-DBUILD_SHARED_LIBS=ON"
+)
+
+# --- md4c ---
+# Markdown parser (CommonMark).  MIT, C, ~20K.  Used by Qt.
+moredeps_add_dep(md4c
+  CMAKE_ARGS
+    "-DBUILD_SHARED_LIBS=OFF"
+    "-DBUILD_MD2HTML_EXECUTABLE=OFF"
+  SHARED_CMAKE_ARGS
+    "-DBUILD_SHARED_LIBS=ON"
+    "-DBUILD_MD2HTML_EXECUTABLE=OFF"
+)
+
 # --- mimalloc ---
 moredeps_add_dep(mimalloc
   CMAKE_ARGS

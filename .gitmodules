@@ -154,3 +154,9 @@
 [submodule "deps/luv"]
 	path = deps/luv
 	url = https://github.com/luvit/luv
+[submodule "deps/libyaml"]
+	path = deps/libyaml
+	url = https://github.com/yaml/libyaml
+[submodule "deps/md4c"]
+	path = deps/md4c
+	url = https://github.com/mity/md4c

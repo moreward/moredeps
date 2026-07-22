@@ -83,10 +83,12 @@ DEP_LIBRARY_NAMES = {
     "harfbuzz": ["harfbuzz", "harfbuzz-subset"],
     "libunibreak": ["libunibreak"],  # liblibunibreak.a / libunibreak.lib
     "libuv": ["uv", "uv_a"],
+    "libyaml": ["yaml"],
     "libwebsockets": ["websockets", "websockets_static"],
     "lua": ["lua"],
     "luv": ["luv", "luv_a"],
     "lz4": ["lz4"],
+    "md4c": ["md4c"],
     "microui": ["microui"],
     "mimalloc": ["mimalloc"],
     "miniaudio": ["miniaudio", "miniaudio_channel_combiner_node", "miniaudio_channel_separator_node",
@@ -142,7 +144,11 @@ EXCLUDED = {
 
 # Bundles: combined distribution zips containing multiple deps plus helpers/examples.
 BUNDLES = {
-    "sandbox": ["lua", "mtcc", "physfs", "mimalloc", "pcre2", "utf8proc", "sqlite-amalgamation", "tinycthread", "libuv", "luv", "libwebsockets", "boringssl"],
+    "sandbox": ["lua", "mtcc", "physfs", "mimalloc", "pcre2", "utf8proc",
+                "sqlite-amalgamation", "tinycthread", "libuv", "luv",
+                "libwebsockets", "boringssl",
+                "curl", "cJSON", "reproc", "zlib", "zstd", "xxhash", "stb",
+                "libyaml", "md4c"],
 }
 
 
@@ -467,6 +473,7 @@ KNOWN_HEADERS = {
     "libunibreak": ["linebreak", "unibreak", "wordbreak", "graphemebreak",
                     "eastasianwidth", "emojidef", "indicconjunctbreak"],
     "libuv": ["uv"],
+    "libyaml": ["yaml"],
     "libwebsockets": ["libwebsockets", "lws_config", "lws_map"],
     "lua": ["lua", "lauxlib", "luaconf", "lualib"],
     "luv": ["luv"],
