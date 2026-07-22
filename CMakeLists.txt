@@ -469,7 +469,8 @@ moredeps_add_dep(freetype
 # --- ggml ---
 # Tensor library for machine learning inference.  CPU-only build with
 # BLAS acceleration where available (Accelerate on macOS, OpenBLAS elsewhere).
-# Supports Emscripten via WASM SIMD.
+# Supports Emscripten via WASM SIMD.  On windows-arm64 MSVC, ARM NEON
+# intrinsics are skipped (generic CPU path used).
 # ~2MB static lib, 290K LOC, MIT.
 moredeps_add_dep(ggml
   PATCH_COMMAND
