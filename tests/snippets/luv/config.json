@@ -1,3 +1,5 @@
 {
-  "link_libs": ["luv", "lua", "uv"]
+  "link_libs": ["luv", "lua", "uv"],
+  "skip_static_wasm_emscripten": true,
+  "skip_dynamic_wasm_emscripten": true
 }
