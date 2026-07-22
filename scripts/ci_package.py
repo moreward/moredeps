@@ -145,7 +145,7 @@ EXCLUDED = {
 
 # Bundles: combined distribution zips containing multiple deps plus helpers/examples.
 BUNDLES = {
-    "sandbox": ["lua", "mtcc", "physfs", "mimalloc", "pcre2", "utf8proc", "sqlite-amalgamation", "tinycthread"],
+    "sandbox": ["lua", "mtcc", "physfs", "mimalloc", "pcre2", "utf8proc", "sqlite-amalgamation", "tinycthread", "libuv", "luv", "libwebsockets", "boringssl"],
 }
 
 
