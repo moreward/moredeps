@@ -466,6 +466,41 @@ moredeps_add_dep(freetype
     "-DFT_ENABLE_ERROR_STRINGS=ON"
 )
 
+# --- ggml ---
+# Tensor library for machine learning inference.  CPU-only build with
+# BLAS acceleration where available (Accelerate on macOS, OpenBLAS elsewhere).
+# Supports Emscripten via WASM SIMD.
+# ~2MB static lib, 290K LOC, MIT.
+moredeps_add_dep(ggml
+  PATCH_COMMAND
+    ${CMAKE_COMMAND}
+    -DSOURCE_DIR=<SOURCE_DIR>
+    -DPATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/patches/ggml-math-lib.patch
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/scripts/apply_patch.cmake
+  CMAKE_ARGS
+    "-DGGML_STANDALONE=ON"
+    "-DGGML_NATIVE=OFF"
+    "-DGGML_CUDA=OFF"
+    "-DGGML_METAL=OFF"
+    "-DGGML_VULKAN=OFF"
+    "-DGGML_OPENCL=OFF"
+    "-DGGML_SYCL=OFF"
+    "-DGGML_BACKEND_DL=OFF"
+    "-DGGML_BUILD_TESTS=OFF"
+    "-DGGML_BUILD_EXAMPLES=OFF"
+  SHARED_CMAKE_ARGS
+    "-DGGML_STANDALONE=ON"
+    "-DGGML_NATIVE=OFF"
+    "-DGGML_CUDA=OFF"
+    "-DGGML_METAL=OFF"
+    "-DGGML_VULKAN=OFF"
+    "-DGGML_OPENCL=OFF"
+    "-DGGML_SYCL=OFF"
+    "-DGGML_BACKEND_DL=OFF"
+    "-DGGML_BUILD_TESTS=OFF"
+    "-DGGML_BUILD_EXAMPLES=OFF"
+  )
+
 # --- glfw ---
 # GLFW is a desktop windowing library; it does not build for Emscripten.
 if(NOT EMSCRIPTEN)

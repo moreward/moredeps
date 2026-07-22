@@ -1,0 +1,16 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index e5556c84..7f30d540 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -297,6 +297,11 @@ include(GNUInstallDirs)
+ 
+ #
+ # build the library
++
++# Math library (needed by ggml-base; also found in tests/ but that
++# subdirectory is only included when GGML_BUILD_TESTS=ON).
++find_library(MATH_LIBRARY m)
++
+ #
+ 
+ add_subdirectory(src)

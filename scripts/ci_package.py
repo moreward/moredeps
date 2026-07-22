@@ -79,6 +79,7 @@ DEP_LIBRARY_NAMES = {
     "flecs": ["flecs_static"],
     "freetype": ["freetype"],
     "glfw": ["glfw3"],
+    "ggml": ["ggml", "ggml-base", "ggml-cpu", "ggml-blas"],
     "harfbuzz": ["harfbuzz", "harfbuzz-subset"],
     "libunibreak": ["libunibreak"],  # liblibunibreak.a / libunibreak.lib
     "libwebsockets": ["websockets", "websockets_static"],
@@ -461,6 +462,7 @@ KNOWN_HEADERS = {
     "flecs": ["flecs"],
     "freetype": ["freetype2"],
     "glfw": ["GLFW"],
+    "ggml": ["ggml"],
     "harfbuzz": ["harfbuzz"],
     "libunibreak": ["linebreak", "unibreak", "wordbreak", "graphemebreak",
                     "eastasianwidth", "emojidef", "indicconjunctbreak"],

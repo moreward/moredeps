@@ -145,3 +145,6 @@
 [submodule "deps/tinycthread"]
 	path = deps/tinycthread
 	url = https://github.com/tinycthread/tinycthread
+[submodule "deps/ggml"]
+	path = deps/ggml
+	url = https://github.com/ggml-org/ggml.git
