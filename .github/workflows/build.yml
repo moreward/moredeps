@@ -614,27 +614,31 @@ jobs:
             done
           echo "Pruning complete."
 
-      - name: Delete old latest release assets
+      - name: Merge with previous latest release
         run: |
-          # Get release ID for 'latest' tag
-          RELEASE_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          # Download existing latest release assets so we can carry forward
+          # zips for platforms that weren't rebuilt in this run.
+          mkdir -p prev_assets
+          PREV_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/releases/tags/latest")
-          RELEASE_ID=$(echo "$RELEASE_DATA" | jq -r '.id // empty')
-          if [ -n "$RELEASE_ID" ] && [ "$RELEASE_ID" != "null" ]; then
-            # Delete all assets
-            echo "$RELEASE_DATA" | jq -r '.assets[].id' | while read asset_id; do
-              curl -s -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                "https://api.github.com/repos/${{ github.repository }}/releases/assets/$asset_id"
+          PREV_ID=$(echo "$PREV_DATA" | jq -r '.id // empty')
+          if [ -n "$PREV_ID" ] && [ "$PREV_ID" != "null" ]; then
+            echo "$PREV_DATA" | jq -r '.assets[] | "\(.id) \(.name) \(.browser_download_url)"' | while read asset_id name url; do
+              # Keep zips for platforms not built this run (e.g. if only android was
+              # selected, keep the macos/linux/windows/ios zips from the previous run).
+              # New zips in release_assets/ take precedence — we skip those names.
+              if [ -f "release_assets/$name" ]; then
+                echo "Skipping $name (rebuilt in this run)"
+              else
+                echo "Carrying forward $name from previous latest"
+                curl -sfL -o "prev_assets/$name" "$url"
+              fi
             done
-            # Delete the release itself (we'll recreate it)
-            curl -s -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID"
-            # Delete the tag
-            curl -s -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/git/refs/tags/latest"
+            # Move carried-forward assets into release_assets/
+            cp prev_assets/* release_assets/ 2>/dev/null || true
           fi
 
-      - name: Create latest release
+      - name: Update latest release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
