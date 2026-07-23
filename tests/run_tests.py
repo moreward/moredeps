@@ -69,6 +69,10 @@ def is_wasm(plat: str) -> bool:
     """True if the platform string refers to an Emscripten/WASM target."""
     return plat.startswith("wasm_")
 
+def is_mobile(plat: str) -> bool:
+    """True for cross-compiled mobile targets where we can't run binaries."""
+    return plat.startswith("ios_") or plat.startswith("android_")
+
 
 def is_win(plat: str) -> bool:
     return plat.startswith("windows_")
@@ -348,7 +352,7 @@ def build_test(build_dir: Path, platform: str, toolchain: Path | None = None,
     cfg_args = ["cmake", "-S", str(build_dir), "-B", str(build_dir / "_b")]
     if toolchain:
         cfg_args.append(f"-DCMAKE_TOOLCHAIN_FILE={toolchain}")
-    elif is_wasm(platform):
+    elif is_wasm(platform) or is_mobile(platform):
         default_tc = ROOT / "toolchain" / f"{platform}.cmake"
         if default_tc.exists():
             cfg_args.append(f"-DCMAKE_TOOLCHAIN_FILE={default_tc}")
@@ -487,10 +491,11 @@ def test_dep(dep_name: str, platform: str, out_dir: Path, bin_dir: Path | None,
     skip_dynamic = config.get(f"skip_dynamic_{os_prefix}", config.get("skip_dynamic", not bool(dynamic_libs)))
 
     # WASM has no native dynamic linkage (emcc produces .wasm modules, not .so).
-    if is_wasm(platform):
+    # Mobile targets: cross-compiled, can't run binaries on host.
+    if is_wasm(platform) or is_mobile(platform):
         skip_dynamic = True
 
-    no_run = config.get("no_run", False) or is_wasm(platform)
+    no_run = config.get("no_run", False) or is_wasm(platform) or is_mobile(platform)
     bin_dir_for_run = bin_dir if is_win(platform) else None
     lib_dir_for_run = static_dir if sys.platform in ("linux", "darwin") else None
 

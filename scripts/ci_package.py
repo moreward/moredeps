@@ -55,6 +55,8 @@ PLATFORMS = [
     "windows_x64",
     "windows_arm64",
     "wasm_emscripten",
+    "ios_arm64",
+    "ios_simulator_arm64",
 ]
 
 # Dependencies whose deps/ directory name differs from the dependency name.
@@ -141,6 +143,25 @@ EXCLUDED = {
     ("reproc", "wasm_emscripten"): "Process spawning not supported on the web",
     # Windows ARM64 exclusions
     ("mtcc", "windows_arm64"): "TinyCC PE backend lacks ARM64 support",
+    # iOS exclusions (no desktop APIs, sandboxed, or ObjC header conflicts)
+    ("glfw", "ios_arm64"): "Desktop-only windowing library",
+    ("glfw", "ios_simulator_arm64"): "Desktop-only windowing library",
+    ("raylib", "ios_arm64"): "No iOS backend (rcore_ios.c not implemented)",
+    ("raylib", "ios_simulator_arm64"): "No iOS backend (rcore_ios.c not implemented)",
+    ("mtcc", "ios_arm64"): "TinyCC does not target ARM mobile",
+    ("mtcc", "ios_simulator_arm64"): "TinyCC does not target ARM mobile",
+    ("reproc", "ios_arm64"): "Process spawning is sandboxed on iOS",
+    ("reproc", "ios_simulator_arm64"): "Process spawning is sandboxed on iOS",
+    ("enet", "ios_arm64"): "clock_gettime fallback conflicts with iOS SDK",
+    ("enet", "ios_simulator_arm64"): "clock_gettime fallback conflicts with iOS SDK",
+    ("miniaudio", "ios_arm64"): "CoreAudio headers pull in Foundation (ObjC) via iOS SDK",
+    ("miniaudio", "ios_simulator_arm64"): "CoreAudio headers pull in Foundation (ObjC) via iOS SDK",
+    ("raudio", "ios_arm64"): "Wraps miniaudio (excluded on iOS)",
+    ("raudio", "ios_simulator_arm64"): "Wraps miniaudio (excluded on iOS)",
+    ("minigamepad", "ios_arm64"): "Uses IOKit (macOS-only)",
+    ("minigamepad", "ios_simulator_arm64"): "Uses IOKit (macOS-only)",
+    ("sokol_audio", "ios_arm64"): "CoreAudio→Foundation ObjC chain in C mode",
+    ("sokol_audio", "ios_simulator_arm64"): "CoreAudio→Foundation ObjC chain in C mode",
 }
 
 # Bundles: combined distribution zips containing multiple deps plus helpers/examples.
