@@ -57,6 +57,8 @@ PLATFORMS = [
     "wasm_emscripten",
     "ios_arm64",
     "ios_simulator_arm64",
+    "android_arm64",
+    "android_x64",
 ]
 
 # Dependencies whose deps/ directory name differs from the dependency name.
@@ -162,6 +164,15 @@ EXCLUDED = {
     ("minigamepad", "ios_simulator_arm64"): "Uses IOKit (macOS-only)",
     ("sokol_audio", "ios_arm64"): "CoreAudio→Foundation ObjC chain in C mode",
     ("sokol_audio", "ios_simulator_arm64"): "CoreAudio→Foundation ObjC chain in C mode",
+    # Android exclusions
+    ("glfw", "android_arm64"): "Desktop-only windowing library",
+    ("glfw", "android_x64"): "Desktop-only windowing library",
+    ("raylib", "android_arm64"): "Android backend is Makefile-only (no CMake)",
+    ("raylib", "android_x64"): "Android backend is Makefile-only (no CMake)",
+    ("mtcc", "android_arm64"): "TinyCC does not target ARM mobile",
+    ("mtcc", "android_x64"): "TinyCC does not target ARM mobile",
+    ("reproc", "android_arm64"): "Process spawning unusual on Android",
+    ("reproc", "android_x64"): "Process spawning unusual on Android",
 }
 
 # Bundles: combined distribution zips containing multiple deps plus helpers/examples.

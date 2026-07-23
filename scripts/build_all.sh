@@ -27,6 +27,8 @@ PLATFORMS=(
   "wasm_emscripten"
   "ios_arm64"
   "ios_simulator_arm64"
+  "android_arm64"
+  "android_x64"
 )
 
 PLATFORM="${1:-}"
@@ -204,6 +206,12 @@ if [[ "${PLATFORM}" == ios_* ]]; then
   echo "NOTE: iOS builds produce static libraries only (no .dylib/.framework)."
   echo "      glfw, raylib, mtcc, and reproc are excluded (no mobile support)."
   echo "      Link these .a files into your Xcode project for the final app binary."
+  echo ""
+elif [[ "${PLATFORM}" == android_* ]]; then
+  echo ""
+  echo "NOTE: Android builds produce static libraries only."
+  echo "      glfw, raylib, mtcc, reproc, and enet are excluded."
+  echo "      Link into your .so for the Android app."
   echo ""
 fi
 

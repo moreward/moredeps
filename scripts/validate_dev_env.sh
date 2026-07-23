@@ -19,6 +19,8 @@ PLATFORMS=(
   "wasm_emscripten"
   "ios_arm64"
   "ios_simulator_arm64"
+  "android_arm64"
+  "android_x64"
 )
 
 PLATFORM="${1:-}"
@@ -135,6 +137,20 @@ case "${PLATFORM}" in
     fi
     require_command cc "Install Xcode Command Line Tools: xcode-select --install"
     echo "  [INFO] iOS builds are macOS-only and require Xcode with iOS SDK."
+    ;;
+  android_arm64|android_x64)
+    if command -v ndk-build &> /dev/null || [[ -n "${ANDROID_NDK:-}" ]]; then
+      ok "found Android NDK"
+    elif [[ -d "/opt/homebrew/share/android-ndk" ]]; then
+      ok "found Android NDK (Homebrew)"
+    else
+      fail "missing Android NDK"
+      echo "         Install the Android NDK:"
+      echo "         macOS: brew install android-ndk"
+      echo "         Linux: https://developer.android.com/ndk/downloads"
+      echo "         Set ANDROID_NDK to the NDK root if not detected automatically."
+    fi
+    require_command cmake "Install CMake (minimum 3.25)."
     ;;
 esac
 

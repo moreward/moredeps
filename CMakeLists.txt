@@ -65,10 +65,13 @@ message(STATUS "moredeps platform: ${MOREDEPS_PLATFORM}")
 # Platform classification helpers.
 set(MOREDEPS_IS_IOS OFF)
 set(MOREDEPS_IS_ANDROID OFF)
+set(MOREDEPS_IS_MOBILE OFF)
 if(MOREDEPS_PLATFORM MATCHES "^ios_")
   set(MOREDEPS_IS_IOS ON)
+  set(MOREDEPS_IS_MOBILE ON)
 elseif(MOREDEPS_PLATFORM MATCHES "^android_")
   set(MOREDEPS_IS_ANDROID ON)
+  set(MOREDEPS_IS_MOBILE ON)
 endif()
 
 # -----------------------------------------------------------------------------
@@ -518,7 +521,7 @@ moredeps_add_dep(ggml
 
 # --- glfw ---
 # GLFW is a desktop windowing library; no Emscripten/mobile support.
-if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_IOS)
+if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_MOBILE)
   moredeps_add_dep(glfw
     CMAKE_ARGS
       "-DBUILD_SHARED_LIBS=OFF"
@@ -829,7 +832,7 @@ moredeps_add_dep(physfs
 # No iOS backend (rcore_ios.c doesn't exist upstream).
 # Android is Makefile-only (rcore_android.c exists, but CMake doesn't support
 # PLATFORM_ANDROID yet). Both mobile targets are excluded.
-if(NOT MOREDEPS_IS_IOS)
+if(NOT MOREDEPS_IS_MOBILE)
   if(EMSCRIPTEN)
     moredeps_add_dep(raylib
       CMAKE_ARGS
@@ -853,7 +856,7 @@ endif()
 # TinyCC is Makefile-only and does not support Emscripten.
 # TinyCC does not target ARM mobile or Emscripten.
 # Its Windows PE backend (tccpe.c) also lacks ARM64 support.
-if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_IOS AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64"))
+if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_MOBILE AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64"))
   moredeps_add_dep(mtcc
     STATIC_ONLY
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/mtcc"
@@ -862,7 +865,7 @@ endif()
 
 # --- reproc ---
 # Process spawning: unsupported on web and mobile (sandboxed).
-if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_IOS)
+if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_MOBILE)
   moredeps_add_dep(reproc
     PATCH_COMMAND
       ${CMAKE_COMMAND}
