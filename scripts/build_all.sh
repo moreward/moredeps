@@ -56,6 +56,21 @@ if [[ "${PLATFORM}" == "all" ]]; then
     SHARED_FLAG="--shared"
   fi
   for p in "${PLATFORMS[@]}"; do
+    # Skip mobile platforms on hosts that can't build them.
+    case "${p}" in
+      ios_*)
+        if [[ "$(uname)" != "Darwin" ]]; then
+          echo "Skipping ${p} (requires macOS)"
+          continue
+        fi
+        ;;
+      android_*)
+        if ! command -v ndk-build &>/dev/null && [[ -z "${ANDROID_NDK:-}" ]] && [[ ! -d /opt/homebrew/share/android-ndk ]] && ! ls /usr/local/share/android-ndk-* &>/dev/null; then
+          echo "Skipping ${p} (Android NDK not found)"
+          continue
+        fi
+        ;;
+    esac
     "$0" "$p" ${SHARED_FLAG}
   done
   exit 0

@@ -413,14 +413,25 @@ jobs:
           export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh android_arm64
 
-      - name: Run link tests (build-only)
+      - name: Run link tests android_arm64
         run: |
           python tests/run_tests.py --platform android_arm64 --json-out _out/test_results_android_arm64.json || true
+
+      - name: Build android_x64
+        run: |
+          export CMAKE_C_COMPILER_LAUNCHER=ccache
+          export CMAKE_CXX_COMPILER_LAUNCHER=ccache
+          export MOREDEPS_TOP_LEVEL_PARALLEL=1
+          ./scripts/build_all.sh android_x64
+
+      - name: Run link tests android_x64
+        run: |
+          python tests/run_tests.py --platform android_x64 --json-out _out/test_results_android_x64.json || true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: android_arm64-artifacts
+          name: android-artifacts
           path: _out/
           retention-days: 1
           if-no-files-found: error
