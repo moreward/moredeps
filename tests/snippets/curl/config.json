@@ -1,6 +1,6 @@
 {
-  "extra_static_libs_macos": ["crypto", "ssl", "z"],
-  "extra_static_libs_linux": ["crypto", "ssl", "z"],
+  "extra_static_libs_macos": ["ssl", "crypto", "z"],
+  "extra_static_libs_linux": ["ssl", "crypto", "z"],
   "extra_static_libs_wasm": ["crypto", "ssl", "z"],
   "extra_static_libs_windows": ["crypto", "ssl", "z", "zs"],
   "system_libs_macos": ["idn2"],
