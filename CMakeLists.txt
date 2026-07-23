@@ -695,7 +695,8 @@ moredeps_add_dep(libunibreak
 # --- libuv ---
 # Cross-platform async I/O (epoll/kqueue/IOCP).  Node.js's event loop.
 # MIT, C99, ~1.5MB, supports Emscripten.
-if(NOT EMSCRIPTEN)
+# Android: posix_spawnattr_* needs API 28.
+if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID)
   moredeps_add_dep(libuv
     CMAKE_ARGS
       "-DLIBUV_BUILD_SHARED=OFF"
@@ -1250,7 +1251,7 @@ moredeps_add_dep(lua
 # Lua binding for libuv — async I/O from Lua.  MIT, C, ~9K LOC.
 # Note: Linux x64 CI has old system libuv; link test skipped there.
 # The library builds correctly on all platforms.
-if(NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID)
   moredeps_add_dep(luv
     STATIC_ONLY
     CMAKE_ARGS
