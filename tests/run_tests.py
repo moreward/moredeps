@@ -331,7 +331,9 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
             if resolved:
                 lines.append(f"target_link_libraries({target} PRIVATE {' '.join(resolved)})")
 
-    if sys.platform == "linux":
+    # On host Linux, add implicit libs that GNU ld needs explicitly.
+    # Android: Bionic libc includes pthread, dl, and m; GL is libGLESv3.
+    if sys.platform == "linux" and not is_mobile(platform):
         lines.append(f"target_link_libraries({target} PRIVATE m GL pthread dl)")
     elif sys.platform == "win32":
         lines.append(f"target_link_libraries({target} PRIVATE d3d11 dxgi opengl32)")
