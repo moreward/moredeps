@@ -38,6 +38,22 @@ set(LUA_LIB_SOURCES
   ${LUA_SRC_DIR}/lzio.c
 )
 
+# On iOS, system() is not available.  Drop loslib.c (os.execute, os.exit,
+# os.clock, etc.) from the build.  Embedded/mobile Lua users typically
+# don't need the os library.
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+  set(_filtered_sources)
+  foreach(_src IN LISTS LUA_LIB_SOURCES)
+    get_filename_component(_src_name "${_src}" NAME)
+    if(NOT _src_name STREQUAL "loslib.c")
+      list(APPEND _filtered_sources "${_src}")
+    endif()
+  endforeach()
+  set(LUA_LIB_SOURCES "${_filtered_sources}")
+  unset(_filtered_sources)
+  unset(_src_name)
+endif()
+
 add_library(lua ${LUA_LIB_SOURCES})
 target_include_directories(lua PUBLIC
   $<BUILD_INTERFACE:${LUA_SRC_DIR}>

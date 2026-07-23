@@ -51,6 +51,8 @@ if(NOT DEFINED MOREDEPS_PLATFORM)
     endif()
   elseif(_sys_name STREQUAL "emscripten")
     set(MOREDEPS_PLATFORM "wasm_emscripten")
+  elseif(_sys_name STREQUAL "ios")
+    set(MOREDEPS_PLATFORM "ios_${_sys_proc}")
   else()
     message(FATAL_ERROR "Unable to determine MOREDEPS_PLATFORM for ${CMAKE_SYSTEM_NAME} ${CMAKE_SYSTEM_PROCESSOR}")
   endif()
@@ -59,6 +61,15 @@ if(NOT DEFINED MOREDEPS_PLATFORM)
 endif()
 set(MOREDEPS_PLATFORM "${MOREDEPS_PLATFORM}" CACHE STRING "moredeps target platform" FORCE)
 message(STATUS "moredeps platform: ${MOREDEPS_PLATFORM}")
+
+# Platform classification helpers.
+set(MOREDEPS_IS_IOS OFF)
+set(MOREDEPS_IS_ANDROID OFF)
+if(MOREDEPS_PLATFORM MATCHES "^ios_")
+  set(MOREDEPS_IS_IOS ON)
+elseif(MOREDEPS_PLATFORM MATCHES "^android_")
+  set(MOREDEPS_IS_ANDROID ON)
+endif()
 
 # -----------------------------------------------------------------------------
 # Install / output prefix
@@ -427,7 +438,8 @@ moredeps_add_dep(dawn
 
 # --- enet ---
 # UDP networking; not usable in a browser.
-if(NOT EMSCRIPTEN)
+# iOS: clock_gettime fallback conflicts with system headers (enet bug).
+if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_IOS)
   moredeps_add_dep(enet
     CMAKE_ARGS
       "-DENET_STATIC=ON"
@@ -505,8 +517,8 @@ moredeps_add_dep(ggml
   )
 
 # --- glfw ---
-# GLFW is a desktop windowing library; it does not build for Emscripten.
-if(NOT EMSCRIPTEN)
+# GLFW is a desktop windowing library; no Emscripten/mobile support.
+if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_IOS)
   moredeps_add_dep(glfw
     CMAKE_ARGS
       "-DBUILD_SHARED_LIBS=OFF"
@@ -774,6 +786,9 @@ moredeps_add_dep(pcre2
 )
 
 # --- miniaudio ---
+# iOS: CoreFoundation/CoreAudio headers pulled in from C mode conflict
+# with Foundation's ObjC types. Needs -x objective-c or gating.
+if(NOT MOREDEPS_IS_IOS)
 moredeps_add_dep(miniaudio
   PATCH_COMMAND
     ${CMAKE_COMMAND}
@@ -786,6 +801,7 @@ moredeps_add_dep(miniaudio
     "-DMINIAUDIO_BUILD_TOOLS=OFF"
     "-DMINIAUDIO_INSTALL=ON"
 )
+endif()
 
 # --- physfs ---
 moredeps_add_dep(physfs
@@ -810,29 +826,34 @@ moredeps_add_dep(physfs
 )
 
 # --- raylib ---
-if(EMSCRIPTEN)
-  moredeps_add_dep(raylib
-    CMAKE_ARGS
-      "-DBUILD_EXAMPLES=OFF"
-      "-DBUILD_SHARED_LIBS=OFF"
-      "-DPLATFORM=Web"
-  )
-else()
-  moredeps_add_dep(raylib
-    DEPENDS glfw
-    CMAKE_ARGS
-      "-DBUILD_EXAMPLES=OFF"
-      "-DBUILD_SHARED_LIBS=OFF"
-      "-DUSE_EXTERNAL_GLFW=ON"
-      "-DOPENGL_VERSION=3.3"
-  )
+# No iOS backend (rcore_ios.c doesn't exist upstream).
+# Android is Makefile-only (rcore_android.c exists, but CMake doesn't support
+# PLATFORM_ANDROID yet). Both mobile targets are excluded.
+if(NOT MOREDEPS_IS_IOS)
+  if(EMSCRIPTEN)
+    moredeps_add_dep(raylib
+      CMAKE_ARGS
+        "-DBUILD_EXAMPLES=OFF"
+        "-DBUILD_SHARED_LIBS=OFF"
+        "-DPLATFORM=Web"
+    )
+  else()
+    moredeps_add_dep(raylib
+      DEPENDS glfw
+      CMAKE_ARGS
+        "-DBUILD_EXAMPLES=OFF"
+        "-DBUILD_SHARED_LIBS=OFF"
+        "-DUSE_EXTERNAL_GLFW=ON"
+        "-DOPENGL_VERSION=3.3"
+    )
+  endif()
 endif()
 
 # --- mtcc ---
 # TinyCC is Makefile-only and does not support Emscripten.
-# TinyCC's Windows PE backend (tccpe.c) does not have ARM64 support, so skip
-# it on Windows/ARM64 as well.
-if(NOT EMSCRIPTEN AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64"))
+# TinyCC does not target ARM mobile or Emscripten.
+# Its Windows PE backend (tccpe.c) also lacks ARM64 support.
+if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_IOS AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64"))
   moredeps_add_dep(mtcc
     STATIC_ONLY
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/mtcc"
@@ -840,8 +861,8 @@ if(NOT EMSCRIPTEN AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64
 endif()
 
 # --- reproc ---
-# Process spawning is not supported on the web.
-if(NOT EMSCRIPTEN)
+# Process spawning: unsupported on web and mobile (sandboxed).
+if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_IOS)
   moredeps_add_dep(reproc
     PATCH_COMMAND
       ${CMAKE_COMMAND}
@@ -1071,12 +1092,9 @@ set(MOREDEPS_WRAPPER_NAMES
   cgltf
   FastNoiseLite
   microui
-  minigamepad
   nanovg
-  raudio
   sokol_app
   sokol_args
-  sokol_audio
   sokol_fetch
   sokol_gfx
   sokol_glue
@@ -1098,6 +1116,23 @@ set(MOREDEPS_WRAPPER_STATIC_ONLY
   sokol_app
   sokol_glue
 )
+
+# iOS-gated wrappers:
+# - minigamepad: uses IOKit (macOS-only)
+# - raudio: wraps miniaudio (gated on iOS)
+# - sokol_audio: CoreAudio pulls in Foundation (ObjC) through iOS 26 SDK
+if(NOT MOREDEPS_IS_IOS)
+  moredeps_add_dep(minigamepad
+    STATIC_ONLY
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/minigamepad"
+  )
+  moredeps_add_dep(raudio
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/raudio"
+  )
+  moredeps_add_dep(sokol_audio
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/sokol_audio"
+  )
+endif()
 
 foreach(_name IN LISTS MOREDEPS_WRAPPER_NAMES)
   set(_source_dir "${CMAKE_CURRENT_SOURCE_DIR}/src/${_name}")
@@ -1150,6 +1185,14 @@ elseif(MOREDEPS_PLATFORM STREQUAL "wasm_emscripten")
     app:GLES3 app:WGPU
     glue:GLES3 glue:WGPU
     gp:GLES3
+  )
+elseif(MOREDEPS_PLATFORM MATCHES "^ios_")
+  # iOS: Metal and GLES3. No GLCORE33 on iOS.
+  list(APPEND _sokol_variants
+    gfx:METAL gfx:GLES3
+    app:METAL app:GLES3
+    glue:METAL glue:GLES3
+    gp:METAL gp:GLES3
   )
 endif()
 

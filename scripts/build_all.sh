@@ -25,6 +25,8 @@ PLATFORMS=(
   "windows_x64"
   "windows_arm64"
   "wasm_emscripten"
+  "ios_arm64"
+  "ios_simulator_arm64"
 )
 
 PLATFORM="${1:-}"
@@ -194,6 +196,14 @@ if [[ "${PLATFORM}" == "wasm_emscripten" ]]; then
   echo "      browser. They may be usable in non-browser WASM runtimes (WASI, Node,"
   echo "      etc.), but for browser HTTP/WebSocket/fetch use emscripten_fetch or JS"
   echo "      interop instead."
+  echo ""
+fi
+
+if [[ "${PLATFORM}" == ios_* ]]; then
+  echo ""
+  echo "NOTE: iOS builds produce static libraries only (no .dylib/.framework)."
+  echo "      glfw, raylib, mtcc, and reproc are excluded (no mobile support)."
+  echo "      Link these .a files into your Xcode project for the final app binary."
   echo ""
 fi
 

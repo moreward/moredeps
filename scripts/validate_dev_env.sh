@@ -17,6 +17,8 @@ PLATFORMS=(
   "windows_x64"
   "windows_arm64"
   "wasm_emscripten"
+  "ios_arm64"
+  "ios_simulator_arm64"
 )
 
 PLATFORM="${1:-}"
@@ -122,6 +124,17 @@ case "${PLATFORM}" in
       echo "         On macOS with Homebrew: brew install emscripten"
       echo "         Then activate it: source /path/to/emsdk/emsdk_env.sh"
     fi
+    ;;
+  ios_arm64|ios_simulator_arm64)
+    if command -v xcodebuild &> /dev/null; then
+      ok "found xcodebuild ($(xcodebuild -version 2> /dev/null | head -1))"
+    else
+      fail "missing Xcode"
+      echo "         iOS builds require Xcode (xcodebuild and the iOS SDK)."
+      echo "         Install from the Mac App Store or https://developer.apple.com/xcode/"
+    fi
+    require_command cc "Install Xcode Command Line Tools: xcode-select --install"
+    echo "  [INFO] iOS builds are macOS-only and require Xcode with iOS SDK."
     ;;
 esac
 

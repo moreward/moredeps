@@ -23,6 +23,12 @@ if(EMSCRIPTEN)
   endif()
 endif()
 
+# Fix upstream typo: uiwindow → ui_window (variable declared as ui_window).
+file(READ "${SDL3WEBGPU_BUILD_DIR}/sdl3webgpu.c" _sdl3webgpu_src)
+string(REPLACE "!uiwindow)" "!ui_window)" _sdl3webgpu_src "${_sdl3webgpu_src}")
+file(WRITE "${SDL3WEBGPU_BUILD_DIR}/sdl3webgpu.c" "${_sdl3webgpu_src}")
+unset(_sdl3webgpu_src)
+
 add_library(sdl3webgpu ${SDL3WEBGPU_BUILD_DIR}/sdl3webgpu.c)
 target_include_directories(sdl3webgpu PUBLIC
   $<BUILD_INTERFACE:${SDL3WEBGPU_BUILD_DIR}>
