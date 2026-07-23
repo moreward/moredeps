@@ -387,7 +387,7 @@ jobs:
           NDK_VER="r29"
           NDK_ZIP="android-ndk-${NDK_VER}-linux.zip"
           curl -fLO "https://dl.google.com/android/repository/${NDK_ZIP}"
-          unzip -q "${NDK_ZIP}" -d /usr/local/share
+          sudo unzip -q "${NDK_ZIP}" -d /usr/local/share
           rm "${NDK_ZIP}"
           echo "ANDROID_NDK=/usr/local/share/android-ndk-${NDK_VER}" >> "$GITHUB_ENV"
           echo "ANDROID_NDK_ROOT=/usr/local/share/android-ndk-${NDK_VER}" >> "$GITHUB_ENV"
