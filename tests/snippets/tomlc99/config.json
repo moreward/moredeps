@@ -1,0 +1,4 @@
+{
+  "link_libs": ["tomlc99"],
+  "skip_dynamic": true
+}

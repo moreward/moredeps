@@ -505,6 +505,7 @@ KNOWN_HEADERS = {
     "sdl3webgpu": ["sdl3webgpu"],
     "skribidi": ["skb"],
     "sqlite-amalgamation": ["sqlite3"],
+    "tomlc99": ["toml"],
     "stb": ["stb"],
     "tracy": ["tracy"],
     "utf8proc": ["utf8proc"],
