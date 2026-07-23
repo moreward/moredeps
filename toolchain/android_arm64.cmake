@@ -14,20 +14,25 @@ set(CMAKE_ANDROID_ARCH_ABI arm64-v8a)
 set(CMAKE_ANDROID_STL_TYPE c++_static)
 
 # Locate the NDK. The user must set ANDROID_NDK or have it on PATH.
-# Homebrew installs to /opt/homebrew/share/android-ndk (symlink).
 if(NOT DEFINED ANDROID_NDK OR ANDROID_NDK STREQUAL "")
-  if(APPLE AND EXISTS "/opt/homebrew/share/android-ndk")
+  # Check CI / standard Linux install paths.
+  file(GLOB _ndk_dirs /usr/local/share/android-ndk-*)
+  if(_ndk_dirs)
+    list(GET _ndk_dirs 0 ANDROID_NDK)
+  elseif(APPLE AND EXISTS "/opt/homebrew/share/android-ndk")
     set(ANDROID_NDK "/opt/homebrew/share/android-ndk")
-  elseif(EXISTS "/usr/local/share/android-ndk")
-    set(ANDROID_NDK "/usr/local/share/android-ndk")
+  elseif(EXISTS "$ENV{ANDROID_NDK}")
+    set(ANDROID_NDK "$ENV{ANDROID_NDK}")
+  elseif(EXISTS "$ENV{ANDROID_NDK_ROOT}")
+    set(ANDROID_NDK "$ENV{ANDROID_NDK_ROOT}")
   else()
-    # Try to find ndk-build on PATH and derive NDK root.
     find_program(NDK_BUILD ndk-build)
     if(NDK_BUILD)
       get_filename_component(ANDROID_NDK "${NDK_BUILD}" DIRECTORY)
       get_filename_component(ANDROID_NDK "${ANDROID_NDK}" DIRECTORY)
     endif()
   endif()
+  unset(_ndk_dirs)
 endif()
 
 if(ANDROID_NDK)
