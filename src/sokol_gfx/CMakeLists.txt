@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-if(APPLE AND TRUE)
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
   project(sokol_gfx LANGUAGES C OBJC)
 else()
   project(sokol_gfx LANGUAGES C)
@@ -20,7 +20,7 @@ endif()
 
 
 
-if(APPLE AND TRUE)
+if(APPLE AND (CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR CMAKE_SYSTEM_NAME STREQUAL "iOS"))
   target_compile_options(sokol_gfx PRIVATE -x objective-c)
   target_link_libraries(sokol_gfx PRIVATE
     "-framework AppKit"

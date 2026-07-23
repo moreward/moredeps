@@ -692,7 +692,8 @@ moredeps_add_dep(libunibreak
 # --- libuv ---
 # Cross-platform async I/O (epoll/kqueue/IOCP).  Node.js's event loop.
 # MIT, C99, ~1.5MB, supports Emscripten.
-if(NOT EMSCRIPTEN)
+# Android: pthread_barrier_* unavailable below API 24.
+if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID)
   moredeps_add_dep(libuv
     CMAKE_ARGS
       "-DLIBUV_BUILD_SHARED=OFF"
@@ -894,6 +895,8 @@ moredeps_add_dep(sdl3
     "-DSDL_FRAMEWORK=OFF"
     "-DSDL_DEPS_SHARED=OFF"
     "-DSDL_WERROR=OFF"
+    # Android: we build native static libs only (no JNI/JAR).
+    $<$<BOOL:${MOREDEPS_IS_ANDROID}>:-DSDL_ANDROID_JAR=OFF>
     "-DSDL_KMSDRM=OFF"
     "-DSDL_SNDIO=OFF"
     "-DSDL_OSS=OFF"
@@ -915,12 +918,15 @@ moredeps_add_dep(sdl3
 # --- sdl3webgpu ---
 # Upstream CMakeLists is missing cmake_minimum_required and links against
 # targets that are built in separate ExternalProjects. We wrap it.
+# sdl3webgpu has no Android surface creation path (needs ANativeWindow).
 # On Emscripten we compile with -DWEBGPU_BACKEND_EMDAWNWEBGPU so that
 # sdl3webgpu uses the emdawnwebgpu surface descriptor types.
+if(NOT MOREDEPS_IS_ANDROID)
 moredeps_add_dep(sdl3webgpu
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/sdl3webgpu"
   DEPENDS sdl3 dawn
 )
+endif()
 
 # --- SheenBidi ---
 moredeps_add_dep(SheenBidi
@@ -1096,12 +1102,8 @@ set(MOREDEPS_WRAPPER_NAMES
   FastNoiseLite
   microui
   nanovg
-  sokol_app
   sokol_args
   sokol_fetch
-  sokol_gfx
-  sokol_glue
-  sokol_gp
   sokol_log
   sokol_time
   stb_image
@@ -1120,10 +1122,19 @@ set(MOREDEPS_WRAPPER_STATIC_ONLY
   sokol_glue
 )
 
-# iOS-gated wrappers:
-# - minigamepad: uses IOKit (macOS-only)
-# - raudio: wraps miniaudio (gated on iOS)
-# - sokol_audio: CoreAudio pulls in Foundation (ObjC) through iOS 26 SDK
+# Base sokol wrappers (sokol_app, sokol_gfx, sokol_glue, sokol_gp) are
+# platform-specific. Desktop: GLCORE/D3D11. iOS: Metal. Android: GLES3.
+# On Android the base wrappers default to GLCORE which isn't available;
+# the GLES3 variants handle it.
+if(NOT MOREDEPS_IS_ANDROID)
+  foreach(_name IN ITEMS sokol_app sokol_gfx sokol_glue sokol_gp)
+    moredeps_add_dep(${_name}
+      SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/${_name}"
+    )
+  endforeach()
+endif()
+
+# iOS-gated wrappers (IOKit / CoreAudio):
 if(NOT MOREDEPS_IS_IOS)
   moredeps_add_dep(minigamepad
     STATIC_ONLY
@@ -1132,12 +1143,20 @@ if(NOT MOREDEPS_IS_IOS)
   moredeps_add_dep(raudio
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/raudio"
   )
+endif()
+
+# sokol_audio: CoreAudio on iOS, AAudio needs API 26 on Android
+if(NOT MOREDEPS_IS_IOS AND NOT MOREDEPS_IS_ANDROID)
   moredeps_add_dep(sokol_audio
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/sokol_audio"
   )
 endif()
 
 foreach(_name IN LISTS MOREDEPS_WRAPPER_NAMES)
+  # ubench/utest use timespec_get/TIME_UTC (not available on Android API < 26).
+  if((_name STREQUAL "ubench" OR _name STREQUAL "utest") AND MOREDEPS_IS_ANDROID)
+    continue()
+  endif()
   set(_source_dir "${CMAKE_CURRENT_SOURCE_DIR}/src/${_name}")
   if(NOT EXISTS "${_source_dir}/CMakeLists.txt")
     message(WARNING "Wrapper for ${_name} does not yet exist at ${_source_dir}; skipping.")
@@ -1197,6 +1216,14 @@ elseif(MOREDEPS_PLATFORM MATCHES "^ios_")
     glue:METAL glue:GLES3
     gp:METAL gp:GLES3
   )
+elseif(MOREDEPS_PLATFORM MATCHES "^android_")
+  # Android: GLES3 only. No GLCORE33, no Metal.
+  list(APPEND _sokol_variants
+    gfx:GLES3
+    app:GLES3
+    glue:GLES3
+    gp:GLES3
+  )
 endif()
 
 foreach(_spec IN LISTS _sokol_variants)
@@ -1216,7 +1243,7 @@ moredeps_add_dep(lua
 # Lua binding for libuv — async I/O from Lua.  MIT, C, ~9K LOC.
 # Note: Linux x64 CI has old system libuv; link test skipped there.
 # The library builds correctly on all platforms.
-if(NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID)
   moredeps_add_dep(luv
     STATIC_ONLY
     CMAKE_ARGS

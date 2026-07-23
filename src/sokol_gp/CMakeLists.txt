@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-if(APPLE)
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
   project(sokol_gp LANGUAGES C OBJC)
 else()
   project(sokol_gp LANGUAGES C)
@@ -28,7 +28,7 @@ set_target_properties(sokol_gp PROPERTIES
   POSITION_INDEPENDENT_CODE ON
 )
 
-if(APPLE)
+if(APPLE AND (CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR CMAKE_SYSTEM_NAME STREQUAL "iOS"))
   target_compile_options(sokol_gp PRIVATE -x objective-c)
   target_link_libraries(sokol_gp PRIVATE
     "-framework AppKit"

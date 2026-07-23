@@ -9,6 +9,7 @@ set(MOREDEPS_PLATFORM "android_arm64" CACHE STRING "moredeps target platform")
 
 set(CMAKE_SYSTEM_NAME Android)
 set(CMAKE_SYSTEM_VERSION 21 CACHE STRING "Minimum Android API level")
+set(ANDROID_PLATFORM_LEVEL 21 CACHE STRING "Android API level (for deps that use this var)")
 set(CMAKE_ANDROID_ARCH_ABI arm64-v8a)
 set(CMAKE_ANDROID_STL_TYPE c++_static)
 

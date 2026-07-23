@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-if(APPLE)
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
   project(sokol_app LANGUAGES C OBJC)
 else()
   project(sokol_app LANGUAGES C)
@@ -18,7 +18,7 @@ set_target_properties(sokol_app PROPERTIES
 )
 
 # Platform-specific 3D API selection.
-if(APPLE)
+if(APPLE AND (CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR CMAKE_SYSTEM_NAME STREQUAL "iOS"))
   target_compile_definitions(sokol_app PRIVATE SOKOL_METAL)
   target_compile_options(sokol_app PRIVATE -x objective-c)
   target_link_libraries(sokol_app PRIVATE
@@ -28,9 +28,9 @@ if(APPLE)
     "-framework Cocoa"
     "-framework QuartzCore"
   )
-elseif(WIN32)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_compile_definitions(sokol_app PRIVATE SOKOL_D3D11)
-elseif(EMSCRIPTEN)
+elseif(EMSCRIPTEN OR CMAKE_SYSTEM_NAME STREQUAL "Android")
   target_compile_definitions(sokol_app PRIVATE SOKOL_GLES3)
 else()
   target_compile_definitions(sokol_app PRIVATE SOKOL_GLCORE)
