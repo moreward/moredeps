@@ -218,14 +218,18 @@
                 return '<p class="error">No manifest found for this release.</p>';
             }
 
-            const platforms = ['macos_arm64', 'linux_x64', 'linux_arm64', 'windows_x64', 'windows_arm64', 'wasm_emscripten'];
+            const platforms = ['macos_arm64', 'linux_x64', 'linux_arm64', 'windows_x64', 'windows_arm64', 'wasm_emscripten', 'ios_arm64', 'ios_simulator_arm64', 'android_arm64', 'android_x64'];
             const platformLabels = {
-                'macos_arm64': 'macOS ARM64',
+                'macos_arm64': 'macOS',
                 'linux_x64': 'Linux x64',
-                'linux_arm64': 'Linux ARM64',
-                'windows_x64': 'Windows x64',
-                'windows_arm64': 'Windows ARM64',
-                'wasm_emscripten': 'WASM'
+                'linux_arm64': 'Linux ARM',
+                'windows_x64': 'Win x64',
+                'windows_arm64': 'Win ARM',
+                'wasm_emscripten': 'WASM',
+                'ios_arm64': 'iOS',
+                'ios_simulator_arm64': 'iOS Sim',
+                'android_arm64': 'Android',
+                'android_x64': 'And x64'
             };
 
             let html = '<div class="dl-toolbar">' +

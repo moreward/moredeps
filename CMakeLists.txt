@@ -441,9 +441,12 @@ moredeps_add_dep(dawn
 
 # --- enet ---
 # UDP networking; not usable in a browser.
-# iOS: clock_gettime fallback conflicts with system headers (enet bug).
-if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_IOS)
+if(NOT EMSCRIPTEN)
   moredeps_add_dep(enet
+    PATCH_COMMAND
+      ${CMAKE_COMMAND}
+      -DSOURCE_DIR=<SOURCE_DIR>
+      -P ${CMAKE_CURRENT_SOURCE_DIR}/patches/enet_ios_clock_gettime.cmake
     CMAKE_ARGS
       "-DENET_STATIC=ON"
       "-DENET_SHARED=OFF"
@@ -692,8 +695,7 @@ moredeps_add_dep(libunibreak
 # --- libuv ---
 # Cross-platform async I/O (epoll/kqueue/IOCP).  Node.js's event loop.
 # MIT, C99, ~1.5MB, supports Emscripten.
-# Android: pthread_barrier_* unavailable below API 24.
-if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID)
+if(NOT EMSCRIPTEN)
   moredeps_add_dep(libuv
     CMAKE_ARGS
       "-DLIBUV_BUILD_SHARED=OFF"
@@ -790,8 +792,8 @@ moredeps_add_dep(pcre2
 )
 
 # --- miniaudio ---
-# iOS: CoreFoundation/CoreAudio headers pulled in from C mode conflict
-# with Foundation's ObjC types. Needs -x objective-c or gating.
+# iOS 26+ SDK: CoreAudio headers pull in Foundation (ObjC). Needs ObjC
+# compilation in upstream CMakeLists — gated until upstream or SDK fix.
 if(NOT MOREDEPS_IS_IOS)
 moredeps_add_dep(miniaudio
   PATCH_COMMAND
@@ -1134,19 +1136,24 @@ if(NOT MOREDEPS_IS_ANDROID)
   endforeach()
 endif()
 
-# iOS-gated wrappers (IOKit / CoreAudio):
+# minigamepad: uses IOKit (macOS-only, not available on iOS). Keep gated.
 if(NOT MOREDEPS_IS_IOS)
   moredeps_add_dep(minigamepad
     STATIC_ONLY
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/minigamepad"
   )
+endif()
+
+# raudio wraps miniaudio — works wherever miniaudio works.
+if(NOT MOREDEPS_IS_IOS)
   moredeps_add_dep(raudio
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/raudio"
   )
 endif()
 
-# sokol_audio: CoreAudio on iOS, AAudio needs API 26 on Android
-if(NOT MOREDEPS_IS_IOS AND NOT MOREDEPS_IS_ANDROID)
+# sokol_audio: AAudio needs API 26 on Android (keep gated there).
+# iOS: patched to compile as ObjC (CoreAudio→Foundation chain).
+if(NOT MOREDEPS_IS_ANDROID)
   moredeps_add_dep(sokol_audio
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/sokol_audio"
   )
@@ -1243,7 +1250,7 @@ moredeps_add_dep(lua
 # Lua binding for libuv — async I/O from Lua.  MIT, C, ~9K LOC.
 # Note: Linux x64 CI has old system libuv; link test skipped there.
 # The library builds correctly on all platforms.
-if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID)
+if(NOT EMSCRIPTEN)
   moredeps_add_dep(luv
     STATIC_ONLY
     CMAKE_ARGS
