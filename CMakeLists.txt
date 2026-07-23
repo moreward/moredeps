@@ -1173,10 +1173,6 @@ moredeps_add_dep(lua
 if(NOT EMSCRIPTEN)
   moredeps_add_dep(luv
     STATIC_ONLY
-    PATCH_COMMAND
-      ${CMAKE_COMMAND}
-      -DSOURCE_DIR=<SOURCE_DIR>
-      -P ${CMAKE_CURRENT_SOURCE_DIR}/patches/luv-nopath.cmake
     CMAKE_ARGS
       "-DBUILD_MODULE=OFF"
       "-DBUILD_STATIC_LIBS=ON"
