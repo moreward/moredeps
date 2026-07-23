@@ -1,5 +1,6 @@
 {
   "link_libs": [
     "physfs"
-  ]
+  ],
+  "frameworks_macos": ["Foundation", "IOKit"]
 }

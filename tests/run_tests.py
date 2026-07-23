@@ -459,6 +459,23 @@ def test_dep(dep_name: str, platform: str, out_dir: Path, bin_dir: Path | None,
     # For dynamic, keep only shared/import libraries (not leftover static archives).
     dynamic_libs = [lib for lib in dynamic_libs if lib.suffix in (".so", ".dylib", ".lib")]
 
+    # For static on non-Windows, keep only .a files (not .so/.dylib leftovers
+    # from a shared build pass).  Mixing .a and .so for the same lib causes
+    # duplicate symbol errors with GNU ld.
+    if sys.platform != "win32":
+        static_libs = [lib for lib in static_libs if lib.suffix == ".a"]
+
+    # Order static libs so the dep's own library comes before its dependencies.
+    # On Linux, GNU ld resolves symbols left-to-right; undropping static
+    # archives requires dependents before the libraries they need.
+    if sys.platform == "linux":
+        def _link_order_key(p: Path) -> tuple[int, str]:
+            stem = p.stem
+            if stem.startswith("lib"):
+                stem = stem[3:]
+            return (0, stem) if stem == dep_name else (1, stem)
+        static_libs.sort(key=_link_order_key)
+
     # On Windows, static .lib files live in lib/ and import .lib in lib/import/.
     # For dynamic tests we only want the import libs.  Also skip rpath entirely
     # (MSVC link.exe doesn't understand -rpath; DLL lookup is via PATH).
