@@ -370,7 +370,7 @@ jobs:
   build-android:
     needs: configure
     if: needs.configure.outputs.android == 'true'
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -385,7 +385,7 @@ jobs:
       - name: Install Android NDK
         run: |
           NDK_VER="r29"
-          NDK_ZIP="android-ndk-${NDK_VER}-linux-arm64.zip"
+          NDK_ZIP="android-ndk-${NDK_VER}-linux.zip"
           curl -fLO "https://dl.google.com/android/repository/${NDK_ZIP}"
           unzip -q "${NDK_ZIP}" -d /usr/local/share
           rm "${NDK_ZIP}"
