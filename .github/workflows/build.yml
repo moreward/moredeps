@@ -75,7 +75,9 @@ jobs:
 
       - name: Install build tools
         run: |
-          sudo apt-get remove -y libuv1-dev libuv1 2>/dev/null || true
+          # Remove system libuv so CMake finds ours (ubuntu-24.04 has libuv1 pre-installed)
+          sudo apt-get remove -y libuv1-dev libuv1t64 libuv1 2>/dev/null || true
+          sudo rm -f /usr/lib/x86_64-linux-gnu/libuv.so* /usr/lib/aarch64-linux-gnu/libuv.so* 2>/dev/null || true
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             ninja-build ccache \
@@ -131,7 +133,9 @@ jobs:
 
       - name: Install build tools
         run: |
-          sudo apt-get remove -y libuv1-dev libuv1 2>/dev/null || true
+          # Remove system libuv so CMake finds ours (ubuntu-24.04 has libuv1 pre-installed)
+          sudo apt-get remove -y libuv1-dev libuv1t64 libuv1 2>/dev/null || true
+          sudo rm -f /usr/lib/x86_64-linux-gnu/libuv.so* /usr/lib/aarch64-linux-gnu/libuv.so* 2>/dev/null || true
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             ninja-build ccache \
@@ -187,7 +191,9 @@ jobs:
 
       - name: Install build tools
         run: |
-          sudo apt-get remove -y libuv1-dev libuv1 2>/dev/null || true
+          # Remove system libuv so CMake finds ours (ubuntu-24.04 has libuv1 pre-installed)
+          sudo apt-get remove -y libuv1-dev libuv1t64 libuv1 2>/dev/null || true
+          sudo rm -f /usr/lib/x86_64-linux-gnu/libuv.so* /usr/lib/aarch64-linux-gnu/libuv.so* 2>/dev/null || true
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             ninja-build ccache
