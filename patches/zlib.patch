@@ -1,3 +1,19 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index aaaaaaa..bbbbbbb 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -216,6 +216,11 @@ if(ZLIB_BUILD_STATIC)
+     set_target_properties(
+         zlibstatic PROPERTIES EXPORT_NAME ZLIBSTATIC OUTPUT_NAME
+                                                      z${zlib_static_suffix})
++    if(WIN32)
++        # FindZLIB on Windows looks for zlibstatic.lib; the upstream "s" suffix
++        # produces zs.lib which downstream consumers (e.g. libpng) cannot find.
++        set_target_properties(zlibstatic PROPERTIES OUTPUT_NAME zlibstatic)
++    endif()
+ endif(ZLIB_BUILD_STATIC)
+ 
+ if(ZLIB_INSTALL)
 diff --git a/zlibConfig.cmake.in b/zlibConfig.cmake.in
 index 8252ab3..0af9fad 100644
 --- a/zlibConfig.cmake.in

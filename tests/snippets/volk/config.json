@@ -1,4 +1,3 @@
 {
-  "link_libs": ["volk"],
-  "include_dirs": ["/opt/homebrew/include"]
+  "link_libs": ["volk"]
 }

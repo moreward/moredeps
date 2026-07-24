@@ -178,6 +178,14 @@ EXCLUDED = {
     ("reproc", "android_x64"): "Process spawning unusual on Android",
 }
 
+# Vulkan headers are only guaranteed on Linux CI runners. Mark volk/vma as
+# excluded everywhere else so the manifest shows a reason instead of null.
+for _vk_dep in ("volk", "vma"):
+    for _vk_plat in PLATFORMS:
+        if _vk_plat.startswith("linux_"):
+            continue
+        EXCLUDED.setdefault((_vk_dep, _vk_plat), "Vulkan headers/runtime not available on this platform")
+
 # Bundles: combined distribution zips containing multiple deps plus helpers/examples.
 BUNDLES = {
     "sandbox": ["lua", "mtcc", "physfs", "mimalloc", "pcre2", "utf8proc",

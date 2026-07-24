@@ -354,7 +354,7 @@ moredeps_add_dep(curl
     "-DUSE_NGTCP2=OFF"
     "-DUSE_QUICHE=OFF"
     "-DCURL_USE_LIBPSL=OFF"
-    "-DCURL_USE_LIBIDN2=OFF"
+    "-DUSE_LIBIDN2=OFF"
     "-DCURL_USE_LIBSSH2=OFF"
     "-DCURL_USE_LIBSSH=OFF"
     "-DCURL_USE_GSSAPI=OFF"
@@ -1044,7 +1044,7 @@ moredeps_add_dep(zlib
   PATCH_COMMAND
     ${CMAKE_COMMAND}
     -DSOURCE_DIR=<SOURCE_DIR>
-    -DPATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/patches/zlib_config_optional_components.patch
+    -DPATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/patches/zlib.patch
     -P ${CMAKE_CURRENT_SOURCE_DIR}/scripts/apply_patch.cmake
   CMAKE_ARGS
     "-DZLIB_BUILD_STATIC=ON"
@@ -1274,16 +1274,19 @@ endif()
 
 # --- VMA (Vulkan Memory Allocator) ---
 # Header-only library; our src wrapper builds a tiny static lib.
-# Needs Vulkan headers from the system.
-moredeps_add_dep(vma
-  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/vma"
-  CMAKE_ARGS
-    "-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH"
-    "-DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH"
-  SHARED_CMAKE_ARGS
-    "-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH"
-    "-DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH"
-)
+# Needs Vulkan headers. Only enabled on Linux, where the CI runners install
+# libvulkan-dev. macOS/iOS/Windows/WASM/Android runners do not have them.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  moredeps_add_dep(vma
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/vma"
+    CMAKE_ARGS
+      "-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH"
+      "-DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH"
+    SHARED_CMAKE_ARGS
+      "-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH"
+      "-DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH"
+  )
+endif()
 
 # --- meshoptimizer ---
 moredeps_add_dep(meshoptimizer
@@ -1295,23 +1298,17 @@ moredeps_add_dep(meshoptimizer
 
 # --- volk ---
 # Vulkan loader.  Header is volk.h; library installs as libvolk.a.
-# On macOS Vulkan headers live under /opt/homebrew (ARM) or /usr/local (Intel);
-# on Linux they're in /usr/include (system default); on Windows from Vulkan SDK.
-if(APPLE)
-  set(_volk_extra_flags "-DCMAKE_C_FLAGS=-I/opt/homebrew/include -I/usr/local/include")
-else()
-  set(_volk_extra_flags "")
+# Needs Vulkan headers, so only enabled on Linux alongside vma.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  moredeps_add_dep(volk
+    CMAKE_ARGS
+      "-DVOLK_INSTALL=ON"
+      "-DVOLK_PULL_IN_VULKAN=OFF"
+    SHARED_CMAKE_ARGS
+      "-DVOLK_INSTALL=ON"
+      "-DVOLK_PULL_IN_VULKAN=OFF"
+  )
 endif()
-moredeps_add_dep(volk
-  CMAKE_ARGS
-    "-DVOLK_INSTALL=ON"
-    "-DVOLK_PULL_IN_VULKAN=OFF"
-    ${_volk_extra_flags}
-  SHARED_CMAKE_ARGS
-    "-DVOLK_INSTALL=ON"
-    "-DVOLK_PULL_IN_VULKAN=OFF"
-    ${_volk_extra_flags}
-)
 
 # --- libpng ---
 # Depends on zlib (which we build first).
@@ -1320,12 +1317,14 @@ moredeps_add_dep(libpng
   CMAKE_ARGS
     "-DPNG_TESTS=OFF"
     "-DPNG_TOOLS=OFF"
+    "-DPNG_FRAMEWORK=OFF"
     "-DPNG_SHARED=OFF"
     "-DPNG_STATIC=ON"
     "-DPNG_HARDWARE_OPTIMIZATIONS=ON"
   SHARED_CMAKE_ARGS
     "-DPNG_TESTS=OFF"
     "-DPNG_TOOLS=OFF"
+    "-DPNG_FRAMEWORK=OFF"
     "-DPNG_STATIC=OFF"
     "-DPNG_SHARED=ON"
 )
