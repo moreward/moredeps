@@ -597,16 +597,20 @@ jobs:
           ls -la release_assets/
 
       - name: Create build release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: build-${{ github.sha }}
-          name: Build ${{ github.sha }}
-          body: |
-            Automated build for commit ${{ github.sha }}.
-            Platforms: ${{ inputs.platforms }}
-          files: release_assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat > /tmp/build-notes.md <<'EOF'
+          Automated build for commit ${{ github.sha }}.
+          Platforms: ${{ inputs.platforms }}
+          EOF
+          python3 scripts/upload_release_assets.py \
+            --repo ${{ github.repository }} \
+            --tag build-${{ github.sha }} \
+            --target ${{ github.sha }} \
+            --title "Build ${{ github.sha }}" \
+            --notes-file /tmp/build-notes.md \
+            --assets-dir release_assets/
 
       - name: Prune old builds (keep last 3)
         run: |
@@ -650,16 +654,21 @@ jobs:
           fi
 
       - name: Update latest release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest
-          name: Latest Build
-          body: |
-            Rolling alias for the latest successful build.
-            Current: ${{ github.sha }}
-          files: release_assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat > /tmp/latest-notes.md <<'EOF'
+          Rolling alias for the latest successful build.
+          Current: ${{ github.sha }}
+          EOF
+          python3 scripts/upload_release_assets.py \
+            --repo ${{ github.repository }} \
+            --tag latest \
+            --target ${{ github.sha }} \
+            --title "Latest Build" \
+            --notes-file /tmp/latest-notes.md \
+            --assets-dir release_assets/ \
+            --sleep 1.0
 
   # ---------------------------------------------------------------------------
   # Redeploy the Pages site with the fresh moredeps.json.
