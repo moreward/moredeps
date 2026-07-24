@@ -476,7 +476,6 @@ moredeps_add_dep(flecs
 # Keep PNG/Bzip2/Brotli disabled to reduce dependencies. HarfBuzz integration
 # is enabled; FreeType is built before HarfBuzz.
 moredeps_add_dep(freetype
-  DEPENDS zlib
   CMAKE_ARGS
     "-DFT_DISABLE_ZLIB=OFF"
     "-DFT_DISABLE_BZIP2=ON"
