@@ -2,7 +2,7 @@
   "extra_static_libs_macos": ["ssl", "crypto", "z"],
   "extra_static_libs_linux": ["ssl", "crypto", "z"],
   "extra_static_libs_wasm": ["crypto", "ssl", "z"],
-  "extra_static_libs_windows": ["crypto", "ssl", "z", "zs"],
+  "extra_static_libs_windows": ["crypto", "ssl", "zlibstatic"],
   "system_libs_macos": ["idn2"],
   "frameworks_macos": ["CoreFoundation", "SystemConfiguration"],
   "system_libs_windows": ["ws2_32", "crypt32", "iphlpapi", "bcrypt"],

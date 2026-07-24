@@ -275,7 +275,7 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
             lib_paths = ' '.join(f'"{lib.as_posix()}"' for lib in libs)
             lines.append(f"target_link_libraries({target} PRIVATE {lib_paths})")
 
-        # Extra system/project libs from per-dep config.
+        # Extra project libs from per-dep config.
         # Config keys can be platform-specific: extra_static_libs_windows, etc.
         # Platform-specific keys are prepended; generic keys fill in gaps.
         extra_generic = (config.get(f"extra_{linkage}_libs", [])
@@ -284,27 +284,7 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
                           or config.get(f"extra_libs_{os_prefix}", []))
         extra = extra_platform + [e for e in extra_generic if e not in extra_platform]
 
-        # System libs are passed directly to the linker (e.g. ws2_32, winmm, crypt32, m, pthread).
-        sys_generic = config.get("system_libs", [])
-        sys_platform = config.get(f"system_libs_{os_prefix}", [])
-        system_libs = sys_platform + [s for s in sys_generic if s not in sys_platform]
-
-        # On macOS, system libraries installed by Homebrew (e.g. libusb-1.0)
-        # may not be on the default linker search path. Use find_library with
-        # common Homebrew locations, falling back to the raw library name.
-        sys_var_names = []
-        if sys.platform == "darwin" and system_libs:
-            for i, name in enumerate(system_libs):
-                var = f"MOREDEPS_SYS_LIB_{i}"
-                lines.append(f"find_library({var} NAMES {name} PATHS /opt/homebrew/lib /usr/local/lib)")
-                lines.append(f"if(NOT {var})")
-                lines.append(f"  set({var} {name})")
-                lines.append("endif()")
-                sys_var_names.append(f"${{{var}}}")
-        else:
-            sys_var_names = system_libs
-
-        if extra or sys_var_names:
+        if extra:
             resolved = []
             for name in extra:
                 if linkage == "static":
@@ -328,9 +308,32 @@ def write_cmake(build_dir: Path, dep_name: str, linkage: str, snippet: Path,
                         continue
                 else:
                     resolved.append(name)
-            resolved.extend(sys_var_names)
             if resolved:
                 lines.append(f"target_link_libraries({target} PRIVATE {' '.join(resolved)})")
+
+    # Always add system libs, even when using cmake config (e.g. SDL3 needs
+    # imm32 on Windows but its cmake target may not export every dependency).
+    sys_generic = config.get("system_libs", [])
+    sys_platform = config.get(f"system_libs_{os_prefix}", [])
+    system_libs = sys_platform + [s for s in sys_generic if s not in sys_platform]
+
+    # On macOS, system libraries installed by Homebrew (e.g. libusb-1.0)
+    # may not be on the default linker search path. Use find_library with
+    # common Homebrew locations, falling back to the raw library name.
+    sys_var_names = []
+    if sys.platform == "darwin" and system_libs:
+        for i, name in enumerate(system_libs):
+            var = f"MOREDEPS_SYS_LIB_{i}"
+            lines.append(f"find_library({var} NAMES {name} PATHS /opt/homebrew/lib /usr/local/lib)")
+            lines.append(f"if(NOT {var})")
+            lines.append(f"  set({var} {name})")
+            lines.append("endif()")
+            sys_var_names.append(f"${{{var}}}")
+    else:
+        sys_var_names = system_libs
+
+    if sys_var_names:
+        lines.append(f"target_link_libraries({target} PRIVATE {' '.join(sys_var_names)})")
 
     # On host Linux, add implicit libs that GNU ld needs explicitly.
     # Android: Bionic libc includes pthread, dl, and m; GL is libGLESv3.

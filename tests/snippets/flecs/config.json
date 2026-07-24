@@ -1,5 +1,6 @@
 {
   "link_libs": [
     "flecs_static"
-  ]
+  ],
+  "defines": ["FLECS_STATIC"]
 }

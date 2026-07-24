@@ -1,4 +1,7 @@
 {
   "link_libs": ["websockets", "websockets_static"],
-  "use_cmake_config": true
+  "extra_static_libs_macos": ["ssl", "crypto", "z"],
+  "extra_static_libs_linux": ["ssl", "crypto", "z"],
+  "extra_static_libs_windows": ["ssl", "crypto", "zlibstatic"],
+  "system_libs_windows": ["ws2_32", "crypt32"]
 }
