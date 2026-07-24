@@ -2,5 +2,5 @@
   "link_libs": ["SDL3", "SDL3-static"],
   "use_cmake_config": true,
   "skip_static_wasm": true,
-  "system_libs_windows": ["imm32"]
+  "system_libs_windows": ["imm32", "winmm", "setupapi", "cfgmgr32", "version"]
 }

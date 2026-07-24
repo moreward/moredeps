@@ -181,3 +181,6 @@
 [submodule "deps/openal-soft"]
 	path = deps/openal-soft
 	url = https://github.com/kcat/openal-soft.git
+[submodule "libdatachannel"]
+	path = deps/libdatachannel
+	url = https://github.com/paullouisageneau/libdatachannel.git

@@ -89,6 +89,7 @@ DEP_LIBRARY_NAMES = {
     "libuv": ["uv", "uv_a"],
     "libyaml": ["yaml"],
     "libwebsockets": ["websockets", "websockets_static"],
+    "libdatachannel": ["datachannel", "datachannel-static"],
     "libjpeg-turbo": ["jpeg"],
     "libpng": ["png16", "png"],
     "lua": ["lua"],
@@ -148,6 +149,7 @@ EXCLUDED = {
     ("mtcc", "wasm_emscripten"): "Target-specific C/ASM cannot compile to WASM",
     ("libuv", "wasm_emscripten"): "No libuv Emscripten platform backend",
     ("luv", "wasm_emscripten"): "Depends on libuv (no WASM backend)",
+    ("libdatachannel", "wasm_emscripten"): "WebRTC not available in the browser (use browser APIs)",
     ("reproc", "wasm_emscripten"): "Process spawning not supported on the web",
     # Windows ARM64 exclusions
     ("mtcc", "windows_arm64"): "TinyCC PE backend lacks ARM64 support",

@@ -1,0 +1,11 @@
+{
+  "link_libs": ["datachannel", "datachannel-static"],
+  "extra_static_libs": ["ssl", "crypto", "uv", "uv_a"],
+  "extra_static_libs_windows": ["ssl", "crypto", "uv", "uv_a", "zlibstatic"],
+  "extra_static_libs_linux": ["ssl", "crypto", "uv", "uv_a", "z"],
+  "extra_static_libs_macos": ["ssl", "crypto", "uv", "uv_a", "z"],
+  "extra_static_libs_wasm": [],
+  "system_libs_windows": ["ws2_32", "iphlpapi", "winmm"],
+  "system_libs_linux": ["pthread", "dl"],
+  "system_libs_macos": ["pthread"]
+}

@@ -1365,6 +1365,33 @@ moredeps_add_dep(openal-soft
     "-DALSOFT_CONFIG=OFF"
 )
 
+# --- libdatachannel ---
+# WebRTC Data Channels with libuv.  C++17, MPL-2.0.
+# Uses BoringSSL from the common prefix.  Bundled deps (libjuice, usrsctp,
+# libsrtp, plog, json) come from nested submodules.  No browser WASM support.
+if(NOT EMSCRIPTEN)
+  moredeps_add_dep(libdatachannel
+    DEPENDS boringssl libuv
+    CMAKE_ARGS
+      "-DBUILD_SHARED_LIBS=OFF"
+      "-DNO_WEBSOCKET=ON"
+      "-DNO_MEDIA=ON"
+      "-DNO_EXAMPLES=ON"
+      "-DNO_TESTS=ON"
+      "-DPREFER_SYSTEM_LIB=OFF"
+      "-DUSE_GNUTLS=OFF"
+      "-DUSE_MBEDTLS=OFF"
+    SHARED_CMAKE_ARGS
+      "-DBUILD_SHARED_LIBS=ON"
+      "-DNO_WEBSOCKET=ON"
+      "-DNO_MEDIA=ON"
+      "-DNO_EXAMPLES=ON"
+      "-DNO_TESTS=ON"
+      "-DUSE_GNUTLS=OFF"
+      "-DUSE_MBEDTLS=OFF"
+  )
+endif()
+
 # -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------
