@@ -153,6 +153,7 @@ def find_cmake_package(platform_dir: Path, dep_name: str) -> tuple[str, str] | N
         "lz4": ("lz4", "lz4::lz4"),
         "mimalloc": ("mimalloc", "mimalloc::mimalloc"),
         "utf8proc": ("utf8proc", "utf8proc::utf8proc"),
+        "vma": ("vma", "vma::vma"),
         "zstd": ("zstd", "zstd::libzstd_static"),
         "xxhash": ("xxHash", "xxHash::xxhash"),
         "libwebsockets": ("libwebsockets", "websockets"),

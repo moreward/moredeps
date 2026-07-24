@@ -1272,6 +1272,91 @@ if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID)
   )
 endif()
 
+# --- VMA (Vulkan Memory Allocator) ---
+# Header-only library; our src wrapper builds a tiny static lib.
+# Needs Vulkan headers from the system.
+moredeps_add_dep(vma
+  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/vma"
+  CMAKE_ARGS
+    "-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH"
+  SHARED_CMAKE_ARGS
+    "-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH"
+)
+
+# --- meshoptimizer ---
+moredeps_add_dep(meshoptimizer
+  CMAKE_ARGS
+    "-DMESHOPT_BUILD_DEMO=OFF"
+  SHARED_CMAKE_ARGS
+    "-DMESHOPT_BUILD_DEMO=OFF"
+)
+
+# --- volk ---
+# Vulkan loader.  Header is volk.h; library installs as libvolk.a.
+moredeps_add_dep(volk
+  CMAKE_ARGS
+    "-DVOLK_INSTALL=ON"
+    "-DVOLK_PULL_IN_VULKAN=OFF"
+    "-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH"
+  SHARED_CMAKE_ARGS
+    "-DVOLK_INSTALL=ON"
+    "-DVOLK_PULL_IN_VULKAN=OFF"
+    "-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH"
+)
+
+# --- libpng ---
+# Depends on zlib (which we build first).
+moredeps_add_dep(libpng
+  DEPENDS zlib
+  CMAKE_ARGS
+    "-DPNG_TESTS=OFF"
+    "-DPNG_TOOLS=OFF"
+    "-DPNG_SHARED=OFF"
+    "-DPNG_STATIC=ON"
+    "-DPNG_HARDWARE_OPTIMIZATIONS=ON"
+  SHARED_CMAKE_ARGS
+    "-DPNG_TESTS=OFF"
+    "-DPNG_TOOLS=OFF"
+    "-DPNG_STATIC=OFF"
+    "-DPNG_SHARED=ON"
+)
+
+# --- libjpeg-turbo ---
+moredeps_add_dep(libjpeg-turbo
+  CMAKE_ARGS
+    "-DENABLE_SHARED=OFF"
+    "-DENABLE_STATIC=ON"
+    "-DWITH_TURBOJPEG=OFF"
+    "-DWITH_JPEG8=OFF"
+    "-DWITH_SIMD=ON"
+    "-DREQUIRE_SIMD=OFF"
+  SHARED_CMAKE_ARGS
+    "-DENABLE_SHARED=ON"
+    "-DENABLE_STATIC=OFF"
+    "-DWITH_TURBOJPEG=OFF"
+    "-DWITH_JPEG8=OFF"
+)
+
+# --- OpenAL-Soft ---
+moredeps_add_dep(openal-soft
+  CMAKE_ARGS
+    "-DLIBTYPE=STATIC"
+    "-DALSOFT_UTILS=OFF"
+    "-DALSOFT_NO_CONFIG_UTIL=ON"
+    "-DALSOFT_EXAMPLES=OFF"
+    "-DALSOFT_TESTS=OFF"
+    "-DALSOFT_CONFIG=OFF"
+    "-DALSOFT_HRTF_DEFS=OFF"
+    "-DALSOFT_AMBDEC_PRESETS=OFF"
+  SHARED_CMAKE_ARGS
+    "-DLIBTYPE=SHARED"
+    "-DALSOFT_UTILS=OFF"
+    "-DALSOFT_NO_CONFIG_UTIL=ON"
+    "-DALSOFT_EXAMPLES=OFF"
+    "-DALSOFT_TESTS=OFF"
+    "-DALSOFT_CONFIG=OFF"
+)
+
 # -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------

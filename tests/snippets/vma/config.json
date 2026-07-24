@@ -1,0 +1,4 @@
+{
+  "link_libs": ["vma"],
+  "use_cmake_config": true
+}
