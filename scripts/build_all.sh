@@ -44,6 +44,11 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+# Mobile platforms (iOS, Android) don't support shared libs.
+case "${PLATFORM}" in
+  ios_*|android_*) BUILD_SHARED=0 ;;
+esac
+
 if [[ -z "${PLATFORM}" ]]; then
   echo "Usage: $0 <platform>|all [--shared]"
   echo "Supported platforms: ${PLATFORMS[*]}"
