@@ -1392,6 +1392,41 @@ if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID)
   )
 endif()
 
+# --- Jolt Physics ---
+# Rigid-body physics engine.  MIT, C++17, no external deps.
+# CMakeLists lives in Build/ subdirectory.  Disable GPU compute backends
+# (DX12, Vulkan, Metal) — CPU fallback works everywhere.
+# Jolt supports all platforms including WASM (Emscripten) and mobile.
+moredeps_add_dep(jolt
+  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/jolt/Build"
+  CMAKE_ARGS
+    "-DOVERRIDE_CXX_FLAGS=OFF"
+    "-DENABLE_ALL_WARNINGS=OFF"
+    "-DINTERPROCEDURAL_OPTIMIZATION=OFF"
+    "-DGENERATE_DEBUG_SYMBOLS=OFF"
+    "-DTARGET_UNIT_TESTS=OFF"
+    "-DTARGET_HELLO_WORLD=OFF"
+    "-DTARGET_PERFORMANCE_TEST=OFF"
+    "-DTARGET_SAMPLES=OFF"
+    "-DTARGET_VIEWER=OFF"
+    "-DJPH_USE_DX12=OFF"
+    "-DJPH_USE_VK=OFF"
+    "-DJPH_USE_MTL=OFF"
+  SHARED_CMAKE_ARGS
+    "-DOVERRIDE_CXX_FLAGS=OFF"
+    "-DENABLE_ALL_WARNINGS=OFF"
+    "-DINTERPROCEDURAL_OPTIMIZATION=OFF"
+    "-DGENERATE_DEBUG_SYMBOLS=OFF"
+    "-DTARGET_UNIT_TESTS=OFF"
+    "-DTARGET_HELLO_WORLD=OFF"
+    "-DTARGET_PERFORMANCE_TEST=OFF"
+    "-DTARGET_SAMPLES=OFF"
+    "-DTARGET_VIEWER=OFF"
+    "-DJPH_USE_DX12=OFF"
+    "-DJPH_USE_VK=OFF"
+    "-DJPH_USE_MTL=OFF"
+  )
+
 # -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------

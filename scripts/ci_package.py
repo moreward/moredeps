@@ -89,6 +89,7 @@ DEP_LIBRARY_NAMES = {
     "libuv": ["uv", "uv_a"],
     "libyaml": ["yaml"],
     "libwebsockets": ["websockets", "websockets_static"],
+    "jolt": ["Jolt"],
     "libdatachannel": ["datachannel"],
     "libjpeg-turbo": ["jpeg"],
     "libpng": ["png16", "png"],

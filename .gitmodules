@@ -184,3 +184,6 @@
 [submodule "libdatachannel"]
 	path = deps/libdatachannel
 	url = https://github.com/paullouisageneau/libdatachannel.git
+[submodule "jolt"]
+	path = deps/jolt
+	url = https://github.com/jrouwe/JoltPhysics.git
