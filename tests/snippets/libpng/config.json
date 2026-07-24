@@ -1,4 +1,4 @@
 {
-  "link_libs": ["png16"],
+  "link_libs": ["png16", "png"],
   "extra_static_libs": ["z"]
 }

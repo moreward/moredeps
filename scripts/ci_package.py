@@ -487,6 +487,16 @@ def find_license_files(dep_name: str) -> list[Path]:
         lua_h = dep_dir / "src" / "lua.h"
         if lua_h.exists():
             files.append(lua_h)  # we'll rename it to LICENSE in the zip
+    # SQLite is public domain with a blessing in sqlite3.h
+    if dep_name == "sqlite-amalgamation" and not files:
+        sqlite_h = dep_dir / "sqlite3.h"
+        if sqlite_h.exists():
+            files.append(sqlite_h)
+    # TinyCThread has zlib license embedded in source/tinycthread.h
+    if dep_name == "tinycthread" and not files:
+        tct_h = dep_dir / "source" / "tinycthread.h"
+        if tct_h.exists():
+            files.append(tct_h)
     return files
 
 
@@ -722,6 +732,10 @@ def package_dependency(dep_name: str, out_dir: Path, repo_sha: str,
         for f in license_files:
             if f.name == "lua.h" and dep_name == "lua":
                 arcname = "licenses/LICENSE"
+            elif f.name == "sqlite3.h" and dep_name == "sqlite-amalgamation":
+                arcname = "licenses/sqlite-amalgamation-blessing.txt"
+            elif f.name == "tinycthread.h" and dep_name == "tinycthread":
+                arcname = "licenses/tinycthread-LICENSE.txt"
             elif f.name.upper().startswith(("LICEN", "COPY", "LICENS")):
                 arcname = f"licenses/{dep_name}-{f.name}"
             else:
@@ -822,6 +836,10 @@ def package_bundle(bundle_name: str, dep_names: list[str], out_dir: Path, repo_s
             for f in license_files:
                 if f.name == "lua.h" and dep_name == "lua":
                     arcname = "licenses/lua-LICENSE"
+                elif f.name == "sqlite3.h" and dep_name == "sqlite-amalgamation":
+                    arcname = "licenses/sqlite-amalgamation-blessing.txt"
+                elif f.name == "tinycthread.h" and dep_name == "tinycthread":
+                    arcname = "licenses/tinycthread-LICENSE.txt"
                 elif f.name.upper().startswith(("LICEN", "COPY", "LICENS")):
                     arcname = f"licenses/{dep_name}-{f.name}"
                 else:

@@ -1,4 +1,4 @@
 {
-  "link_libs": ["OpenAL"],
+  "link_libs": ["openal", "OpenAL"],
   "frameworks_macos": ["CoreFoundation", "AudioToolbox", "CoreAudio", "IOKit"]
 }

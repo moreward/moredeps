@@ -1279,8 +1279,10 @@ moredeps_add_dep(vma
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/vma"
   CMAKE_ARGS
     "-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH"
+    "-DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH"
   SHARED_CMAKE_ARGS
     "-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH"
+    "-DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH"
 )
 
 # --- meshoptimizer ---
@@ -1293,15 +1295,22 @@ moredeps_add_dep(meshoptimizer
 
 # --- volk ---
 # Vulkan loader.  Header is volk.h; library installs as libvolk.a.
+# On macOS Vulkan headers live under /opt/homebrew (ARM) or /usr/local (Intel);
+# on Linux they're in /usr/include (system default); on Windows from Vulkan SDK.
+if(APPLE)
+  set(_volk_extra_flags "-DCMAKE_C_FLAGS=-I/opt/homebrew/include -I/usr/local/include")
+else()
+  set(_volk_extra_flags "")
+endif()
 moredeps_add_dep(volk
   CMAKE_ARGS
     "-DVOLK_INSTALL=ON"
     "-DVOLK_PULL_IN_VULKAN=OFF"
-    "-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH"
+    ${_volk_extra_flags}
   SHARED_CMAKE_ARGS
     "-DVOLK_INSTALL=ON"
     "-DVOLK_PULL_IN_VULKAN=OFF"
-    "-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH"
+    ${_volk_extra_flags}
 )
 
 # --- libpng ---
