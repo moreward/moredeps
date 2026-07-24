@@ -1369,7 +1369,7 @@ moredeps_add_dep(openal-soft
 # WebRTC Data Channels with libuv.  C++17, MPL-2.0.
 # Uses BoringSSL from the common prefix.  Bundled deps (libjuice, usrsctp,
 # libsrtp, plog, json) come from nested submodules.  No browser WASM support.
-if(NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID)
   moredeps_add_dep(libdatachannel
     DEPENDS boringssl libuv
     CMAKE_ARGS

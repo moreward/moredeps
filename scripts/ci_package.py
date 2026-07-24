@@ -150,6 +150,8 @@ EXCLUDED = {
     ("libuv", "wasm_emscripten"): "No libuv Emscripten platform backend",
     ("luv", "wasm_emscripten"): "Depends on libuv (no WASM backend)",
     ("libdatachannel", "wasm_emscripten"): "WebRTC not available in the browser (use browser APIs)",
+    ("libdatachannel", "android_arm64"): "Depends on libuv which is excluded on Android",
+    ("libdatachannel", "android_x64"): "Depends on libuv which is excluded on Android",
     ("reproc", "wasm_emscripten"): "Process spawning not supported on the web",
     # Windows ARM64 exclusions
     ("mtcc", "windows_arm64"): "TinyCC PE backend lacks ARM64 support",
