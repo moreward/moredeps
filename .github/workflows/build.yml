@@ -618,7 +618,8 @@ jobs:
             --target ${{ github.sha }} \
             --title "Build ${{ github.sha }}" \
             --notes-file /tmp/build-notes.md \
-            --assets-dir release_assets/
+            --assets-dir release_assets/ \
+            --prerelease
 
       - name: Prune old builds (keep last 3)
         run: |

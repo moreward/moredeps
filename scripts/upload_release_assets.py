@@ -87,12 +87,15 @@ def ensure_release(
     title: str,
     notes_file: str | Path,
     repo: str,
+    prerelease: bool = False,
 ) -> None:
     """Create the release if it does not exist, otherwise edit it in place."""
     notes_file = Path(notes_file)
     if not notes_file.is_file():
         log(f"Error: notes file not found: {notes_file}")
         raise FileNotFoundError(notes_file)
+
+    extra = ["--prerelease"] if prerelease else []
 
     if release_exists(tag, repo):
         log(f"Editing existing release {tag}")
@@ -110,7 +113,7 @@ def ensure_release(
                 title,
                 "--notes-file",
                 str(notes_file),
-            ]
+            ] + extra
         )
     else:
         log(f"Creating release {tag}")
@@ -128,7 +131,7 @@ def ensure_release(
                 title,
                 "--notes-file",
                 str(notes_file),
-            ]
+            ] + extra
         )
 
 
@@ -158,6 +161,12 @@ def main() -> int:
     parser.add_argument("--notes-file", help="release notes/body file (takes precedence over --notes)")
     parser.add_argument("--assets-dir", required=True, help="directory containing assets")
     parser.add_argument(
+        "--prerelease",
+        action="store_true",
+        default=False,
+        help="Mark release as a prerelease",
+    )
+    parser.add_argument(
         "--sleep",
         type=float,
         default=0.5,
@@ -185,7 +194,7 @@ def main() -> int:
         log("Error: either --notes or --notes-file is required")
         return 1
 
-    ensure_release(args.tag, args.target, args.title, notes_file, args.repo)
+    ensure_release(args.tag, args.target, args.title, notes_file, args.repo, prerelease=args.prerelease)
 
     log(f"Uploading {len(assets)} assets to release {args.tag} (repo: {args.repo})")
     for i, asset in enumerate(assets):
