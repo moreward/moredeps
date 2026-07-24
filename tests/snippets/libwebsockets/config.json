@@ -1,4 +1,4 @@
 {
-  "link_libs": ["websockets"],
+  "link_libs": ["websockets", "websockets_static"],
   "use_cmake_config": true
 }

@@ -393,6 +393,7 @@ moredeps_add_dep(curl
     "-DCURL_DISABLE_WEBSOCKETS=OFF"
   SHARED_CMAKE_ARGS
     "-DBUILD_STATIC_LIBS=OFF"
+    "-DIMPORT_LIB_SUFFIX="
 )
 
 # --- dawn ---
@@ -1040,6 +1041,11 @@ moredeps_add_dep(utf8proc
 
 # --- zlib ---
 moredeps_add_dep(zlib
+  PATCH_COMMAND
+    ${CMAKE_COMMAND}
+    -DSOURCE_DIR=<SOURCE_DIR>
+    -DPATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/patches/zlib_config_optional_components.patch
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/scripts/apply_patch.cmake
   CMAKE_ARGS
     "-DZLIB_BUILD_STATIC=ON"
     "-DZLIB_BUILD_SHARED=OFF"
