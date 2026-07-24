@@ -93,8 +93,8 @@ jobs:
         run: |
           git submodule update --init --jobs 4
           # cimgui has a nested imgui submodule that we need
-          cd deps/cimgui && git submodule update --init imgui
-          cd deps/libdatachannel && git submodule update --init --jobs 4
+          (cd deps/cimgui && git submodule update --init imgui)
+          (cd deps/libdatachannel && git submodule update --init --jobs 4)
 
       - name: Cache ccache
         uses: actions/cache@v4
@@ -152,8 +152,8 @@ jobs:
         run: |
           git submodule update --init --jobs 4
           # cimgui has a nested imgui submodule that we need
-          cd deps/cimgui && git submodule update --init imgui
-          cd deps/libdatachannel && git submodule update --init --jobs 4
+          (cd deps/cimgui && git submodule update --init imgui)
+          (cd deps/libdatachannel && git submodule update --init --jobs 4)
 
       - name: Cache ccache
         uses: actions/cache@v4
@@ -208,8 +208,8 @@ jobs:
         run: |
           git submodule update --init --jobs 4
           # cimgui has a nested imgui submodule that we need
-          cd deps/cimgui && git submodule update --init imgui
-          cd deps/libdatachannel && git submodule update --init --jobs 4
+          (cd deps/cimgui && git submodule update --init imgui)
+          (cd deps/libdatachannel && git submodule update --init --jobs 4)
 
       - name: Cache ccache
         uses: actions/cache@v4
@@ -278,8 +278,8 @@ jobs:
         run: |
           git submodule update --init --jobs 4
           # cimgui has a nested imgui submodule that we need
-          cd deps/cimgui && git submodule update --init imgui
-          cd deps/libdatachannel && git submodule update --init --jobs 4
+          (cd deps/cimgui && git submodule update --init imgui)
+          (cd deps/libdatachannel && git submodule update --init --jobs 4)
 
       - name: Cache ccache
         uses: actions/cache@v4
@@ -328,8 +328,8 @@ jobs:
       - name: Init submodules
         run: |
           git submodule update --init --jobs 4
-          cd deps/cimgui && git submodule update --init imgui
-          cd deps/libdatachannel && git submodule update --init --jobs 4
+          (cd deps/cimgui && git submodule update --init imgui)
+          (cd deps/libdatachannel && git submodule update --init --jobs 4)
 
       - name: Cache ccache
         uses: actions/cache@v4
@@ -401,8 +401,8 @@ jobs:
       - name: Init submodules
         run: |
           git submodule update --init --jobs 4
-          cd deps/cimgui && git submodule update --init imgui
-          cd deps/libdatachannel && git submodule update --init --jobs 4
+          (cd deps/cimgui && git submodule update --init imgui)
+          (cd deps/libdatachannel && git submodule update --init --jobs 4)
 
       - name: Cache ccache
         uses: actions/cache@v4
@@ -463,8 +463,8 @@ jobs:
         run: |
           git submodule update --init --jobs 4
           # cimgui has a nested imgui submodule that we need
-          cd deps/cimgui && git submodule update --init imgui
-          cd deps/libdatachannel && git submodule update --init --jobs 4
+          (cd deps/cimgui && git submodule update --init imgui)
+          (cd deps/libdatachannel && git submodule update --init --jobs 4)
         shell: bash
 
       - name: Cache sccache
@@ -520,8 +520,8 @@ jobs:
         run: |
           git submodule update --init --jobs 4
           # cimgui has a nested imgui submodule that we need
-          cd deps/cimgui && git submodule update --init imgui
-          cd deps/libdatachannel && git submodule update --init --jobs 4
+          (cd deps/cimgui && git submodule update --init imgui)
+          (cd deps/libdatachannel && git submodule update --init --jobs 4)
         shell: bash
 
       - name: Cache sccache
