@@ -1412,6 +1412,7 @@ moredeps_add_dep(jolt
     "-DJPH_USE_DX12=OFF"
     "-DJPH_USE_VK=OFF"
     "-DJPH_USE_MTL=OFF"
+    "-DUSE_STATIC_MSVC_RUNTIME_LIBRARY=OFF"
   SHARED_CMAKE_ARGS
     "-DOVERRIDE_CXX_FLAGS=OFF"
     "-DENABLE_ALL_WARNINGS=OFF"
@@ -1425,6 +1426,7 @@ moredeps_add_dep(jolt
     "-DJPH_USE_DX12=OFF"
     "-DJPH_USE_VK=OFF"
     "-DJPH_USE_MTL=OFF"
+    "-DUSE_STATIC_MSVC_RUNTIME_LIBRARY=OFF"
   )
 
 # -----------------------------------------------------------------------------

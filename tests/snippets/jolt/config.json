@@ -1,5 +1,4 @@
 {
   "link_libs": ["Jolt"],
-  "use_cmake_config": true,
   "no_run": true
 }

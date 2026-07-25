@@ -1,5 +1,9 @@
 {
   "link_libs": ["datachannel"],
-  "use_cmake_config": true,
+  "extra_static_libs": ["ssl", "crypto", "uv", "usrsctp", "juice"],
+  "extra_static_libs_windows": ["ssl", "crypto", "uv", "usrsctp", "juice", "zlibstatic"],
+  "system_libs_linux": ["pthread", "dl"],
+  "system_libs_windows": ["ws2_32", "iphlpapi", "winmm"],
+  "defines_windows": ["RTC_STATIC"],
   "no_run": true
 }
