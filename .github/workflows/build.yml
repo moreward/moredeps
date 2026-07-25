@@ -660,6 +660,14 @@ jobs:
             done
             # Move carried-forward assets into release_assets/
             cp prev_assets/* release_assets/ 2>/dev/null || true
+            # Merge manifests so rebuilt platforms don't erase carried-forward ones.
+            echo "Merging manifests..."
+            PREV_MANIFEST_URL=$(echo "$PREV_DATA" | jq -r '.assets[] | select(.name=="moredeps.json") | .browser_download_url')
+            if [ -n "$PREV_MANIFEST_URL" ] && [ "$PREV_MANIFEST_URL" != "null" ]; then
+              curl -sfL -o prev_moredeps.json "$PREV_MANIFEST_URL"
+              python scripts/merge_manifest.py moredeps.json prev_moredeps.json --out release_assets/moredeps.json
+              echo "Manifest merged successfully."
+            fi
           fi
 
       - name: Update latest release
