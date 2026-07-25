@@ -638,8 +638,10 @@
                     if (rel) loadRelease(rel, localManifest);
                 });
 
-                // Load latest by default
-                loadRelease(releases[0], localManifest);
+                // Load 'latest' release by default (the rolling alias)
+                const latestRel = releases.find(r => r.tag_name === 'latest') || releases[0];
+                releaseSelect.value = latestRel.id;
+                loadRelease(latestRel, localManifest);
 
             } catch (err) {
                 contentDiv.innerHTML = `<p class="error">Error loading releases: ${err.message}</p>`;
