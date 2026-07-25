@@ -687,7 +687,6 @@ jobs:
   # ---------------------------------------------------------------------------
   deploy-site:
     needs: release
-    if: needs.release.result == 'success'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
