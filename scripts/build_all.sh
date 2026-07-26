@@ -15,6 +15,9 @@
 
 set -euo pipefail
 
+# Dear Bindings requires the Python PLY package.
+python3 -m pip install --quiet ply 2>/dev/null || python -m pip install --quiet ply 2>/dev/null || true
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 

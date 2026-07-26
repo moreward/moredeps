@@ -335,7 +335,7 @@ def compute_build_hash(repo_root: Path, dep_name: str, platform: str,
     File hashes are computed from LF-normalized text so that Linux and
     Windows runners produce identical hashes for the same file content.
     """
-    PACKAGING_VERSION = 1  # reset: hashing is now line-ending normalized
+    PACKAGING_VERSION = 2  # bump: KNOWN_HEADERS changed, affects packaged zip contents
 
     def _file_hash(f: Path) -> str:
         h = hashlib.sha256()

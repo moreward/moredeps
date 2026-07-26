@@ -311,6 +311,13 @@ moredeps_add_dep(cimgui
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/cimgui"
 )
 
+# --- dcimgui ---
+# Dear Bindings-generated C API for Dear ImGui. Built from our top-level
+# deps/imgui (newer ImGui) and the dear_bindings generator.
+moredeps_add_dep(dcimgui
+  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/dcimgui"
+)
+
 # --- budouxc ---
 # Upstream CMakeLists includes GNUInstallDirs after add_subdirectory(src), so
 # CMAKE_INSTALL_LIBDIR is empty during install. We wrap it to avoid patching.

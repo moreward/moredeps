@@ -181,3 +181,6 @@
 [submodule "jolt"]
 	path = deps/jolt
 	url = https://github.com/jrouwe/JoltPhysics.git
+[submodule "deps/dear_bindings"]
+	path = deps/dear_bindings
+	url = https://github.com/dearimgui/dear_bindings.git

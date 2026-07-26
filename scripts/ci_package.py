@@ -75,6 +75,7 @@ DEP_LIBRARY_NAMES = {
     "cglm": ["cglm"],
     "cgltf": ["cgltf"],
     "cimgui": ["cimgui"],
+    "dcimgui": ["dcimgui"],
     "cJSON": ["cjson"],
     "curl": ["curl"],
     "dawn": ["webgpu_dawn"],
@@ -277,7 +278,7 @@ def compute_build_hash(dep_name: str, platform: str, dep_commit: str) -> str:
     logic changes in a zip-contents-affecting way.
     Mirrored in scripts/cache_restore.py.
     """
-    PACKAGING_VERSION = 1  # reset: hashing is now line-ending normalized
+    PACKAGING_VERSION = 2  # bump: KNOWN_HEADERS changed, affects packaged zip contents
     def _file_hash(f: Path) -> str:
         h = hashlib.sha256()
         # Normalize line endings so the same file hashes identically on

@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.25)
 project(cimgui LANGUAGES CXX)
 
 set(CIMGUI_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../deps/cimgui")
-set(IMGUI_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../deps/imgui")
+# cimgui upstream only supports ImGui v1.66, so pin it to the nested imgui
+# submodule rather than the top-level deps/imgui (which is newer for dcimgui).
+set(IMGUI_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../deps/cimgui/imgui")
 
 set(CIMGUI_SOURCES
   ${CIMGUI_SRC_DIR}/cimgui.cpp
