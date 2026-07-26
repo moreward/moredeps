@@ -291,3 +291,26 @@ The macOS arm64 build now produces 66 static libraries.
 - Validate `linux_x64` on a Linux host.
 - Set up CI (GitHub Actions) with caching and incremental builds.
 - Implement the manifest JSON + GitHub Releases + GitHub Pages workflow described in `docs/build_plan.md` section 5.
+
+## 2026-07-26 — Fix dcimgui build on macOS, iOS, and Android
+
+The last change added `dcimgui` (Dear Bindings-generated C API for Dear ImGui). CI showed failures on `macos_arm64`, `ios_arm64`, and `android_arm64`.
+
+### Root causes
+
+1. **Missing Python PLY on the CMake-selected interpreter.** `dear_bindings.py` requires `ply`, but the interpreter found by CMake on the GitHub Actions macOS runners (Homebrew Python) is marked as externally-managed, so the silent `pip install` in `scripts/build_all.sh` was being ignored. This caused the generator step to fail with `ModuleNotFoundError: No module named 'ply'`.
+2. **Missing `imconfig.h` in the install.** The generated `dcimgui.h` includes `"imconfig.h"`, but the wrapper only installed `dcimgui.h` and `dcimgui.json`. Link tests for Android (and any consumer) failed because the header was not on the include path.
+
+### Fixes
+
+- Updated `src/dcimgui/CMakeLists.txt` to:
+  - Detect whether the selected Python interpreter can import `ply`.
+  - If not, install `ply` into a local `--target` directory under the build tree and prepend it to `PYTHONPATH` for the generator command.
+  - Install `deps/imgui/imconfig.h` alongside `dcimgui.h`/`dcimgui.json`.
+- Removed the now-redundant and silently-failing `pip install ply` from `scripts/build_all.sh`.
+
+### Verification
+
+- Rebuilt `dcimgui` locally for `macos_arm64`, `ios_arm64`, and `android_arm64`.
+- Ran `tests/run_tests.py --deps dcimgui` for all three platforms; static link tests pass.
+- Cancelled the in-progress failing GitHub Actions run (30190766784) to avoid wasting runner time.
