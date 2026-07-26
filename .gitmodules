@@ -163,15 +163,9 @@
 [submodule "deps/tomlc99"]
 	path = deps/tomlc99
 	url = https://github.com/cktan/tomlc99
-[submodule "deps/vma"]
-	path = deps/vma
-	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
 [submodule "deps/meshoptimizer"]
 	path = deps/meshoptimizer
 	url = https://github.com/zeux/meshoptimizer.git
-[submodule "deps/volk"]
-	path = deps/volk
-	url = https://github.com/zeux/volk.git
 [submodule "deps/libpng"]
 	path = deps/libpng
 	url = https://github.com/pnggroup/libpng.git

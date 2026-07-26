@@ -36,9 +36,7 @@ Each needs a `tests/snippets/<dep>/test.c` (minimal API call) and optional
 
 | Dep | Why | Size |
 |---|---|---|
-| Vulkan Memory Allocator | Header-only, essential for Vulkan | Tiny |
 | meshoptimizer | Mesh simplification & optimization | Small |
-| volk | Vulkan loader, static linking | Small |
 | libpng | PNG reference codec (faster than stb) | Medium |
 | libjpeg-turbo | Fastest JPEG codec | Medium |
 | OpenAL-Soft | Cross-platform 3D audio | Medium |

@@ -57,7 +57,7 @@ jobs:
 
           set_output 'all|linux|linux_x64' linux_x64
           set_output 'all|linux|linux_arm64' linux_arm64
-          set_output 'all|linux|wasm|wasm_emscripten' wasm_emscripten
+          set_output 'all|wasm|wasm_emscripten' wasm_emscripten
           set_output 'all|macos|macos_arm64' macos_arm64
           set_output 'all|ios' ios
           set_output 'all|android' android
@@ -348,7 +348,7 @@ jobs:
 
       - name: Run link tests ios_arm64
         run: |
-          python tests/run_tests.py --platform ios_arm64 --json-out _out/test_results_ios_arm64.json || true
+          python tests/run_tests.py --platform ios_arm64 --json-out _out/test_results_ios_arm64.json
 
       - name: Build ios_simulator_arm64
         run: |
@@ -359,7 +359,7 @@ jobs:
 
       - name: Run link tests ios_simulator_arm64
         run: |
-          python tests/run_tests.py --platform ios_simulator_arm64 --json-out _out/test_results_ios_simulator_arm64.json || true
+          python tests/run_tests.py --platform ios_simulator_arm64 --json-out _out/test_results_ios_simulator_arm64.json
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -421,7 +421,7 @@ jobs:
 
       - name: Run link tests android_arm64
         run: |
-          python tests/run_tests.py --platform android_arm64 --json-out _out/test_results_android_arm64.json || true
+          python tests/run_tests.py --platform android_arm64 --json-out _out/test_results_android_arm64.json
 
       - name: Build android_x64
         run: |
@@ -432,7 +432,7 @@ jobs:
 
       - name: Run link tests android_x64
         run: |
-          python tests/run_tests.py --platform android_x64 --json-out _out/test_results_android_x64.json || true
+          python tests/run_tests.py --platform android_x64 --json-out _out/test_results_android_x64.json
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

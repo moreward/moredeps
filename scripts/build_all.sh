@@ -230,7 +230,8 @@ if [[ "${PLATFORM}" == ios_* ]]; then
 elif [[ "${PLATFORM}" == android_* ]]; then
   echo ""
   echo "NOTE: Android builds produce static libraries only."
-  echo "      glfw, raylib, mtcc, reproc, and enet are excluded."
+  echo "      glfw, raylib, mtcc, and reproc are excluded (no mobile support)."
+  echo "      libuv, luv, and libdatachannel now build on Android (API 28+)."
   echo "      Link into your .so for the Android app."
   echo ""
 fi

@@ -135,8 +135,6 @@ DEP_LIBRARY_NAMES = {
     "ubench": ["ubench"],
     "utest": ["utest"],
     "utf8proc": ["utf8proc", "utf8proc_static"],
-    "vma": ["vma"],
-    "volk": ["volk"],
     "xxhash": ["xxhash"],
     "zlib": ["z", "zs", "zlibstatic"],
     "zstd": ["zstd", "zstd_static"],
@@ -148,11 +146,11 @@ EXCLUDED = {
     ("glfw", "wasm_emscripten"): "No desktop windowing on the web",
     ("dawn", "wasm_emscripten"): "Browser provides WebGPU (emdawnwebgpu; no prebuilt lib)",
     ("mtcc", "wasm_emscripten"): "Target-specific C/ASM cannot compile to WASM",
+    ("enet", "wasm_emscripten"): "UDP networking; not usable in a browser",
     ("libuv", "wasm_emscripten"): "No libuv Emscripten platform backend",
     ("luv", "wasm_emscripten"): "Depends on libuv (no WASM backend)",
     ("libdatachannel", "wasm_emscripten"): "WebRTC not available in the browser (use browser APIs)",
-    ("libdatachannel", "android_arm64"): "Depends on libuv which is excluded on Android",
-    ("libdatachannel", "android_x64"): "Depends on libuv which is excluded on Android",
+    ("libwebsockets", "wasm_emscripten"): "BSD sockets not available in a browser",
     ("reproc", "wasm_emscripten"): "Process spawning not supported on the web",
     # Windows ARM64 exclusions
     ("mtcc", "windows_arm64"): "TinyCC PE backend lacks ARM64 support",
@@ -165,7 +163,6 @@ EXCLUDED = {
     ("mtcc", "ios_simulator_arm64"): "TinyCC does not target ARM mobile",
     ("reproc", "ios_arm64"): "Process spawning is sandboxed on iOS",
     ("reproc", "ios_simulator_arm64"): "Process spawning is sandboxed on iOS",
-    ("enet", "ios_arm64"): "Patched: clock_gettime fallback disabled on iOS",
     ("miniaudio", "ios_arm64"): "iOS 26 SDK: CoreAudio→Foundation ObjC in C mode",
     ("miniaudio", "ios_simulator_arm64"): "iOS 26 SDK: CoreAudio→Foundation ObjC in C mode",
     ("raudio", "ios_arm64"): "Wraps miniaudio + raylib (both excluded on iOS)",
@@ -175,6 +172,8 @@ EXCLUDED = {
     # Android exclusions
     ("glfw", "android_arm64"): "Desktop-only windowing library",
     ("glfw", "android_x64"): "Desktop-only windowing library",
+    ("sdl3webgpu", "android_arm64"): "No Android surface creation path (needs ANativeWindow)",
+    ("sdl3webgpu", "android_x64"): "No Android surface creation path (needs ANativeWindow)",
     ("raylib", "android_arm64"): "Android backend is Makefile-only (no CMake)",
     ("raylib", "android_x64"): "Android backend is Makefile-only (no CMake)",
     ("mtcc", "android_arm64"): "TinyCC does not target ARM mobile",
@@ -182,14 +181,6 @@ EXCLUDED = {
     ("reproc", "android_arm64"): "Process spawning unusual on Android",
     ("reproc", "android_x64"): "Process spawning unusual on Android",
 }
-
-# Vulkan headers are only guaranteed on Linux CI runners. Mark volk/vma as
-# excluded everywhere else so the manifest shows a reason instead of null.
-for _vk_dep in ("volk", "vma"):
-    for _vk_plat in PLATFORMS:
-        if _vk_plat.startswith("linux_"):
-            continue
-        EXCLUDED.setdefault((_vk_dep, _vk_plat), "Vulkan headers/runtime not available on this platform")
 
 # Bundles: combined distribution zips containing multiple deps plus helpers/examples.
 BUNDLES = {

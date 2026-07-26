@@ -696,8 +696,7 @@ moredeps_add_dep(libunibreak
 # --- libuv ---
 # Cross-platform async I/O (epoll/kqueue/IOCP).  Node.js's event loop.
 # MIT, C99, ~1.5MB, supports Emscripten.
-# Android: posix_spawnattr_* needs API 28.
-if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID)
+if(NOT EMSCRIPTEN)
   moredeps_add_dep(libuv
     CMAKE_ARGS
       "-DLIBUV_BUILD_SHARED=OFF"
@@ -1255,9 +1254,8 @@ moredeps_add_dep(lua
 
 # --- luv ---
 # Lua binding for libuv — async I/O from Lua.  MIT, C, ~9K LOC.
-# Note: Linux x64 CI has old system libuv; link test skipped there.
-# The library builds correctly on all platforms.
-if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID)
+# The library builds correctly on all platforms where libuv is available.
+if(NOT EMSCRIPTEN)
   moredeps_add_dep(luv
     STATIC_ONLY
     CMAKE_ARGS
@@ -1272,22 +1270,6 @@ if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID)
   )
 endif()
 
-# --- VMA (Vulkan Memory Allocator) ---
-# Header-only library; our src wrapper builds a tiny static lib.
-# Needs Vulkan headers. Only enabled on Linux, where the CI runners install
-# libvulkan-dev. macOS/iOS/Windows/WASM/Android runners do not have them.
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  moredeps_add_dep(vma
-    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/vma"
-    CMAKE_ARGS
-      "-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH"
-      "-DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH"
-    SHARED_CMAKE_ARGS
-      "-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH"
-      "-DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH"
-  )
-endif()
-
 # --- meshoptimizer ---
 moredeps_add_dep(meshoptimizer
   CMAKE_ARGS
@@ -1295,20 +1277,6 @@ moredeps_add_dep(meshoptimizer
   SHARED_CMAKE_ARGS
     "-DMESHOPT_BUILD_DEMO=OFF"
 )
-
-# --- volk ---
-# Vulkan loader.  Header is volk.h; library installs as libvolk.a.
-# Needs Vulkan headers, so only enabled on Linux alongside vma.
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  moredeps_add_dep(volk
-    CMAKE_ARGS
-      "-DVOLK_INSTALL=ON"
-      "-DVOLK_PULL_IN_VULKAN=OFF"
-    SHARED_CMAKE_ARGS
-      "-DVOLK_INSTALL=ON"
-      "-DVOLK_PULL_IN_VULKAN=OFF"
-  )
-endif()
 
 # --- libpng ---
 # Depends on zlib (which we build first).
@@ -1369,7 +1337,7 @@ moredeps_add_dep(openal-soft
 # WebRTC Data Channels with libuv.  C++17, MPL-2.0.
 # Uses BoringSSL from the common prefix.  Bundled deps (libjuice, usrsctp,
 # libsrtp, plog, json) come from nested submodules.  No browser WASM support.
-if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID)
+if(NOT EMSCRIPTEN)
   moredeps_add_dep(libdatachannel
     DEPENDS boringssl libuv
     CMAKE_ARGS
