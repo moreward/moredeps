@@ -1,4 +1,5 @@
 {
   "link_libs": ["sokol_log"],
+  "system_libs_android": ["log"],
   "no_run": true
 }

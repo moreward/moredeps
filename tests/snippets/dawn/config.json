@@ -1,5 +1,6 @@
 {
   "link_libs": ["webgpu_dawn"],
   "frameworks_macos": ["Metal", "MetalKit", "Cocoa", "QuartzCore", "Foundation", "IOSurface"],
-  "use_cmake_config": true
+  "use_cmake_config": true,
+  "skip_static_android": true
 }

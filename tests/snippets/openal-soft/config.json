@@ -1,4 +1,5 @@
 {
   "link_libs": ["openal", "OpenAL"],
-  "frameworks_macos": ["CoreFoundation", "AudioToolbox", "CoreAudio", "IOKit"]
+  "frameworks_macos": ["CoreFoundation", "AudioToolbox", "CoreAudio", "IOKit"],
+  "system_libs_android": ["log"]
 }
