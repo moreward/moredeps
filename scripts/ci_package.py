@@ -559,7 +559,7 @@ KNOWN_HEADERS = {
     "libuv": ["uv"],
     "libyaml": ["yaml"],
     "libwebsockets": ["libwebsockets", "lws_config", "lws_map"],
-    "libjpeg-turbo": ["jpeglib"],
+    "libjpeg-turbo": ["jpeglib", "jconfig", "jerror", "jmorecfg"],
     "lua": ["lua", "lauxlib", "luaconf", "lualib"],
     "luv": ["luv"],
     "mtcc": ["libtcc", "tcc"],

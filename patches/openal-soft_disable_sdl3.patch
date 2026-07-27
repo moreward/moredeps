@@ -1,0 +1,16 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index baa510c7e..76eeb1e9a 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -82,7 +82,10 @@ include(GNUInstallDirs)
+ set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+ find_package(Threads)
+ find_package(PkgConfig)
+-find_package(SDL3 QUIET)
++# moredeps: disable SDL3 detection. We build SDL3 as a static library and
++# its exported CMake targets can reference missing files in the shared-library
++# build pass, breaking openal-soft configuration.
++set(SDL3_FOUND FALSE)
+ 
+ option(ALSOFT_DLOPEN  "Check for the dlopen API for loading optional libs"  ON)
+ option(ALSOFT_DLOPEN_NOTES  "Record dlopen dependencies in .note.dlopen section"  ${UNIX_ELF})
