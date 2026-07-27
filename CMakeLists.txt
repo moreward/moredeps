@@ -1322,6 +1322,11 @@ moredeps_add_dep(libjpeg-turbo
 
 # --- OpenAL-Soft ---
 moredeps_add_dep(openal-soft
+  PATCH_COMMAND
+    ${CMAKE_COMMAND}
+    -DSOURCE_DIR=<SOURCE_DIR>
+    -DPATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/patches/openal-soft_disable_sdl3.patch
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/scripts/apply_patch.cmake
   CMAKE_ARGS
     "-DLIBTYPE=STATIC"
     "-DALSOFT_UTILS=OFF"
