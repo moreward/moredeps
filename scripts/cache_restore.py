@@ -291,8 +291,13 @@ def get_dep_commit(repo_root: Path, dep_name: str) -> Optional[str]:
 
     For vendored dependencies (plain directories, not gitlinks) the tree
     SHA is its repo version; we return the repo's own commit in that case.
+    This also covers source-only dependencies under src/<dep>/.
     """
     dep_path = Path("deps") / _DIR_ALIAS.get(dep_name, dep_name)
+    if not dep_path.exists():
+        dep_path = Path("src") / dep_name
+    if not dep_path.exists():
+        return None
     try:
         import subprocess
         result = subprocess.run(

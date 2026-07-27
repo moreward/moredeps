@@ -66,6 +66,10 @@ DIR_ALIAS = {
     "lua": "lua-5.5.0",
 }
 
+# Repository URL for dependencies that live in this repo (src/<dep>/),
+# used when no submodule URL is available.
+MOREDEPS_REPO_URL = "https://github.com/moreward/moredeps"
+
 # Mapping of dependency name to the library file stems (without lib prefix and .a/.lib suffix)
 # that belong to that dependency. This is derived from the actual build outputs.
 DEP_LIBRARY_NAMES = {
@@ -185,11 +189,32 @@ EXCLUDED = {
 
 # Bundles: combined distribution zips containing multiple deps plus helpers/examples.
 BUNDLES = {
-    "sandbox": ["lua", "mtcc", "physfs", "mimalloc", "pcre2", "utf8proc",
-                "sqlite-amalgamation", "tinycthread", "libuv", "luv",
-                "libwebsockets", "boringssl",
-                "curl", "cJSON", "reproc", "zlib", "zstd", "xxhash", "stb",
-                "libyaml", "md4c", "tomlc99", "ggml"],
+    # Core runtime/language foundation.
+    "base": [
+        "lua", "mtcc", "libuv", "luv", "physfs", "pcre2", "utf8proc",
+        "sqlite-amalgamation",
+    ],
+    # Base + networking/crypto/data-format essentials for a libuv-based test harness / server.
+    "harness": [
+        "lua", "mtcc", "libuv", "luv", "physfs", "pcre2", "utf8proc",
+        "sqlite-amalgamation", "cJSON", "tomlc99", "md4c", "boringssl",
+        "curl", "libwebsockets", "zlib", "zstd", "lz4", "xxhash", "stb",
+    ],
+    # Base + graphics/text/windowing stack (skribidi includes harfbuzz/freetype/etc.).
+    "gfx": [
+        "lua", "mtcc", "libuv", "luv", "physfs", "pcre2", "utf8proc",
+        "sqlite-amalgamation", "skribidi", "harfbuzz", "SheenBidi",
+        "libunibreak", "budouxc", "freetype", "box3d", "cglm", "cgltf",
+        "dcimgui", "microui", "nanovg", "stb", "sdl3", "FastNoiseLite",
+        "dawn", "sdl3webgpu",
+    ],
+    # Example/legacy bundle for the moredeps sample project.
+    "sample_bundle": [
+        "lua", "mtcc", "physfs", "mimalloc", "pcre2", "utf8proc",
+        "sqlite-amalgamation", "tinycthread", "libuv", "luv",
+        "libwebsockets", "boringssl", "curl", "cJSON", "reproc", "zlib",
+        "zstd", "xxhash", "stb", "libyaml", "md4c", "tomlc99", "ggml",
+    ],
 }
 
 
@@ -231,8 +256,13 @@ def get_submodule_commit(dep_name: str) -> str:
     `submodules: false`). Running `git rev-parse HEAD` inside an empty
     deps/<dep> directory would walk up to the superproject and wrongly
     return the repo's own commit for every dependency.
+
+    For dependencies built from src/<dep>/ (no submodule), treat the
+    directory as vendored in this repo and return the superproject commit.
     """
     dep_path = Path("deps") / DIR_ALIAS.get(dep_name, dep_name)
+    if not dep_path.exists():
+        dep_path = Path("src") / dep_name
     if not dep_path.exists():
         return "unknown"
     try:
@@ -688,7 +718,7 @@ def package_dependency(dep_name: str, out_dir: Path, repo_sha: str,
     """Create a single zip for a dependency and return per-platform manifest entries."""
     dep_commit = get_submodule_commit(dep_name)
     dep_dir = f"deps/{DIR_ALIAS.get(dep_name, dep_name)}"
-    repo_url = submodule_urls.get(dep_dir)
+    repo_url = submodule_urls.get(dep_dir) or MOREDEPS_REPO_URL
 
     zip_name = f"moredeps-{repo_sha[:8]}-{dep_name}-{dep_commit[:8]}.zip"
     zip_path = out_dir / zip_name
@@ -733,7 +763,7 @@ def package_dependency(dep_name: str, out_dir: Path, repo_sha: str,
                 "libraries": libraries,
                 "test_status": get_test_status(dep_name, platform, test_results),
                 "filename": zip_name,
-                **({"repo_url": repo_url} if repo_url else {}),
+                "repo_url": repo_url,
             }
 
         # Add license files (best effort). Deduplicate by arcname to avoid
@@ -863,7 +893,7 @@ def package_bundle(bundle_name: str, dep_names: list[str], out_dir: Path, repo_s
         return {p: None for p in PLATFORMS}
 
     artifact_hash = sha256_file(zip_path)
-    repo_url = "https://github.com/moreward/moredeps"
+    repo_url = MOREDEPS_REPO_URL
     for entry in per_platform.values():
         if entry and entry.get("built") is True:
             entry["artifact_hash"] = artifact_hash
