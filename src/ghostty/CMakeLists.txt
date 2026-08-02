@@ -9,11 +9,30 @@ set(GHOSTTY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/ghostty_src")
 set(GHOSTTY_ZIG_CACHE "${CMAKE_CURRENT_BINARY_DIR}/zig-cache")
 set(GHOSTTY_ZIG_GLOBAL_CACHE "${CMAKE_CURRENT_BINARY_DIR}/zig-global-cache")
 
+# Detect the target platform so we know where to find the artifacts.
+# Apple platforms (macOS/iOS) are built via the xcframework path.
+# Linux and Windows install the library directly into zig-out/.
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  set(GHOSTTY_IS_APPLE ON)
+  set(GHOSTTY_APPLE_SLICE "macos-arm64_x86_64")
+  set(GHOSTTY_APPLE_LIB_NAME "ghostty-internal.a")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+  set(GHOSTTY_IS_APPLE ON)
+  if(CMAKE_OSX_SYSROOT MATCHES "Simulator")
+    set(GHOSTTY_APPLE_SLICE "ios-arm64-simulator")
+  else()
+    set(GHOSTTY_APPLE_SLICE "ios-arm64")
+  endif()
+  set(GHOSTTY_APPLE_LIB_NAME "libghostty-internal.a")
+else()
+  set(GHOSTTY_IS_APPLE OFF)
+endif()
+
 # Copy the upstream source tree into the build directory so the submodule stays
-# clean. We exclude top-level "macos" because that directory contains the
-# macOS/Swift app UI assets and is not needed for the cross-platform
-# libghostty-vt library (the pkg/macos Zig package is still copied). We also
-# exclude any git metadata or build artifacts from in-tree builds.
+# clean. For non-Apple platforms we can skip the top-level macos/ directory,
+# which contains the macOS/Swift app UI assets and is not needed for the
+# cross-platform library build. We also exclude any git metadata or build
+# artifacts from in-tree builds.
 file(REMOVE_RECURSE ${GHOSTTY_BUILD_DIR})
 file(MAKE_DIRECTORY ${GHOSTTY_BUILD_DIR})
 
@@ -25,9 +44,12 @@ foreach(_item IN LISTS _ghostty_top)
   set(_src_path ${GHOSTTY_SRC_DIR}/${_item})
   if(IS_DIRECTORY ${_src_path})
     if(_item STREQUAL ".git"
-        OR _item STREQUAL "macos"
         OR _item STREQUAL ".zig-cache"
         OR _item STREQUAL "zig-out")
+      continue()
+    endif()
+    # The top-level macos/ directory is only needed for the xcframework build.
+    if(NOT GHOSTTY_IS_APPLE AND _item STREQUAL "macos")
       continue()
     endif()
     file(COPY ${_src_path} DESTINATION ${GHOSTTY_BUILD_DIR})
@@ -54,31 +76,113 @@ endif()
 
 set(GHOSTTY_ZIG_ARGS
   build
-  -Demit-lib-vt
-  -Demit-xcframework=false
+  -Dapp-runtime=none
+  -Demit-lib-vt=false
   -Demit-macos-app=false
+  -Demit-docs=false
+  -Demit-webdata=false
+  -Demit-bench=false
+  -Demit-helpgen=false
+  -Demit-terminfo=false
+  -Demit-termcap=false
+  -Demit-themes=false
   ${GHOSTTY_ZIG_OPTIMIZE}
   --cache-dir ${GHOSTTY_ZIG_CACHE}
   --global-cache-dir ${GHOSTTY_ZIG_GLOBAL_CACHE}
 )
 
-# The cross-platform vt library artifacts produced by zig build.
-if(WIN32)
-  set(GHOSTTY_STATIC_LIB "${GHOSTTY_BUILD_DIR}/zig-out/lib/ghostty-vt-static.lib")
+set(GHOSTTY_ZIG_ARGS
+  build
+  -Dapp-runtime=none
+  -Demit-lib-vt=false
+  -Demit-macos-app=false
+  -Demit-docs=false
+  -Demit-webdata=false
+  -Demit-bench=false
+  -Demit-helpgen=false
+  -Demit-terminfo=false
+  -Demit-termcap=false
+  -Demit-themes=false
+  ${GHOSTTY_ZIG_OPTIMIZE}
+  --cache-dir ${GHOSTTY_ZIG_CACHE}
+  --global-cache-dir ${GHOSTTY_ZIG_GLOBAL_CACHE}
+)
+
+# For non-Apple platforms we must explicitly tell zig build which target we are
+# building for, because the wrapper may run on a macOS host while targeting
+# Linux or Windows. Use the MSVC ABI on Windows when the build itself is
+# running on Windows, and the GNU ABI when cross-compiling from another host.
+if(GHOSTTY_IS_APPLE)
+  list(APPEND GHOSTTY_ZIG_ARGS -Demit-xcframework=true)
+  if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    if(CMAKE_OSX_SYSROOT MATCHES "Simulator")
+      list(APPEND GHOSTTY_ZIG_ARGS -Dtarget=aarch64-ios-simulator)
+    else()
+      list(APPEND GHOSTTY_ZIG_ARGS -Dtarget=aarch64-ios)
+    endif()
+  endif()
 else()
-  set(GHOSTTY_STATIC_LIB "${GHOSTTY_BUILD_DIR}/zig-out/lib/libghostty-vt.a")
+  list(APPEND GHOSTTY_ZIG_ARGS -Demit-xcframework=false)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
+      set(GHOSTTY_ZIG_TARGET "x86_64-linux-gnu")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+      set(GHOSTTY_ZIG_TARGET "aarch64-linux-gnu")
+    endif()
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64|aarch64")
+      set(_ghostty_windows_arch "aarch64")
+    else()
+      set(_ghostty_windows_arch "x86_64")
+    endif()
+    if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
+      set(GHOSTTY_ZIG_TARGET "${_ghostty_windows_arch}-windows-msvc")
+    else()
+      set(GHOSTTY_ZIG_TARGET "${_ghostty_windows_arch}-windows-gnu")
+    endif()
+  endif()
+  if(GHOSTTY_ZIG_TARGET)
+    list(APPEND GHOSTTY_ZIG_ARGS -Dtarget=${GHOSTTY_ZIG_TARGET})
+  endif()
 endif()
-set(GHOSTTY_INCLUDE_DIR "${GHOSTTY_BUILD_DIR}/zig-out/include/ghostty")
+
+# Locate the output artifacts after the build.
+if(GHOSTTY_IS_APPLE)
+  set(GHOSTTY_XCFRAMEWORK_DIR "${GHOSTTY_BUILD_DIR}/macos/GhosttyKit.xcframework")
+  set(GHOSTTY_LIB "${GHOSTTY_XCFRAMEWORK_DIR}/${GHOSTTY_APPLE_SLICE}/${GHOSTTY_APPLE_LIB_NAME}")
+  set(GHOSTTY_HEADER "${GHOSTTY_XCFRAMEWORK_DIR}/${GHOSTTY_APPLE_SLICE}/Headers/ghostty.h")
+else()
+  set(GHOSTTY_ZIG_OUT_DIR "${GHOSTTY_BUILD_DIR}/zig-out")
+  if(WIN32)
+    set(GHOSTTY_LIB "${GHOSTTY_ZIG_OUT_DIR}/lib/ghostty-internal-static.lib")
+  else()
+    set(GHOSTTY_LIB "${GHOSTTY_ZIG_OUT_DIR}/lib/ghostty-internal.a")
+  endif()
+  set(GHOSTTY_HEADER "${GHOSTTY_ZIG_OUT_DIR}/include/ghostty.h")
+endif()
+
+# The vt headers are always produced in zig-out/include/ghostty/ regardless of
+# the target platform. Install them alongside the main embedding header.
+set(GHOSTTY_VT_HEADERS_DIR "${GHOSTTY_BUILD_DIR}/zig-out/include/ghostty")
 
 add_custom_command(
-  OUTPUT ${GHOSTTY_STATIC_LIB}
+  OUTPUT ${GHOSTTY_LIB}
   COMMAND ${ZIG_EXECUTABLE} ${GHOSTTY_ZIG_ARGS}
   WORKING_DIRECTORY ${GHOSTTY_BUILD_DIR}
-  COMMENT "Building libghostty-vt"
+  COMMENT "Building libghostty (full API)"
   USES_TERMINAL
 )
 
-add_custom_target(ghostty_build ALL DEPENDS ${GHOSTTY_STATIC_LIB})
+add_custom_target(ghostty_build ALL DEPENDS ${GHOSTTY_LIB})
 
-install(FILES ${GHOSTTY_STATIC_LIB} DESTINATION lib)
-install(DIRECTORY ${GHOSTTY_INCLUDE_DIR} DESTINATION include)
+# Install the static library with a conventional Unix name (lib prefix). On
+# Windows we keep the upstream name because MSVC .lib files do not use the
+# lib prefix convention.
+if(WIN32)
+  install(FILES ${GHOSTTY_LIB} DESTINATION lib)
+else()
+  install(FILES ${GHOSTTY_LIB} DESTINATION lib RENAME libghostty-internal.a)
+endif()
+
+install(FILES ${GHOSTTY_HEADER} DESTINATION include)
+install(DIRECTORY ${GHOSTTY_VT_HEADERS_DIR} DESTINATION include)

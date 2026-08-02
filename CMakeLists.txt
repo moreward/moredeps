@@ -493,11 +493,12 @@ moredeps_add_dep(freetype
 )
 
 # --- ghostty ---
-# Zig build. Produces the libghostty-vt static library and the shared library
-# plus the C headers (include/ghostty/vt.h). The top-level macOS app UI
-# sources are excluded from the build copy because they are not needed for
-# the cross-platform vt library.
-if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_MOBILE)
+# Zig build of the full Ghostty embedding API (ghostty.h). Produces a static
+# library plus the public C header. The build works on macOS, Linux, Windows,
+# and iOS (via the macOS-hosted xcframework). It is excluded on Emscripten and
+# Android because the full API drags in system/desktop dependencies (font
+# rendering, glslang, etc.) that do not build for those targets.
+if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID AND (NOT MOREDEPS_IS_MOBILE OR MOREDEPS_IS_IOS))
   moredeps_add_dep(ghostty
     STATIC_ONLY
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/ghostty"
