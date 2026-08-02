@@ -93,10 +93,10 @@ jobs:
         run: |
           ZIG_VERSION=0.16.0
           ZIG_ARCH=x86_64
-          ZIG_TAR="zig-linux-${ZIG_ARCH}-${ZIG_VERSION}.tar.xz"
+          ZIG_TAR="zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz"
           curl -fLO "https://ziglang.org/download/${ZIG_VERSION}/${ZIG_TAR}"
           sudo tar -xf "${ZIG_TAR}" -C /usr/local
-          sudo ln -sfn "/usr/local/zig-linux-${ZIG_ARCH}-${ZIG_VERSION}/zig" /usr/local/bin/zig
+          sudo ln -sfn "/usr/local/zig-${ZIG_ARCH}-linux-${ZIG_VERSION}/zig" /usr/local/bin/zig
           rm "${ZIG_TAR}"
           zig version
 
@@ -163,10 +163,10 @@ jobs:
         run: |
           ZIG_VERSION=0.16.0
           ZIG_ARCH=aarch64
-          ZIG_TAR="zig-linux-${ZIG_ARCH}-${ZIG_VERSION}.tar.xz"
+          ZIG_TAR="zig-${ZIG_ARCH}-linux-${ZIG_VERSION}.tar.xz"
           curl -fLO "https://ziglang.org/download/${ZIG_VERSION}/${ZIG_TAR}"
           sudo tar -xf "${ZIG_TAR}" -C /usr/local
-          sudo ln -sfn "/usr/local/zig-linux-${ZIG_ARCH}-${ZIG_VERSION}/zig" /usr/local/bin/zig
+          sudo ln -sfn "/usr/local/zig-${ZIG_ARCH}-linux-${ZIG_VERSION}/zig" /usr/local/bin/zig
           rm "${ZIG_TAR}"
           zig version
 
@@ -485,12 +485,12 @@ jobs:
         run: |
           ZIG_VERSION=0.16.0
           ZIG_ARCH=x86_64
-          ZIG_ZIP="zig-windows-${ZIG_ARCH}-${ZIG_VERSION}.zip"
+          ZIG_ZIP="zig-${ZIG_ARCH}-windows-${ZIG_VERSION}.zip"
           curl -fLO "https://ziglang.org/download/${ZIG_VERSION}/${ZIG_ZIP}"
           unzip -q "${ZIG_ZIP}" -d "$RUNNER_TEMP"
           rm "${ZIG_ZIP}"
-          echo "$RUNNER_TEMP/zig-windows-${ZIG_ARCH}-${ZIG_VERSION}" >> "$GITHUB_PATH"
-          "$RUNNER_TEMP/zig-windows-${ZIG_ARCH}-${ZIG_VERSION}/zig.exe" version
+          echo "$RUNNER_TEMP/zig-${ZIG_ARCH}-windows-${ZIG_VERSION}" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/zig-${ZIG_ARCH}-windows-${ZIG_VERSION}/zig.exe" version
         shell: bash
 
       - name: Init submodules
@@ -554,12 +554,12 @@ jobs:
         run: |
           ZIG_VERSION=0.16.0
           ZIG_ARCH=aarch64
-          ZIG_ZIP="zig-windows-${ZIG_ARCH}-${ZIG_VERSION}.zip"
+          ZIG_ZIP="zig-${ZIG_ARCH}-windows-${ZIG_VERSION}.zip"
           curl -fLO "https://ziglang.org/download/${ZIG_VERSION}/${ZIG_ZIP}"
           unzip -q "${ZIG_ZIP}" -d "$RUNNER_TEMP"
           rm "${ZIG_ZIP}"
-          echo "$RUNNER_TEMP/zig-windows-${ZIG_ARCH}-${ZIG_VERSION}" >> "$GITHUB_PATH"
-          "$RUNNER_TEMP/zig-windows-${ZIG_ARCH}-${ZIG_VERSION}/zig.exe" version
+          echo "$RUNNER_TEMP/zig-${ZIG_ARCH}-windows-${ZIG_VERSION}" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/zig-${ZIG_ARCH}-windows-${ZIG_VERSION}/zig.exe" version
         shell: bash
 
       - name: Init submodules
