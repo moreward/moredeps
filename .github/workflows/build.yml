@@ -89,6 +89,17 @@ jobs:
             libxcursor-dev libxi-dev libxext-dev libxss-dev libxtst-dev \
             libxkbcommon-dev libasound2-dev libgl1-mesa-dev libvulkan-dev
 
+      - name: Install Zig (Ghostty dependency)
+        run: |
+          ZIG_VERSION=0.16.0
+          ZIG_ARCH=x86_64
+          ZIG_TAR="zig-linux-${ZIG_ARCH}-${ZIG_VERSION}.tar.xz"
+          curl -fLO "https://ziglang.org/download/${ZIG_VERSION}/${ZIG_TAR}"
+          sudo tar -xf "${ZIG_TAR}" -C /usr/local
+          sudo ln -sfn "/usr/local/zig-linux-${ZIG_ARCH}-${ZIG_VERSION}/zig" /usr/local/bin/zig
+          rm "${ZIG_TAR}"
+          zig version
+
       - name: Init submodules
         run: |
           git submodule update --init --jobs 4
@@ -147,6 +158,17 @@ jobs:
             libx11-dev libx11-xcb-dev libxrandr-dev libxinerama-dev \
             libxcursor-dev libxi-dev libxext-dev libxss-dev libxtst-dev \
             libxkbcommon-dev libasound2-dev libgl1-mesa-dev libvulkan-dev
+
+      - name: Install Zig (Ghostty dependency)
+        run: |
+          ZIG_VERSION=0.16.0
+          ZIG_ARCH=aarch64
+          ZIG_TAR="zig-linux-${ZIG_ARCH}-${ZIG_VERSION}.tar.xz"
+          curl -fLO "https://ziglang.org/download/${ZIG_VERSION}/${ZIG_TAR}"
+          sudo tar -xf "${ZIG_TAR}" -C /usr/local
+          sudo ln -sfn "/usr/local/zig-linux-${ZIG_ARCH}-${ZIG_VERSION}/zig" /usr/local/bin/zig
+          rm "${ZIG_TAR}"
+          zig version
 
       - name: Init submodules
         run: |
@@ -272,7 +294,7 @@ jobs:
 
       - name: Install build tools
         run: |
-          brew install ninja ccache
+          brew install ninja ccache zig
 
       - name: Init submodules
         run: |
@@ -323,7 +345,7 @@ jobs:
 
       - name: Install build tools
         run: |
-          brew install ninja ccache
+          brew install ninja ccache zig
 
       - name: Init submodules
         run: |
@@ -461,6 +483,18 @@ jobs:
         run: |
           choco install ninja sccache
 
+      - name: Install Zig (Ghostty dependency)
+        run: |
+          ZIG_VERSION=0.16.0
+          ZIG_ARCH=x86_64
+          ZIG_ZIP="zig-windows-${ZIG_ARCH}-${ZIG_VERSION}.zip"
+          curl -fLO "https://ziglang.org/download/${ZIG_VERSION}/${ZIG_ZIP}"
+          unzip -q "${ZIG_ZIP}" -d "$RUNNER_TEMP"
+          rm "${ZIG_ZIP}"
+          echo "$RUNNER_TEMP/zig-windows-${ZIG_ARCH}-${ZIG_VERSION}" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/zig-windows-${ZIG_ARCH}-${ZIG_VERSION}/zig.exe" version
+        shell: bash
+
       - name: Init submodules
         run: |
           git submodule update --init --jobs 4
@@ -517,6 +551,18 @@ jobs:
       - name: Install build tools
         run: |
           choco install ninja sccache
+
+      - name: Install Zig (Ghostty dependency)
+        run: |
+          ZIG_VERSION=0.16.0
+          ZIG_ARCH=aarch64
+          ZIG_ZIP="zig-windows-${ZIG_ARCH}-${ZIG_VERSION}.zip"
+          curl -fLO "https://ziglang.org/download/${ZIG_VERSION}/${ZIG_ZIP}"
+          unzip -q "${ZIG_ZIP}" -d "$RUNNER_TEMP"
+          rm "${ZIG_ZIP}"
+          echo "$RUNNER_TEMP/zig-windows-${ZIG_ARCH}-${ZIG_VERSION}" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/zig-windows-${ZIG_ARCH}-${ZIG_VERSION}/zig.exe" version
+        shell: bash
 
       - name: Init submodules
         run: |
