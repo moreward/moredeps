@@ -337,12 +337,6 @@ jobs:
     needs: configure
     if: needs.configure.outputs.ios == 'true'
     runs-on: macos-15
-    # iOS link tests for several non-Ghostty deps (SDL3, Dawn, Sokol, curl,
-    # etc.) still have unresolved missing-framework/missing-CMake-config
-    # failures. Ghostty's own iOS link test passes. Keep the job required
-    # for producing iOS artifacts but don't let unrelated deps block the
-    # workflow until they are fixed.
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -375,6 +369,7 @@ jobs:
           ./scripts/build_all.sh ios_arm64
 
       - name: Run link tests ios_arm64
+        continue-on-error: true
         run: |
           python tests/run_tests.py --platform ios_arm64 --json-out _out/test_results_ios_arm64.json
 
@@ -386,6 +381,7 @@ jobs:
           ./scripts/build_all.sh ios_simulator_arm64
 
       - name: Run link tests ios_simulator_arm64
+        continue-on-error: true
         run: |
           python tests/run_tests.py --platform ios_simulator_arm64 --json-out _out/test_results_ios_simulator_arm64.json
 
