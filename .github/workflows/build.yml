@@ -369,7 +369,6 @@ jobs:
           ./scripts/build_all.sh ios_arm64
 
       - name: Run link tests ios_arm64
-        continue-on-error: true
         run: |
           python tests/run_tests.py --platform ios_arm64 --json-out _out/test_results_ios_arm64.json
 
@@ -381,7 +380,6 @@ jobs:
           ./scripts/build_all.sh ios_simulator_arm64
 
       - name: Run link tests ios_simulator_arm64
-        continue-on-error: true
         run: |
           python tests/run_tests.py --platform ios_simulator_arm64 --json-out _out/test_results_ios_simulator_arm64.json
 
