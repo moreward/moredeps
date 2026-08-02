@@ -11,6 +11,7 @@
 
 cmake_minimum_required(VERSION 3.25)
 project(moredeps LANGUAGES C CXX)
+enable_testing()
 
 include(ExternalProject)
 
@@ -503,6 +504,62 @@ if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID AND (NOT MOREDEPS_IS_MOBILE OR MOR
     STATIC_ONLY
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/ghostty"
   )
+
+  # Smoke test: build a tiny C program that includes ghostty.h, links against
+  # the installed static library, and calls init/info/config-new/free. The test
+  # is built on the host platform (native macOS/Linux) so the compiler is
+  # already configured for the target. Cross-compiled platforms (iOS, Windows
+  # from a Mac, Android) still get the library output but are not exercised at
+  # link/run time from this build.
+  set(_ghostty_can_run_test FALSE)
+  if(CMAKE_HOST_SYSTEM_NAME STREQUAL CMAKE_SYSTEM_NAME AND
+     CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL CMAKE_SYSTEM_PROCESSOR AND
+     NOT WIN32 AND
+     NOT MOREDEPS_IS_IOS)
+    set(_ghostty_can_run_test TRUE)
+  endif()
+
+  if(_ghostty_can_run_test)
+    set(_ghostty_test_src "${CMAKE_CURRENT_SOURCE_DIR}/tests/ghostty/smoke.c")
+    set(_ghostty_test_bin "${CMAKE_INSTALL_PREFIX}/tests/ghostty_smoke")
+    set(_ghostty_test_libs)
+    if(APPLE)
+      list(APPEND _ghostty_test_libs
+        "-framework" "Foundation"
+        "-framework" "AppKit"
+        "-framework" "CoreFoundation"
+        "-framework" "CoreText"
+        "-framework" "CoreGraphics"
+        "-framework" "Metal"
+        "-framework" "MetalKit"
+        "-framework" "OpenGL"
+        "-framework" "QuartzCore"
+        "-framework" "IOSurface"
+        "-lobjc"
+        "-lc++"
+      )
+      if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        list(APPEND _ghostty_test_libs "-framework" "Carbon")
+      endif()
+    elseif(LINUX)
+      list(APPEND _ghostty_test_libs pthread dl m stdc++)
+    endif()
+
+    add_custom_command(
+      OUTPUT ${_ghostty_test_bin}
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_INSTALL_PREFIX}/tests
+      COMMAND ${CMAKE_C_COMPILER}
+        -I${CMAKE_INSTALL_PREFIX}/include
+        -o ${_ghostty_test_bin}
+        ${_ghostty_test_src}
+        ${CMAKE_INSTALL_PREFIX}/lib/libghostty-internal.a
+        ${_ghostty_test_libs}
+      DEPENDS ghostty
+      COMMENT "Building Ghostty embedding API smoke test"
+    )
+    add_custom_target(ghostty_smoke_test ALL DEPENDS ${_ghostty_test_bin})
+    add_test(NAME ghostty_smoke COMMAND ${_ghostty_test_bin})
+  endif()
 endif()
 
 # --- glslang ---
