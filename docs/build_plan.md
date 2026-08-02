@@ -70,6 +70,7 @@ Legend:
 | `freetype` | CMake | C | `ExternalProject_Add` | `FT_DISABLE_HARFBUZZ=OFF` so HarfBuzz can be used. |
 | `ghostty` | Zig build | Z | `src/ghostty/` wrapper | Full Ghostty embedding API (`ghostty.h`). Builds on macOS, Linux, Windows, and iOS; excluded on Android and `wasm_emscripten`. |
 | `glfw` | CMake | C | `ExternalProject_Add` | Excluded on `wasm_emscripten`. |
+| `glslang` | CMake | C++ | `ExternalProject_Add` | Shader compiler; tests/binaries disabled. |
 | `harfbuzz` | CMake | C | `ExternalProject_Add` | `HB_HAVE_FREETYPE=ON`; built after FreeType. |
 | `libwebsockets` | CMake | C | `ExternalProject_Add` | BoringSSL; feature-detection flags forced for BoringSSL compatibility. **Excluded on `wasm_emscripten`.** |
 | `libunibreak` | Makefile | M | `src/libunibreak/` wrapper | No upstream CMake; wrapper builds from source. |
@@ -81,6 +82,7 @@ Legend:
 | `minigamepad` | Header-only | H | `src/minigamepad/` wrapper | None known. |
 | `mtcc` | Makefile | M | `src/mtcc/` wrapper | TinyCC. Windows x64 built with custom MSVC batch; excluded on `wasm_emscripten` and `windows_arm64`. |
 | `nanovg` | `.c` + header | H | `src/nanovg/` wrapper | None known. |
+| `oniguruma` | CMake | C | `ExternalProject_Add` | Regular expression library; used by Ghostty. |
 | `boringssl` | CMake | C | `ExternalProject_Add` | TLS backend for `curl` and `libwebsockets`. |
 | `physfs` | CMake | C | `ExternalProject_Add` | None known. |
 | `raudio` | `.c` + header | H | `src/raudio/` wrapper | None known. |
@@ -92,6 +94,7 @@ Legend:
 | `skribidi` | CMake | C | `src/skribidi/` wrapper | Depends on `harfbuzz`, `SheenBidi`, `libunibreak`, `budouxc`. Upstream fetches these; we use submodules. |
 | `sokol` | Header-only | H | `src/sokol_<mod>/` wrappers + generated backend variants | Per-module libs (static + shared where possible). Platform defaults use Metal/D3D11/GLCORE/GLES3. Backend-specific variants (`*_glcore`, `*_metal`, `*_d3d11`, `*_gles3`, `*_wgpu`) are produced. `sokol_app`/`sokol_glue` WGPU is only available on Emscripten. |
 | `sokol_gp` | Header-only | H | `src/sokol_gp/` wrapper + generated backend variants | Built against the vendored sokol headers in `deps/sokol_gp/thirdparty`; must not be mixed with top-level `sokol` libraries. Variants: `*_glcore`, `*_gles3`, `*_metal`, `*_d3d11`. No WGPU variant. |
+| `spirv-cross` | CMake | C++ | `ExternalProject_Add` | SPIR-V cross-compiler; used by Ghostty. Static libraries, CLI disabled. |
 | `sqlite-amalgamation` | CMake | C | `ExternalProject_Add` | None known. |
 | `stb` | Header-only | H | `src/stb_<lib>/` wrappers | Per-module static libraries. |
 | `tinycsocket` | CMake | C | `src/tinycsocket/` wrapper | Upstream writes into its source tree; wrapper copies to the build tree first. |

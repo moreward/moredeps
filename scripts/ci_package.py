@@ -89,6 +89,7 @@ DEP_LIBRARY_NAMES = {
     "freetype": ["freetype"],
     "ghostty": ["ghostty-internal", "ghostty-internal-static"],
     "glfw": ["glfw3"],
+    "glslang": ["glslang", "SPIRV", "OSDependent", "MachineIndependent", "GenericCodeGen", "glslang-default-resource-limits"],
     "ggml": ["ggml", "ggml-base", "ggml-cpu", "ggml-blas"],
     "harfbuzz": ["harfbuzz", "harfbuzz-subset"],
     "libunibreak": ["libunibreak"],  # liblibunibreak.a / libunibreak.lib
@@ -113,6 +114,7 @@ DEP_LIBRARY_NAMES = {
     "mtcc": ["tcc", "tcc1"],  # libtcc.a + libtcc1.a runtime support
     "nanovg": ["nanovg"],
     "openal-soft": ["OpenAL"],
+    "oniguruma": ["onig"],
     "pcre2": ["pcre2-8", "pcre2-8-static"],
     "physfs": ["physfs", "physfs-static"],
     "raudio": ["raudio"],
@@ -131,6 +133,7 @@ DEP_LIBRARY_NAMES = {
                "sokol_log",
                "sokol_time"],
     "sokol_gp": ["sokol_gp", "sokol_gp_glcore", "sokol_gp_gles3", "sokol_gp_metal", "sokol_gp_d3d11"],
+    "spirv-cross": ["spirv-cross-c", "spirv-cross-core", "spirv-cross-glsl", "spirv-cross-cpp", "spirv-cross-reflect", "spirv-cross-msl", "spirv-cross-hlsl", "spirv-cross-util"],
     "sqlite-amalgamation": ["sqlite3"],
     "stb": ["stb_ds", "stb_image", "stb_image_resize", "stb_image_write",
             "stb_rect_pack", "stb_truetype"],

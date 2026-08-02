@@ -505,6 +505,41 @@ if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID AND (NOT MOREDEPS_IS_MOBILE OR MOR
   )
 endif()
 
+# --- glslang ---
+# Khronos reference GLSL/SPIR-V compiler and validator. Required by the
+# Ghostty embedding API for runtime shader compilation. Built as a static
+# library only, with tests and binaries disabled.
+moredeps_add_dep(glslang
+  CMAKE_ARGS
+    "-DBUILD_EXTERNAL=OFF"
+    "-DENABLE_GLSLANG_BINARIES=OFF"
+    "-DENABLE_GLSLANG_JS=OFF"
+    "-DGLSLANG_TESTS=OFF"
+    "-DENABLE_HLSL=OFF"
+    "-DENABLE_OPT=OFF"
+    "-DENABLE_CTEST=OFF"
+    "-DENABLE_SPVREMAPPER=OFF"
+)
+
+# --- oniguruma ---
+# Regular expression library used by Ghostty's embedding API. Built with
+# tests/examples disabled.
+moredeps_add_dep(oniguruma
+  CMAKE_ARGS
+    "-DBUILD_TESTING=OFF"
+)
+
+# --- spirv-cross ---
+# SPIR-V cross-compiler used by the Ghostty embedding API for shader
+# reflection/translation. Static library only, CLI disabled.
+moredeps_add_dep(spirv-cross
+  CMAKE_ARGS
+    "-DSPIRV_CROSS_SHARED=OFF"
+    "-DSPIRV_CROSS_STATIC=ON"
+    "-DSPIRV_CROSS_CLI=OFF"
+    "-DSPIRV_CROSS_ENABLE_TESTS=OFF"
+)
+
 # --- ggml ---
 # Tensor library for machine learning inference.  CPU-only build with
 # BLAS acceleration where available (Accelerate on macOS, OpenBLAS elsewhere).

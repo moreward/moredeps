@@ -187,3 +187,12 @@
 [submodule "deps/ghostty"]
 	path = deps/ghostty
 	url = https://github.com/ghostty-org/ghostty.git
+[submodule "deps/oniguruma"]
+	path = deps/oniguruma
+	url = https://github.com/kkos/oniguruma.git
+[submodule "deps/glslang"]
+	path = deps/glslang
+	url = https://github.com/KhronosGroup/glslang.git
+[submodule "deps/spirv-cross"]
+	path = deps/spirv-cross
+	url = https://github.com/KhronosGroup/SPIRV-Cross.git

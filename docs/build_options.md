@@ -192,6 +192,47 @@ Built via Zig. The wrapper runs in `src/ghostty/`:
 
 **Platform support:** macOS arm64 (universal x86_64+arm64), Linux x64/arm64, Windows x64/arm64, iOS arm64, iOS simulator arm64. **Excluded on `wasm_emscripten` and Android** because the full API depends on system/desktop libraries (font rendering, glslang, etc.) that do not build for those targets.
 
+### `glslang`
+
+Khronos reference GLSL/SPIR-V compiler. Built as static libraries with tests and binaries disabled.
+
+| Option | Upstream default | Proposed default | Notes |
+|---|---|---|---|
+| `BUILD_EXTERNAL` | `ON` | `OFF` | Do not build external dependencies. |
+| `ENABLE_GLSLANG_BINARIES` | `ON` | `OFF` | No glslang executable. |
+| `ENABLE_GLSLANG_JS` | `OFF` | `OFF` | No Emscripten JS build in this repo. |
+| `GLSLANG_TESTS` | varies | `OFF` | No tests. |
+| `ENABLE_HLSL` | `ON` | `OFF` | Disable HLSL input support to reduce size. |
+| `ENABLE_OPT` | `ON` | `OFF` | Disable spirv-opt dependency. |
+| `ENABLE_CTEST` | `ON` | `OFF` | No CTest. |
+| `ENABLE_SPVREMAPPER` | `ON` | `OFF` | No SPIR-V remapper. |
+
+### `oniguruma`
+
+Regular expression library used by Ghostty.
+
+| Option | Upstream default | Proposed default | Notes |
+|---|---|---|---|
+| `BUILD_TESTING` | `ON` | `OFF` | No tests. |
+
+### `spirv-cross`
+
+SPIR-V cross-compiler used by Ghostty for shader reflection/translation.
+
+| Option | Upstream default | Proposed default | Notes |
+|---|---|---|---|
+| `SPIRV_CROSS_SHARED` | `OFF` | `OFF` | No shared library. |
+| `SPIRV_CROSS_STATIC` | `ON` | `ON` | Static libraries. |
+| `SPIRV_CROSS_CLI` | `ON` | `OFF` | No executable. |
+| `SPIRV_CROSS_ENABLE_TESTS` | `ON` | `OFF` | No tests. |
+| `SPIRV_CROSS_ENABLE_GLSL` | `ON` | `ON` | Keep GLSL target. |
+| `SPIRV_CROSS_ENABLE_HLSL` | `ON` | `ON` | Keep HLSL target. |
+| `SPIRV_CROSS_ENABLE_MSL` | `ON` | `ON` | Keep MSL target. |
+| `SPIRV_CROSS_ENABLE_CPP` | `ON` | `ON` | Keep C++ target. |
+| `SPIRV_CROSS_ENABLE_REFLECT` | `ON` | `ON` | Keep JSON reflection target. |
+| `SPIRV_CROSS_ENABLE_C_API` | `ON` | `ON` | Keep C API. |
+| `SPIRV_CROSS_ENABLE_UTIL` | `ON` | `ON` | Keep util module. |
+
 ### `harfbuzz`
 
 | Option | Upstream default | Proposed default | Notes |
