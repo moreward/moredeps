@@ -58,6 +58,46 @@ foreach(_item IN LISTS _ghostty_top)
   endif()
 endforeach()
 
+# Patch upstream build.zig to build only the static embedding library on
+# non-Darwin platforms. The shared library drags in the full CRT chain on
+# Windows and duplicates compiler-rt symbols, and the moredeps wrapper only
+# consumes the static archive and header.
+file(READ "${GHOSTTY_BUILD_DIR}/build.zig" _ghostty_build_zig)
+string(REPLACE
+[==[
+        const lib_shared = try buildpkg.GhosttyLib.initShared(b, &deps);
+        const lib_static = try buildpkg.GhosttyLib.initStatic(b, &deps);
+
+        // We shouldn't have this guard but we don't currently
+        // build on macOS this way ironically so we need to fix that.
+        if (!config.target.result.os.tag.isDarwin()) {
+            lib_shared.installHeader(); // Only need one header
+            if (config.target.result.os.tag == .windows) {
+                lib_shared.install("ghostty-internal.dll");
+                lib_static.install("ghostty-internal-static.lib");
+            } else {
+                lib_shared.install("ghostty-internal.so");
+                lib_static.install("ghostty-internal.a");
+            }
+        }
+]==]
+[==[
+        const lib_static = try buildpkg.GhosttyLib.initStatic(b, &deps);
+
+        // We shouldn't have this guard but we don't currently
+        // build on macOS this way ironically so we need to fix that.
+        if (!config.target.result.os.tag.isDarwin()) {
+            lib_static.installHeader(); // Only need one header
+            if (config.target.result.os.tag == .windows) {
+                lib_static.install("ghostty-internal-static.lib");
+            } else {
+                lib_static.install("ghostty-internal.a");
+            }
+        }
+]==]
+  _ghostty_build_zig "${_ghostty_build_zig}")
+file(WRITE "${GHOSTTY_BUILD_DIR}/build.zig" "${_ghostty_build_zig}")
+
 # Map the moredeps CMake build type to a Zig optimization mode.
 if(CMAKE_BUILD_TYPE)
   string(TOUPPER "${CMAKE_BUILD_TYPE}" _bt)

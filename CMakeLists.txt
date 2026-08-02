@@ -521,7 +521,7 @@ if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID AND (NOT MOREDEPS_IS_MOBILE OR MOR
     set(_ghostty_can_run_test TRUE)
   endif()
 
-  if(_ghostty_can_run_test)
+  if(_ghostty_can_run_test AND NOT MOREDEPS_BUILD_SHARED)
     set(_ghostty_test_src "${CMAKE_CURRENT_SOURCE_DIR}/tests/ghostty/smoke.c")
     set(_ghostty_test_bin "${CMAKE_INSTALL_PREFIX}/tests/ghostty_smoke")
     set(_ghostty_test_libs)
