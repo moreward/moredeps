@@ -553,7 +553,11 @@ jobs:
       - name: Install Zig (Ghostty dependency)
         run: |
           ZIG_VERSION=0.16.0
-          ZIG_ARCH=aarch64
+          # The native aarch64 Zig 0.16.0 binary crashes with STATUS_HEAP_CORRUPTION
+          # (0xc0000374) while Ghostty is producing the fat static archive on the
+          # windows-11-arm runner. Use the x86_64 Zig binary under Windows' built-in
+          # x64 emulation; it still targets aarch64-windows-msvc below.
+          ZIG_ARCH=x86_64
           ZIG_ZIP="zig-${ZIG_ARCH}-windows-${ZIG_VERSION}.zip"
           curl -fLO "https://ziglang.org/download/${ZIG_VERSION}/${ZIG_ZIP}"
           unzip -q "${ZIG_ZIP}" -d "$RUNNER_TEMP"
