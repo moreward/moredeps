@@ -542,7 +542,7 @@ if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID AND (NOT MOREDEPS_IS_MOBILE OR MOR
         list(APPEND _ghostty_test_libs "-framework" "Carbon")
       endif()
     elseif(LINUX)
-      list(APPEND _ghostty_test_libs pthread dl m stdc++)
+      list(APPEND _ghostty_test_libs -lpthread -ldl -lm -lstdc++)
     endif()
 
     add_custom_command(
