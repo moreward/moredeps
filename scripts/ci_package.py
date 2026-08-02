@@ -87,6 +87,7 @@ DEP_LIBRARY_NAMES = {
     "FastNoiseLite": ["FastNoiseLite"],
     "flecs": ["flecs_static"],
     "freetype": ["freetype"],
+    "ghostty": ["ghostty-vt", "ghostty-vt-static"],
     "glfw": ["glfw3"],
     "ggml": ["ggml", "ggml-base", "ggml-cpu", "ggml-blas"],
     "harfbuzz": ["harfbuzz", "harfbuzz-subset"],
@@ -152,6 +153,7 @@ EXCLUDED = {
     ("dawn", "wasm_emscripten"): "Browser provides WebGPU (emdawnwebgpu; no prebuilt lib)",
     ("mtcc", "wasm_emscripten"): "Target-specific C/ASM cannot compile to WASM",
     ("enet", "wasm_emscripten"): "UDP networking; not usable in a browser",
+    ("ghostty", "wasm_emscripten"): "Zig 0.16 wasm32-emscripten target lacks std.posix constants (getrandom, IOV_MAX, PATH_MAX)",
     ("libuv", "wasm_emscripten"): "No libuv Emscripten platform backend",
     ("luv", "wasm_emscripten"): "Depends on libuv (no WASM backend)",
     ("libdatachannel", "wasm_emscripten"): "WebRTC not available in the browser (use browser APIs)",
@@ -162,6 +164,8 @@ EXCLUDED = {
     # iOS exclusions (no desktop APIs, sandboxed, or ObjC header conflicts)
     ("glfw", "ios_arm64"): "Desktop-only windowing library",
     ("glfw", "ios_simulator_arm64"): "Desktop-only windowing library",
+    ("ghostty", "ios_arm64"): "libghostty-vt is desktop-only for now",
+    ("ghostty", "ios_simulator_arm64"): "libghostty-vt is desktop-only for now",
     ("raylib", "ios_arm64"): "No iOS backend (rcore_ios.c not implemented)",
     ("raylib", "ios_simulator_arm64"): "No iOS backend (rcore_ios.c not implemented)",
     ("mtcc", "ios_arm64"): "TinyCC does not target ARM mobile",
@@ -177,6 +181,8 @@ EXCLUDED = {
     # Android exclusions
     ("glfw", "android_arm64"): "Desktop-only windowing library",
     ("glfw", "android_x64"): "Desktop-only windowing library",
+    ("ghostty", "android_arm64"): "libghostty-vt is desktop-only for now",
+    ("ghostty", "android_x64"): "libghostty-vt is desktop-only for now",
     ("sdl3webgpu", "android_arm64"): "No Android surface creation path (needs ANativeWindow)",
     ("sdl3webgpu", "android_x64"): "No Android surface creation path (needs ANativeWindow)",
     ("raylib", "android_arm64"): "Android backend is Makefile-only (no CMake)",

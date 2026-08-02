@@ -184,3 +184,6 @@
 [submodule "deps/dear_bindings"]
 	path = deps/dear_bindings
 	url = https://github.com/dearimgui/dear_bindings.git
+[submodule "deps/ghostty"]
+	path = deps/ghostty
+	url = https://github.com/ghostty-org/ghostty.git

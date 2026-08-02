@@ -50,6 +50,7 @@ Legend:
 - **H**: Header-only / implementation-macro
 - **A**: Autotools / configure
 - **B**: Bazel available
+- **Z**: Zig build
 - **X**: Special / unsupported in this infrastructure
 
 | Dep | Build system | Category | Build approach in this repo | Known exclusions / notes |
@@ -67,6 +68,7 @@ Legend:
 | `flecs` | CMake | C | `ExternalProject_Add` | None known. |
 | `fontstash` | Header-only | H | `src/fontstash/` wrapper | None known. |
 | `freetype` | CMake | C | `ExternalProject_Add` | `FT_DISABLE_HARFBUZZ=OFF` so HarfBuzz can be used. |
+| `ghostty` | Zig build | Z | `src/ghostty/` wrapper | Cross-platform `libghostty-vt`. Desktop platforms only; excluded on mobile and `wasm_emscripten` (Zig 0.16 Emscripten target is not yet functional). |
 | `glfw` | CMake | C | `ExternalProject_Add` | Excluded on `wasm_emscripten`. |
 | `harfbuzz` | CMake | C | `ExternalProject_Add` | `HB_HAVE_FREETYPE=ON`; built after FreeType. |
 | `libwebsockets` | CMake | C | `ExternalProject_Add` | BoringSSL; feature-detection flags forced for BoringSSL compatibility. **Excluded on `wasm_emscripten`.** |
@@ -126,6 +128,7 @@ moredeps/
 │   ├── budouxc/                # wrapper; upstream install paths are broken
 │   ├── FastNoiseLite/
 │   ├── fontstash/
+│   ├── ghostty/                # Zig build wrapper for libghostty-vt
 │   ├── libunibreak/            # Makefile-only wrapper
 │   ├── microui/
 │   ├── miniaudio/
@@ -308,6 +311,7 @@ Because MSVC is not available on macOS or Linux hosts, `windows_x64` and `window
 | Dependency | Issue | Resolution |
 |---|---|---|
 | `mtcc` | Makefile-based C compiler; target-specific C/ASM cannot compile to Emscripten/WASM. PE backend lacks ARM64 support. | Wrapped in `src/mtcc/CMakeLists.txt`. **Exclude** from `wasm_emscripten` and `windows_arm64`. Builds on `windows_x64`, `linux_*`, and `macos_arm64`. |
+| `ghostty` | Zig build; upstream `libghostty-vt` is a cross-platform terminal-emulation library. | Wrapped in `src/ghostty/CMakeLists.txt`. Source is copied to the build tree; top-level `macos/` UI assets are excluded. **Exclude** from `wasm_emscripten` (Zig 0.16 `wasm32-emscripten` target is not yet functional) and mobile targets. Builds on desktop platforms. |
 | `dawn` | WebGPU; heavy. | Built via `ExternalProject_Add` with `DAWN_FETCH_DEPENDENCIES=OFF`. Dawn's third-party dependencies are pre-populated as git submodules under `deps/dawn_third_party/` and `DAWN_THIRD_PARTY_DIR` points there. On native platforms a monolithic static library is produced. On Emscripten `scripts/install_dawn.cmake` stages the `emdawnwebgpu` headers and JS files. |
 | `boringssl` | CMake-based build. | Built via `ExternalProject_Add`. Used as the TLS backend for `curl` and `libwebsockets`. `OPENSSL_NO_ASM=ON` on Emscripten. |
 | `lua` | Makefile only, no CMake. | Wrapped in `src/lua/CMakeLists.txt` so the build is driven by CMake. |
@@ -442,6 +446,7 @@ The following decisions have been made and are recorded here for reference.
 9. **Emscripten SDK:** The toolchain file (`toolchain/wasm_emscripten.cmake`) locates the SDK under `libexec/` (matching Homebrew's layout) and sets `CMAKE_SYSTEM_NAME=Emscripten`.
 10. **CI matrix:** Deferred to the CI phase. Local validation is complete for `macos_arm64`, `linux_arm64`, `windows_x64`, `windows_arm64`, and `wasm_emscripten`. `linux_x64` remains to be validated on an appropriate host.
 11. **Version pins:** All `branch = ...` entries removed from `.gitmodules`; submodules are pinned to their current commits.
+12. **Ghostty / libghostty-vt:** Built via Zig with `zig build -Demit-lib-vt -Demit-xcframework=false -Demit-macos-app=false`. The source is copied to the build tree, the top-level `macos/` UI assets are excluded, and `libghostty-vt.a` plus `include/ghostty/vt.h` are installed. Desktop platforms only; excluded on `wasm_emscripten` and mobile targets.
 
 ### Remaining open questions
 

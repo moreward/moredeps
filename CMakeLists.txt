@@ -492,6 +492,18 @@ moredeps_add_dep(freetype
     "-DFT_ENABLE_ERROR_STRINGS=ON"
 )
 
+# --- ghostty ---
+# Zig build. Produces the libghostty-vt static library and the shared library
+# plus the C headers (include/ghostty/vt.h). The top-level macOS app UI
+# sources are excluded from the build copy because they are not needed for
+# the cross-platform vt library.
+if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_MOBILE)
+  moredeps_add_dep(ghostty
+    STATIC_ONLY
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/ghostty"
+  )
+endif()
+
 # --- ggml ---
 # Tensor library for machine learning inference.  CPU-only build with
 # BLAS acceleration where available (Accelerate on macOS, OpenBLAS elsewhere).
