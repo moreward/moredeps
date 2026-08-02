@@ -493,20 +493,6 @@ jobs:
           "$RUNNER_TEMP/zig-${ZIG_ARCH}-windows-${ZIG_VERSION}/zig.exe" version
         shell: bash
 
-      - name: Patch Zig stdlib for aarch64-windows-msvc (GH-ghostty)
-        run: |
-          # Zig 0.16.0's std.debug.SelfInfo.Windows has a @ptrCast alignment
-          # issue on aarch64-windows-msvc. The Zig compiler and the code we
-          # build both exercise this path when building libghostty. Add
-          # @alignCast so the build can proceed.
-          WINZIG_LIB="$RUNNER_TEMP/zig-x86_64-windows-0.16.0/lib/std/debug/SelfInfo/Windows.zig"
-          if [ -f "$WINZIG_LIB" ]; then
-            grep -n "loadNtdllProc" "$WINZIG_LIB" | head -5
-            sed -i 's|@ptrCast(try si.loadNtdllProc(@tagName(proc)))|@ptrCast(@alignCast(try si.loadNtdllProc(@tagName(proc))))|g' "$WINZIG_LIB"
-            grep -n "alignCast" "$WINZIG_LIB" | head -5
-          fi
-        shell: bash
-
       - name: Init submodules
         run: |
           git submodule update --init --jobs 4
@@ -578,6 +564,20 @@ jobs:
           rm "${ZIG_ZIP}"
           echo "$RUNNER_TEMP/zig-${ZIG_ARCH}-windows-${ZIG_VERSION}" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/zig-${ZIG_ARCH}-windows-${ZIG_VERSION}/zig.exe" version
+        shell: bash
+
+      - name: Patch Zig stdlib for aarch64-windows-msvc (GH-ghostty)
+        run: |
+          # Zig 0.16.0's std.debug.SelfInfo.Windows has a @ptrCast alignment
+          # issue on aarch64-windows-msvc. The Zig compiler and the code we
+          # build both exercise this path when building libghostty. Add
+          # @alignCast so the build can proceed.
+          WINZIG_LIB="$RUNNER_TEMP/zig-x86_64-windows-0.16.0/lib/std/debug/SelfInfo/Windows.zig"
+          if [ -f "$WINZIG_LIB" ]; then
+            grep -n "loadNtdllProc" "$WINZIG_LIB" | head -5
+            sed -i 's|@ptrCast(try si.loadNtdllProc(@tagName(proc)))|@ptrCast(@alignCast(try si.loadNtdllProc(@tagName(proc))))|g' "$WINZIG_LIB"
+            grep -n "alignCast" "$WINZIG_LIB" | head -5
+          fi
         shell: bash
 
       - name: Init submodules
