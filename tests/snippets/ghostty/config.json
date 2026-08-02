@@ -41,6 +41,8 @@
     "winmm",
     "ntdll"
   ],
+  "skip_static_linux": true,
+  "skip_dynamic_linux": true,
   "skip_static_wasm": true,
   "skip_static_android": true,
   "no_run": false

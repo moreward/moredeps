@@ -523,7 +523,10 @@ if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID AND (NOT MOREDEPS_IS_MOBILE OR MOR
     set(_ghostty_test_src "${CMAKE_CURRENT_SOURCE_DIR}/tests/ghostty/smoke.c")
     set(_ghostty_test_bin "${CMAKE_INSTALL_PREFIX}/tests/ghostty_smoke")
     set(_ghostty_test_libs)
+    set(_ghostty_test_compiler)
+
     if(APPLE)
+      set(_ghostty_test_compiler ${CMAKE_C_COMPILER})
       list(APPEND _ghostty_test_libs
         "-framework" "Foundation"
         "-framework" "AppKit"
@@ -542,13 +545,25 @@ if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID AND (NOT MOREDEPS_IS_MOBILE OR MOR
         list(APPEND _ghostty_test_libs "-framework" "Carbon")
       endif()
     elseif(LINUX)
-      list(APPEND _ghostty_test_libs -lpthread -ldl -lm -lstdc++)
+      # The static library is built with Zig and uses libc++ (std::__1).
+      # Linking it with the host GCC/libstdc++ will fail with ABI mismatches,
+      # so use the same Zig C++ toolchain to compile the smoke test.
+      find_program(ZIG_EXECUTABLE zig REQUIRED)
+      if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
+        set(_ghostty_zig_target "x86_64-linux-gnu")
+      elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+        set(_ghostty_zig_target "aarch64-linux-gnu")
+      else()
+        set(_ghostty_zig_target "${CMAKE_SYSTEM_PROCESSOR}-linux-gnu")
+      endif()
+      set(_ghostty_test_compiler ${ZIG_EXECUTABLE} c++ -target ${_ghostty_zig_target})
+      list(APPEND _ghostty_test_libs -lpthread -ldl -lm)
     endif()
 
     add_custom_command(
       OUTPUT ${_ghostty_test_bin}
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_INSTALL_PREFIX}/tests
-      COMMAND ${CMAKE_C_COMPILER}
+      COMMAND ${_ghostty_test_compiler}
         -I${CMAKE_INSTALL_PREFIX}/include
         -o ${_ghostty_test_bin}
         ${_ghostty_test_src}
