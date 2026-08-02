@@ -507,15 +507,17 @@ if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID AND (NOT MOREDEPS_IS_MOBILE OR MOR
 
   # Smoke test: build a tiny C program that includes ghostty.h, links against
   # the installed static library, and calls init/info/config-new/free. The test
-  # is built on the host platform (native macOS/Linux) so the compiler is
-  # already configured for the target. Cross-compiled platforms (iOS, Windows
-  # from a Mac, Android) still get the library output but are not exercised at
+  # is built on native macOS only. Linux would need the same set of system
+  # libraries (libxml2, fontconfig, etc.) that Ghostty's Zig build links
+  # against, which varies by host; cross-compiled platforms (iOS, Windows from
+  # a Mac, Android) still get the library output but are not exercised at
   # link/run time from this build.
   set(_ghostty_can_run_test FALSE)
   if(CMAKE_HOST_SYSTEM_NAME STREQUAL CMAKE_SYSTEM_NAME AND
      CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL CMAKE_SYSTEM_PROCESSOR AND
      NOT WIN32 AND
-     NOT MOREDEPS_IS_IOS)
+     NOT MOREDEPS_IS_IOS AND
+     CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(_ghostty_can_run_test TRUE)
   endif()
 
