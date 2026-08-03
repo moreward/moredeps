@@ -517,7 +517,6 @@ jobs:
           export PATH="/c/ProgramData/chocolatey/lib/sccache/tools:$PATH"
           export CMAKE_C_COMPILER_LAUNCHER=sccache
           export CMAKE_CXX_COMPILER_LAUNCHER=sccache
-          export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh windows_x64 ${{ inputs.shared && '--shared' || '' }}
         shell: bash
 
@@ -604,7 +603,6 @@ jobs:
           export PATH="/c/ProgramData/chocolatey/lib/sccache/tools:$PATH"
           export CMAKE_C_COMPILER_LAUNCHER=sccache
           export CMAKE_CXX_COMPILER_LAUNCHER=sccache
-          export MOREDEPS_TOP_LEVEL_PARALLEL=1
           ./scripts/build_all.sh windows_arm64 ${{ inputs.shared && '--shared' || '' }}
         shell: bash
 
