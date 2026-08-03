@@ -37,6 +37,7 @@ endif()
 
 if(ANDROID_NDK)
   set(CMAKE_ANDROID_NDK "${ANDROID_NDK}" CACHE PATH "Android NDK path")
+  set(ENV{ANDROID_NDK_HOME} "${ANDROID_NDK}")
   message(STATUS "Android NDK: ${ANDROID_NDK}")
 else()
   message(FATAL_ERROR "Android NDK not found. Set ANDROID_NDK or install via:\n"

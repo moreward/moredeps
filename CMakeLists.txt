@@ -11,6 +11,7 @@
 
 cmake_minimum_required(VERSION 3.25)
 project(moredeps LANGUAGES C CXX)
+enable_testing()
 
 include(ExternalProject)
 
@@ -490,6 +491,127 @@ moredeps_add_dep(freetype
     "-DFT_DISABLE_HARFBUZZ=OFF"
     "-DFT_DISABLE_BROTLI=ON"
     "-DFT_ENABLE_ERROR_STRINGS=ON"
+)
+
+# --- ghostty ---
+# Zig build of the full Ghostty embedding API (ghostty.h). Produces a static
+# library plus the public C header. The build works on macOS, Linux, Windows,
+# and iOS (via the macOS-hosted xcframework). It is excluded on Emscripten and
+# Android because the full API drags in system/desktop dependencies (font
+# rendering, glslang, etc.) that do not build for those targets.
+if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID AND (NOT MOREDEPS_IS_MOBILE OR MOREDEPS_IS_IOS))
+  moredeps_add_dep(ghostty
+    STATIC_ONLY
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/ghostty"
+  )
+
+  # Smoke test: build a tiny C program that includes ghostty.h, links against
+  # the installed static library, and calls init/info/config-new/free. The test
+  # is built on native macOS only. Linux would need the same set of system
+  # libraries (libxml2, fontconfig, etc.) that Ghostty's Zig build links
+  # against, which varies by host; cross-compiled platforms (iOS, Windows from
+  # a Mac, Android) still get the library output but are not exercised at
+  # link/run time from this build.
+  set(_ghostty_can_run_test FALSE)
+  if(CMAKE_HOST_SYSTEM_NAME STREQUAL CMAKE_SYSTEM_NAME AND
+     CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL CMAKE_SYSTEM_PROCESSOR AND
+     NOT WIN32 AND
+     NOT MOREDEPS_IS_IOS AND
+     CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(_ghostty_can_run_test TRUE)
+  endif()
+
+  if(_ghostty_can_run_test AND NOT MOREDEPS_BUILD_SHARED)
+    set(_ghostty_test_src "${CMAKE_CURRENT_SOURCE_DIR}/tests/ghostty/smoke.c")
+    set(_ghostty_test_bin "${CMAKE_INSTALL_PREFIX}/tests/ghostty_smoke")
+    set(_ghostty_test_libs)
+    set(_ghostty_test_compiler)
+
+    if(APPLE)
+      set(_ghostty_test_compiler ${CMAKE_C_COMPILER})
+      list(APPEND _ghostty_test_libs
+        "-framework" "Foundation"
+        "-framework" "AppKit"
+        "-framework" "CoreFoundation"
+        "-framework" "CoreText"
+        "-framework" "CoreGraphics"
+        "-framework" "Metal"
+        "-framework" "MetalKit"
+        "-framework" "OpenGL"
+        "-framework" "QuartzCore"
+        "-framework" "IOSurface"
+        "-lobjc"
+        "-lc++"
+      )
+      if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        list(APPEND _ghostty_test_libs "-framework" "Carbon")
+      endif()
+    elseif(LINUX)
+      # The static library is built with Zig and uses libc++ (std::__1).
+      # Linking it with the host GCC/libstdc++ will fail with ABI mismatches,
+      # so use the same Zig C++ toolchain to compile the smoke test.
+      find_program(ZIG_EXECUTABLE zig REQUIRED)
+      if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
+        set(_ghostty_zig_target "x86_64-linux-gnu")
+      elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+        set(_ghostty_zig_target "aarch64-linux-gnu")
+      else()
+        set(_ghostty_zig_target "${CMAKE_SYSTEM_PROCESSOR}-linux-gnu")
+      endif()
+      set(_ghostty_test_compiler ${ZIG_EXECUTABLE} c++ -target ${_ghostty_zig_target})
+      list(APPEND _ghostty_test_libs -lpthread -ldl -lm)
+    endif()
+
+    add_custom_command(
+      OUTPUT ${_ghostty_test_bin}
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_INSTALL_PREFIX}/tests
+      COMMAND ${_ghostty_test_compiler}
+        -I${CMAKE_INSTALL_PREFIX}/include
+        -o ${_ghostty_test_bin}
+        ${_ghostty_test_src}
+        ${CMAKE_INSTALL_PREFIX}/lib/libghostty-internal.a
+        ${_ghostty_test_libs}
+      DEPENDS ghostty
+      COMMENT "Building Ghostty embedding API smoke test"
+    )
+    add_custom_target(ghostty_smoke_test ALL DEPENDS ${_ghostty_test_bin})
+    add_test(NAME ghostty_smoke COMMAND ${_ghostty_test_bin})
+  endif()
+endif()
+
+# --- glslang ---
+# Khronos reference GLSL/SPIR-V compiler and validator. Required by the
+# Ghostty embedding API for runtime shader compilation. Built as a static
+# library only, with tests and binaries disabled.
+moredeps_add_dep(glslang
+  CMAKE_ARGS
+    "-DBUILD_EXTERNAL=OFF"
+    "-DENABLE_GLSLANG_BINARIES=OFF"
+    "-DENABLE_GLSLANG_JS=OFF"
+    "-DGLSLANG_TESTS=OFF"
+    "-DENABLE_HLSL=OFF"
+    "-DENABLE_OPT=OFF"
+    "-DENABLE_CTEST=OFF"
+    "-DENABLE_SPVREMAPPER=OFF"
+)
+
+# --- oniguruma ---
+# Regular expression library used by Ghostty's embedding API. Built with
+# tests/examples disabled.
+moredeps_add_dep(oniguruma
+  CMAKE_ARGS
+    "-DBUILD_TESTING=OFF"
+)
+
+# --- spirv-cross ---
+# SPIR-V cross-compiler used by the Ghostty embedding API for shader
+# reflection/translation. Static library only, CLI disabled.
+moredeps_add_dep(spirv-cross
+  CMAKE_ARGS
+    "-DSPIRV_CROSS_SHARED=OFF"
+    "-DSPIRV_CROSS_STATIC=ON"
+    "-DSPIRV_CROSS_CLI=OFF"
+    "-DSPIRV_CROSS_ENABLE_TESTS=OFF"
 )
 
 # --- ggml ---

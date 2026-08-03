@@ -87,7 +87,9 @@ DEP_LIBRARY_NAMES = {
     "FastNoiseLite": ["FastNoiseLite"],
     "flecs": ["flecs_static"],
     "freetype": ["freetype"],
+    "ghostty": ["ghostty-internal", "ghostty-internal-static"],
     "glfw": ["glfw3"],
+    "glslang": ["glslang", "SPIRV", "OSDependent", "MachineIndependent", "GenericCodeGen", "glslang-default-resource-limits"],
     "ggml": ["ggml", "ggml-base", "ggml-cpu", "ggml-blas"],
     "harfbuzz": ["harfbuzz", "harfbuzz-subset"],
     "libunibreak": ["libunibreak"],  # liblibunibreak.a / libunibreak.lib
@@ -112,6 +114,7 @@ DEP_LIBRARY_NAMES = {
     "mtcc": ["tcc", "tcc1"],  # libtcc.a + libtcc1.a runtime support
     "nanovg": ["nanovg"],
     "openal-soft": ["OpenAL"],
+    "oniguruma": ["onig"],
     "pcre2": ["pcre2-8", "pcre2-8-static"],
     "physfs": ["physfs", "physfs-static"],
     "raudio": ["raudio"],
@@ -130,6 +133,7 @@ DEP_LIBRARY_NAMES = {
                "sokol_log",
                "sokol_time"],
     "sokol_gp": ["sokol_gp", "sokol_gp_glcore", "sokol_gp_gles3", "sokol_gp_metal", "sokol_gp_d3d11"],
+    "spirv-cross": ["spirv-cross-c", "spirv-cross-core", "spirv-cross-glsl", "spirv-cross-cpp", "spirv-cross-reflect", "spirv-cross-msl", "spirv-cross-hlsl", "spirv-cross-util"],
     "sqlite-amalgamation": ["sqlite3"],
     "stb": ["stb_ds", "stb_image", "stb_image_resize", "stb_image_write",
             "stb_rect_pack", "stb_truetype"],
@@ -152,6 +156,7 @@ EXCLUDED = {
     ("dawn", "wasm_emscripten"): "Browser provides WebGPU (emdawnwebgpu; no prebuilt lib)",
     ("mtcc", "wasm_emscripten"): "Target-specific C/ASM cannot compile to WASM",
     ("enet", "wasm_emscripten"): "UDP networking; not usable in a browser",
+    ("ghostty", "wasm_emscripten"): "Full Ghostty embedding API depends on system/desktop libraries (font rendering, glslang, etc.) that do not build for wasm",
     ("libuv", "wasm_emscripten"): "No libuv Emscripten platform backend",
     ("luv", "wasm_emscripten"): "Depends on libuv (no WASM backend)",
     ("libdatachannel", "wasm_emscripten"): "WebRTC not available in the browser (use browser APIs)",
@@ -177,6 +182,8 @@ EXCLUDED = {
     # Android exclusions
     ("glfw", "android_arm64"): "Desktop-only windowing library",
     ("glfw", "android_x64"): "Desktop-only windowing library",
+    ("ghostty", "android_arm64"): "Android target requires an NDK sysroot that moredeps does not supply",
+    ("ghostty", "android_x64"): "Android target requires an NDK sysroot that moredeps does not supply",
     ("sdl3webgpu", "android_arm64"): "No Android surface creation path (needs ANativeWindow)",
     ("sdl3webgpu", "android_x64"): "No Android surface creation path (needs ANativeWindow)",
     ("raylib", "android_arm64"): "Android backend is Makefile-only (no CMake)",

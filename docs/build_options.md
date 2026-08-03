@@ -180,6 +180,59 @@ Upstream `CMakeLists.txt` includes `GNUInstallDirs` after `add_subdirectory(src)
 
 **Excluded on `wasm_emscripten`** (web apps use SDL3 / emscripten HTML5 APIs).
 
+### `ghostty`
+
+Built via Zig. The wrapper runs in `src/ghostty/`:
+
+| Wrapper setting | Value | Notes |
+|---|---|---|
+| Build command | `zig build -Dapp-runtime=none -Demit-lib-vt=false -Demit-xcframework=true` (Apple) / `-Demit-xcframework=false` (other) | Emits the full Ghostty embedding API (`ghostty.h`). |
+| Source handling | copied to build tree | Avoids writing `zig-out` and `.zig-cache` into the submodule. The top-level `macos/` UI assets are only copied when building for Apple platforms. |
+| Installed artifacts | `lib/libghostty-internal.a`, `include/ghostty.h`, `include/ghostty/vt*.h` | The static library is a fat archive that bundles the vendored dependencies (freetype, harfbuzz, glslang, etc.) on macOS/Linux. The `ghostty/vt` headers are installed for convenience even though the build targets the full embedding API. |
+
+**Platform support:** macOS arm64 (universal x86_64+arm64), Linux x64/arm64, Windows x64/arm64, iOS arm64, iOS simulator arm64. **Excluded on `wasm_emscripten` and Android** because the full API depends on system/desktop libraries (font rendering, glslang, etc.) that do not build for those targets.
+
+### `glslang`
+
+Khronos reference GLSL/SPIR-V compiler. Built as static libraries with tests and binaries disabled.
+
+| Option | Upstream default | Proposed default | Notes |
+|---|---|---|---|
+| `BUILD_EXTERNAL` | `ON` | `OFF` | Do not build external dependencies. |
+| `ENABLE_GLSLANG_BINARIES` | `ON` | `OFF` | No glslang executable. |
+| `ENABLE_GLSLANG_JS` | `OFF` | `OFF` | No Emscripten JS build in this repo. |
+| `GLSLANG_TESTS` | varies | `OFF` | No tests. |
+| `ENABLE_HLSL` | `ON` | `OFF` | Disable HLSL input support to reduce size. |
+| `ENABLE_OPT` | `ON` | `OFF` | Disable spirv-opt dependency. |
+| `ENABLE_CTEST` | `ON` | `OFF` | No CTest. |
+| `ENABLE_SPVREMAPPER` | `ON` | `OFF` | No SPIR-V remapper. |
+
+### `oniguruma`
+
+Regular expression library used by Ghostty.
+
+| Option | Upstream default | Proposed default | Notes |
+|---|---|---|---|
+| `BUILD_TESTING` | `ON` | `OFF` | No tests. |
+
+### `spirv-cross`
+
+SPIR-V cross-compiler used by Ghostty for shader reflection/translation.
+
+| Option | Upstream default | Proposed default | Notes |
+|---|---|---|---|
+| `SPIRV_CROSS_SHARED` | `OFF` | `OFF` | No shared library. |
+| `SPIRV_CROSS_STATIC` | `ON` | `ON` | Static libraries. |
+| `SPIRV_CROSS_CLI` | `ON` | `OFF` | No executable. |
+| `SPIRV_CROSS_ENABLE_TESTS` | `ON` | `OFF` | No tests. |
+| `SPIRV_CROSS_ENABLE_GLSL` | `ON` | `ON` | Keep GLSL target. |
+| `SPIRV_CROSS_ENABLE_HLSL` | `ON` | `ON` | Keep HLSL target. |
+| `SPIRV_CROSS_ENABLE_MSL` | `ON` | `ON` | Keep MSL target. |
+| `SPIRV_CROSS_ENABLE_CPP` | `ON` | `ON` | Keep C++ target. |
+| `SPIRV_CROSS_ENABLE_REFLECT` | `ON` | `ON` | Keep JSON reflection target. |
+| `SPIRV_CROSS_ENABLE_C_API` | `ON` | `ON` | Keep C API. |
+| `SPIRV_CROSS_ENABLE_UTIL` | `ON` | `ON` | Keep util module. |
+
 ### `harfbuzz`
 
 | Option | Upstream default | Proposed default | Notes |
@@ -744,6 +797,7 @@ These dependencies do not have native CMake builds (or the native build is unsui
 
 | Dep | Build system | Wrapper / notes |
 |---|---|---|
+| `ghostty` | Zig | `src/ghostty/CMakeLists.txt` runs `zig build -Dapp-runtime=none` and installs `lib/libghostty-internal.a` + `include/ghostty.h`. Builds on macOS, Linux, Windows, and iOS. |
 | `lua-5.5.0` | Makefile | `src/lua/CMakeLists.txt` drives the upstream `make` rules and installs `liblua.a` + headers. |
 | `mtcc` | Makefile / MSVC batch | `src/mtcc/` wrapper runs `./configure` + `make` on Unix, a custom batch with `cl`/`lib` on Windows x64. **Excluded on `wasm_emscripten` and `windows_arm64`.** |
 | `skribidi` | CMake | `src/skribidi/CMakeLists.txt` builds from `deps/skribidi` and links against the pinned `harfbuzz`, `SheenBidi`, `libunibreak`, and `budouxc` submodules. |
