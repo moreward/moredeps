@@ -122,4 +122,33 @@ else()
     ${MTCC_SRC_DIR}/tcc.h
     DESTINATION include
   )
+  # tcc.h does #include "config.h" and pulls in mtcc-internal headers and
+  # the target code-generator sources (arm64-gen.c etc.). Embedders that
+  # drive TCC's parser internals need all of them, and they must match
+  # libtcc.a exactly.
+  install(FILES
+    ${MTCC_BUILD_DIR}/config.h
+    ${MTCC_SRC_DIR}/elf.h
+    ${MTCC_SRC_DIR}/stab.h
+    ${MTCC_SRC_DIR}/stab.def
+    ${MTCC_SRC_DIR}/dwarf.h
+    ${MTCC_SRC_DIR}/tcctok.h
+    ${MTCC_SRC_DIR}/i386-tok.h
+    ${MTCC_SRC_DIR}/riscv64-tok.h
+    ${MTCC_SRC_DIR}/arm64-gen.c
+    ${MTCC_SRC_DIR}/arm64-link.c
+    ${MTCC_SRC_DIR}/arm64-asm.c
+    ${MTCC_SRC_DIR}/i386-gen.c
+    ${MTCC_SRC_DIR}/i386-link.c
+    ${MTCC_SRC_DIR}/i386-asm.c
+    ${MTCC_SRC_DIR}/riscv64-gen.c
+    ${MTCC_SRC_DIR}/riscv64-link.c
+    ${MTCC_SRC_DIR}/riscv64-asm.c
+    ${MTCC_SRC_DIR}/x86_64-gen.c
+    ${MTCC_SRC_DIR}/x86_64-link.c
+    DESTINATION include
+  ) and resolves it relative to the
+  # lib path ("{B}/include"). Ship the private headers next to libtcc1.a so
+  # the package is self-contained for embedders that call tcc_set_lib_path.
+  install(DIRECTORY ${MTCC_SRC_DIR}/include/ DESTINATION lib/tcc/include)
 endif()
