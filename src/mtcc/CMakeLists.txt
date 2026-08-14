@@ -134,6 +134,8 @@ else()
     ${MTCC_SRC_DIR}/dwarf.h
     ${MTCC_SRC_DIR}/tcctok.h
     ${MTCC_SRC_DIR}/i386-tok.h
+    ${MTCC_SRC_DIR}/i386-asm.h
+    ${MTCC_SRC_DIR}/x86_64-asm.h
     ${MTCC_SRC_DIR}/riscv64-tok.h
     ${MTCC_SRC_DIR}/arm64-gen.c
     ${MTCC_SRC_DIR}/arm64-link.c
