@@ -719,7 +719,8 @@ jobs:
                 echo "Skipping $name (rebuilt in this run)"
               else
                 echo "Carrying forward $name from previous latest"
-                curl -sfL -o "prev_assets/$name" "$url"
+                curl -sfL --retry 5 --retry-all-errors --retry-delay 2 \
+                  -o "prev_assets/$name" "$url"
               fi
             done
             # Move carried-forward assets into release_assets/
@@ -728,10 +729,35 @@ jobs:
             echo "Merging manifests..."
             PREV_MANIFEST_URL=$(echo "$PREV_DATA" | jq -r '.assets[] | select(.name=="moredeps.json") | .browser_download_url')
             if [ -n "$PREV_MANIFEST_URL" ] && [ "$PREV_MANIFEST_URL" != "null" ]; then
-              curl -sfL -o prev_moredeps.json "$PREV_MANIFEST_URL"
+              curl -sfL --retry 5 --retry-all-errors --retry-delay 2 \
+                -o prev_moredeps.json "$PREV_MANIFEST_URL"
               python scripts/merge_manifest.py moredeps.json prev_moredeps.json --out release_assets/moredeps.json
               echo "Manifest merged successfully."
             fi
+            # Prune zips the merged manifest no longer references. Zip names
+            # embed the repo SHA, so without this the latest release would
+            # accumulate one full asset set per build, forever.
+            python3 - <<'PYEOF'
+            import glob, json, os
+            with open('release_assets/moredeps.json') as f:
+                manifest = json.load(f)
+            keep = set()
+            def collect(node):
+                if isinstance(node, dict):
+                    filename = node.get('filename')
+                    if isinstance(filename, str):
+                        keep.add(filename)
+                    for value in node.values():
+                        collect(value)
+                elif isinstance(node, list):
+                    for value in node:
+                        collect(value)
+            collect(manifest)
+            for path in sorted(glob.glob('release_assets/*.zip')):
+                if os.path.basename(path) not in keep:
+                    print(f"Pruning unreferenced asset: {path}")
+                    os.remove(path)
+            PYEOF
           fi
 
       - name: Update latest release
