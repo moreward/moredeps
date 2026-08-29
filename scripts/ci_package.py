@@ -601,7 +601,7 @@ EXTRA_PACKAGE_FILES = {
             "i386-tok.h", "i386-asm.h", "x86_64-asm.h", "riscv64-tok.h",
             "arm64-gen.c", "arm64-link.c", "arm64-asm.c",
             "i386-gen.c", "i386-link.c", "i386-asm.c",
-            "riscv64-gen.c", "riscv64-link.c",
+            "riscv64-gen.c", "riscv64-link.c", "riscv64-asm.c",
             "x86_64-gen.c", "x86_64-link.c",
         ],
         # TCC's private runtime headers (tcc_libm.h etc.), installed next to
