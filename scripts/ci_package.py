@@ -315,7 +315,7 @@ def compute_build_hash(dep_name: str, platform: str, dep_commit: str) -> str:
     logic changes in a zip-contents-affecting way.
     Mirrored in scripts/cache_restore.py.
     """
-    PACKAGING_VERSION = 2  # bump: KNOWN_HEADERS changed, affects packaged zip contents
+    PACKAGING_VERSION = 3  # bump: EXTRA_PACKAGE_FILES added, affects packaged zip contents
     def _file_hash(f: Path) -> str:
         h = hashlib.sha256()
         # Normalize line endings so the same file hashes identically on
@@ -341,6 +341,7 @@ def compute_build_hash(dep_name: str, platform: str, dep_commit: str) -> str:
     # KNOWN_HEADERS for this dep — a change in header detection means
     # different zip contents.
     h.update(repr(sorted(KNOWN_HEADERS.get(dep_name, []))).encode())
+    h.update(repr(EXTRA_PACKAGE_FILES.get(dep_name)).encode())
 
     # Dep-specific patches.
     patches_dir = repo_root / "patches"
@@ -585,6 +586,32 @@ KNOWN_HEADERS = {
 }
 
 
+# Exact extra files to package for deps that install generically named
+# internal files where term-based header matching would either miss them
+# or catch other deps' files (e.g. an mtcc term "config" would also grab
+# lws_config.h from the shared include root). Mirrors the install rules in
+# src/<dep>/CMakeLists.txt — keep the two in sync.
+EXTRA_PACKAGE_FILES = {
+    # tcc.h does #include "config.h" and pulls in mtcc-internal headers and
+    # target code-generator sources; quote-includes resolve relative to
+    # tcc.h, so these must ship flat next to it in include/.
+    "mtcc": {
+        "include": [
+            "config.h", "elf.h", "stab.h", "stab.def", "dwarf.h",
+            "i386-tok.h", "i386-asm.h", "x86_64-asm.h", "riscv64-tok.h",
+            "arm64-gen.c", "arm64-link.c", "arm64-asm.c",
+            "i386-gen.c", "i386-link.c", "i386-asm.c",
+            "riscv64-gen.c", "riscv64-link.c",
+            "x86_64-gen.c", "x86_64-link.c",
+        ],
+        # TCC's private runtime headers (tcc_libm.h etc.), installed next to
+        # libtcc1.a so the package is self-contained for embedders that call
+        # tcc_set_lib_path. Shipped under lib/ preserving relative paths.
+        "lib_dirs": ["tcc/include"],
+    },
+}
+
+
 def find_header_files(dep_name: str, platform_dir: Path) -> list[Path]:
     """Find all header files belonging to a dependency in a platform directory."""
     include_dir = platform_dir / "include"
@@ -617,6 +644,18 @@ def find_header_files(dep_name: str, platform_dir: Path) -> list[Path]:
                     files.append(f)
                     seen_paths.add(f)
                 break
+
+    # Exact-match extras (see EXTRA_PACKAGE_FILES).
+    for name in EXTRA_PACKAGE_FILES.get(dep_name, {}).get("include", []):
+        f = include_dir / name
+        if f.is_file():
+            if f not in seen_paths:
+                files.append(f)
+                seen_paths.add(f)
+        else:
+            print(f"warning: {dep_name}: expected extra header {name} not "
+                  f"installed under {include_dir} (install rules drifted?)",
+                  file=sys.stderr)
 
     return files
 
@@ -715,6 +754,26 @@ def collect_files_for_platform(dep_name: str, platform: str, platform_dir: Path)
             result.append((f, f"static/{platform}/lib/{rel}", "config"))
         if has_shared:
             result.append((f, f"dynamic/{platform}/lib/{rel}", "config"))
+
+    # Extra directories under lib/ shipped wholesale (e.g. mtcc's TCC
+    # runtime headers in lib/tcc/include).
+    for lib_sub in EXTRA_PACKAGE_FILES.get(dep_name, {}).get("lib_dirs", []):
+        sub_dir = platform_dir / "lib" / lib_sub
+        if not sub_dir.is_dir():
+            print(f"warning: {dep_name}: expected extra lib dir {lib_sub} not "
+                  f"installed under {platform_dir / 'lib'} "
+                  f"(install rules drifted?)", file=sys.stderr)
+            continue
+        for f in sorted(sub_dir.rglob("*")):
+            if not f.is_file():
+                continue
+            rel = f.relative_to(platform_dir / "lib")
+            if has_static:
+                result.append((f, f"static/{platform}/lib/{rel}", "header"))
+            if has_shared:
+                result.append((f, f"dynamic/{platform}/lib/{rel}", "header"))
+            if not has_static and not has_shared:
+                result.append((f, f"static/{platform}/lib/{rel}", "header"))
 
     return result
 
