@@ -149,7 +149,8 @@ else()
     ${MTCC_SRC_DIR}/x86_64-gen.c
     ${MTCC_SRC_DIR}/x86_64-link.c
     DESTINATION include
-  ) and resolves it relative to the
+  )
+  # tcc.h references "tcc_libm.h" and resolves it relative to the
   # lib path ("{B}/include"). Ship the private headers next to libtcc1.a so
   # the package is self-contained for embedders that call tcc_set_lib_path.
   install(DIRECTORY ${MTCC_SRC_DIR}/include/ DESTINATION lib/tcc/include)
