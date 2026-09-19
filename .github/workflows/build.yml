@@ -777,6 +777,22 @@ jobs:
             --assets-dir release_assets/ \
             --sleep 1.0
 
+      # The carry-forward + prune steps keep release_assets/ aligned with the
+      # merged manifest, but uploads use --clobber and never remove the stale
+      # assets that were carried forward from a previous run (zip names embed
+      # the repo SHA). Delete them here so "latest" does not grow by one full
+      # asset set per build. Runs after the upload so the new set exists first.
+      - name: Prune stale assets from latest release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 scripts/prune_release_assets.py \
+            --repo ${{ github.repository }} \
+            --tag latest \
+            --manifest release_assets/moredeps.json \
+            --assets-dir release_assets/ \
+            --sleep 1.0
+
   # ---------------------------------------------------------------------------
   # Redeploy the Pages site with the fresh moredeps.json.
   # The site fetches the manifest same-origin; release asset URLs cannot be
