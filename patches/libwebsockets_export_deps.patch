@@ -1,5 +1,5 @@
 diff --git a/lib/tls/CMakeLists.txt b/lib/tls/CMakeLists.txt
-index b51fa3e77..45d022188 100644
+index b51fa3e77..a0b0994fd 100644
 --- a/lib/tls/CMakeLists.txt
 +++ b/lib/tls/CMakeLists.txt
 @@ -527,6 +527,7 @@ if (LWS_WITH_SSL)
@@ -10,3 +10,22 @@ index b51fa3e77..45d022188 100644
  		endif()
  
  		if (NOT LWS_WITH_MBEDTLS AND NOT LWS_WITH_OPENHITLS)
+@@ -543,10 +544,15 @@ if (LWS_WITH_SSL)
+ 		endif()
+ 
+ 		if (LWS_WITH_BORINGSSL OR LWS_WITH_AWSLC)
+-			if (LWS_WITH_BORINGSSL)
+-				list(APPEND LIB_LIST "stdc++")
++			if (UNIX)
++				# GNU C++ runtime is not linked automatically; on MSVC the
++				# C++ runtime is pulled in via defaultlib pragmas and
++				# stdc++.lib / pthread.lib do not exist.
++				if (LWS_WITH_BORINGSSL)
++					list(APPEND LIB_LIST "stdc++")
++				endif()
++				list(APPEND LIB_LIST "pthread")
+ 			endif()
+-			list(APPEND LIB_LIST "pthread")
+ 		endif()
+ 	endif()
+ 
