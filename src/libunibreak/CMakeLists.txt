@@ -3,21 +3,20 @@ project(libunibreak LANGUAGES C)
 
 set(UNIBREAK_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../deps/libunibreak")
 
+# Matches src/Makefile.am libunibreak_la_SOURCES (v8.0): the *data.c files
+# (eastasianwidthdata.c, emojidata.c, graphemebreakdata.c,
+# indicconjunctbreakdata.c, wordbreakdata.c, linebreakauxdata.c) are #included
+# by the sources below and must not be compiled separately.
 set(UNIBREAK_SOURCES
-  ${UNIBREAK_SRC_DIR}/src/eastasianwidthdata.c
   ${UNIBREAK_SRC_DIR}/src/eastasianwidthdef.c
-  ${UNIBREAK_SRC_DIR}/src/emojidata.c
   ${UNIBREAK_SRC_DIR}/src/emojidef.c
   ${UNIBREAK_SRC_DIR}/src/graphemebreak.c
-  ${UNIBREAK_SRC_DIR}/src/graphemebreakdata.c
-  ${UNIBREAK_SRC_DIR}/src/indicconjunctbreakdata.c
   ${UNIBREAK_SRC_DIR}/src/linebreak.c
   ${UNIBREAK_SRC_DIR}/src/linebreakdata.c
   ${UNIBREAK_SRC_DIR}/src/linebreakdef.c
   ${UNIBREAK_SRC_DIR}/src/unibreakbase.c
   ${UNIBREAK_SRC_DIR}/src/unibreakdef.c
   ${UNIBREAK_SRC_DIR}/src/wordbreak.c
-  ${UNIBREAK_SRC_DIR}/src/wordbreakdata.c
 )
 
 set(UNIBREAK_HEADERS
