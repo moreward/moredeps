@@ -1,20 +1,8 @@
---- a/CMakeLists.txt	2026-07-12 19:33:47.761207728 -0700
-+++ b/CMakeLists.txt	2026-07-16 22:28:58.754680021 -0700
-@@ -977,7 +977,10 @@
- 	# Turn off pointless microsoft security warnings.
- 	add_definitions(-D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE)
- 	# Fail the build if any warnings
--	add_compile_options(/W3 /WX)
-+	add_compile_options(/W3)
-+	if(NOT DISABLE_WERROR)
-+		add_compile_options(/WX)
-+	endif()
- 	# Unbreak MSVC broken preprocessor __VA_ARGS__ behaviour
- 	if (MSVC_VERSION GREATER 1925)
- 		add_compile_options(/Zc:preprocessor /wd5105)
---- a/CMakeLists-implied-options.txt	2026-07-12 19:33:47.761046435 -0700
-+++ b/CMakeLists-implied-options.txt	2026-07-16 22:28:58.754910608 -0700
-@@ -53,9 +53,9 @@
+diff --git a/CMakeLists-implied-options.txt b/CMakeLists-implied-options.txt
+index a9326b18c..8e77edcc6 100644
+--- a/CMakeLists-implied-options.txt
++++ b/CMakeLists-implied-options.txt
+@@ -70,9 +70,9 @@ if (LWS_PLAT_FREERTOS OR (${CMAKE_SYSTEM_NAME} MATCHES "QNX"))
  	set(LWS_WITH_LEJP_CONF OFF)
  	message("LWS_WITH_DIR ${LWS_WITH_DIR}")
  else()

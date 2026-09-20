@@ -715,6 +715,7 @@ if(NOT EMSCRIPTEN)
       "-DLWS_WITH_OTA=OFF"
       "-DLWS_WITH_LEJP=OFF"
       "-DLWS_WITH_LEJP_CONF=OFF"
+      "-DLWS_WITH_STUB=OFF"
       "-DLWS_WITH_LHP=OFF"
       "-DLWS_WITH_JSONRPC=OFF"
       "-DLWS_WITH_CONMON=OFF"
@@ -1198,7 +1199,7 @@ moredeps_add_dep(lz4
 
 # --- xxhash ---
 moredeps_add_dep(xxhash
-  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/xxhash/cmake_unofficial"
+  SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/xxhash/build/cmake"
   CMAKE_ARGS
     "-DXXHASH_BUILD_XXHSUM=OFF"
     "-DXXHASH_BUNDLED_MODE=OFF"
