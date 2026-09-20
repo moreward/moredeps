@@ -137,6 +137,15 @@ function(moredeps_add_dep name)
   set(multiValueArgs CMAKE_ARGS SHARED_CMAKE_ARGS DEPENDS BUILD_BYPRODUCTS INSTALL_COMMAND PATCH_COMMAND)
   cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
+  # Inner-build generator override. On Windows the outer super-project may use
+  # NMake/JOM (so cache_restore's stamp files are honored, see
+  # scripts/build_all.sh), while the dependency builds themselves stay on
+  # Ninja. MOREDEPS_EP_GENERATOR is empty on other platforms.
+  set(_generator_args)
+  if(MOREDEPS_EP_GENERATOR)
+    set(_generator_args CMAKE_GENERATOR "${MOREDEPS_EP_GENERATOR}")
+  endif()
+
   if(NOT ARG_SOURCE_DIR)
     set(ARG_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/${name}")
   endif()
@@ -155,6 +164,7 @@ function(moredeps_add_dep name)
       SOURCE_DIR "${ARG_SOURCE_DIR}"
       BINARY_DIR "${CMAKE_BINARY_DIR}/${name}"
       INSTALL_DIR "${CMAKE_INSTALL_PREFIX}"
+      ${_generator_args}
       CMAKE_ARGS
         ${MOREDEPS_COMMON_CMAKE_ARGS}
         ${ARG_CMAKE_ARGS}
@@ -179,6 +189,7 @@ function(moredeps_add_dep name)
       SOURCE_DIR "${ARG_SOURCE_DIR}"
       BINARY_DIR "${CMAKE_BINARY_DIR}/${name}_shared"
       INSTALL_DIR "${CMAKE_INSTALL_PREFIX}"
+      ${_generator_args}
       CMAKE_ARGS
         ${MOREDEPS_COMMON_CMAKE_ARGS}
         ${ARG_CMAKE_ARGS}

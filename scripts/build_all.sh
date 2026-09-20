@@ -173,6 +173,7 @@ if [[ ! -f "${BUILD_DIR}/CMakeCache.txt" ]]; then
   cmake -S "${REPO_ROOT}" \
         -B "${BUILD_DIR}" \
         -G "${GENERATOR}" \
+        ${EP_GENERATOR_ARG:+"${EP_GENERATOR_ARG[@]}"} \
         -DCMAKE_TOOLCHAIN_FILE="${TOOLCHAIN}" \
         -DCMAKE_BUILD_TYPE=Release
 fi
@@ -253,6 +254,7 @@ if [[ "${BUILD_SHARED}" == "1" && "${PLATFORM}" != "wasm_emscripten" ]]; then
   cmake -S "${REPO_ROOT}" \
         -B "${SHARED_BUILD_DIR}" \
         -G "${GENERATOR}" \
+        ${EP_GENERATOR_ARG:+"${EP_GENERATOR_ARG[@]}"} \
         -DCMAKE_TOOLCHAIN_FILE="${TOOLCHAIN}" \
         -DCMAKE_BUILD_TYPE=Release \
         -DMOREDEPS_BUILD_SHARED=ON \
