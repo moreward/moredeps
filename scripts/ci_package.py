@@ -592,6 +592,12 @@ KNOWN_HEADERS = {
 # lws_config.h from the shared include root). Mirrors the install rules in
 # src/<dep>/CMakeLists.txt — keep the two in sync.
 EXTRA_PACKAGE_FILES = {
+    # dcimgui.h does #include "imconfig.h"; the term-based match on
+    # "dcimgui" would miss it. Mirrors the install rules in
+    # src/dcimgui/CMakeLists.txt.
+    "dcimgui": {
+        "include": ["imconfig.h"],
+    },
     # tcc.h does #include "config.h" and pulls in mtcc-internal headers and
     # target code-generator sources; quote-includes resolve relative to
     # tcc.h, so these must ship flat next to it in include/.
