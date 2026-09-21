@@ -323,6 +323,14 @@ if [[ "${BUILD_SHARED}" == "1" && "${PLATFORM}" != "wasm_emscripten" ]]; then
       echo "  lib/import/$(basename $f) (import)"
     done
   fi
+  # Merge headers from the shared pass.  Normally identical to the static
+  # pass headers, but when the static pass was restored from cache and the
+  # shared payload is the only one carrying headers (or vice versa), both
+  # must land in OUT_DIR.
+  if [[ -d "${SHARED_TMP}/include" ]]; then
+    mkdir -p "${OUT_DIR}/include"
+    cp -a "${SHARED_TMP}/include/." "${OUT_DIR}/include/"
+  fi
   # Preserve the shared-pass cmake package configs for ci_package.py: they
   # reference DLLs/import libs, while the static-pass configs in OUT_DIR
   # reference static archives.  The dynamic zip payload must ship these.

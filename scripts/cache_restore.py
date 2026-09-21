@@ -355,7 +355,7 @@ def compute_build_hash(repo_root: Path, dep_name: str, platform: str,
     File hashes are computed from LF-normalized text so that Linux and
     Windows runners produce identical hashes for the same file content.
     """
-    PACKAGING_VERSION = 5  # bump: SONAME/import-lib matching, libpng/libdatachannel contents
+    PACKAGING_VERSION = 6  # bump: static-suffix lib names, dawn cmake configs, header prefix match
 
     def _file_hash(f: Path) -> str:
         h = hashlib.sha256()

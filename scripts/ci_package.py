@@ -98,7 +98,7 @@ DEP_LIBRARY_NAMES = {
     "libwebsockets": ["websockets", "websockets_static"],
     "jolt": ["Jolt"],
     "libdatachannel": ["datachannel", "usrsctp", "juice", "srtp2"],
-    "libjpeg-turbo": ["jpeg"],
+    "libjpeg-turbo": ["jpeg", "jpeg62", "turbojpeg"],
     "libpng": ["png16", "png", "png18"],
     "lua": ["lua"],
     "luv": ["luv", "luv_a"],
@@ -113,7 +113,7 @@ DEP_LIBRARY_NAMES = {
     "minigamepad": ["minigamepad"],
     "mtcc": ["tcc", "tcc1"],  # libtcc.a + libtcc1.a runtime support
     "nanovg": ["nanovg"],
-    "openal-soft": ["OpenAL", "openal"],
+    "openal-soft": ["OpenAL", "openal", "openal32"],
     "oniguruma": ["onig"],
     "pcre2": ["pcre2-8", "pcre2-8-static", "pcre2-posix"],
     "physfs": ["physfs", "physfs-static"],
@@ -315,7 +315,7 @@ def compute_build_hash(dep_name: str, platform: str, dep_commit: str) -> str:
     logic changes in a zip-contents-affecting way.
     Mirrored in scripts/cache_restore.py.
     """
-    PACKAGING_VERSION = 5  # bump: SONAME/import-lib matching, libpng/libdatachannel contents
+    PACKAGING_VERSION = 6  # bump: static-suffix lib names, dawn cmake configs, header prefix match
     def _file_hash(f: Path) -> str:
         h = hashlib.sha256()
         # Normalize line endings so the same file hashes identically on
@@ -489,6 +489,11 @@ def find_lib_files(dep_name: str, platform_dir: Path) -> list[Path]:
                     candidates.append(base)
                     if base.startswith("lib"):
                         candidates.append(base[3:])
+            # Windows static lib naming: libpng18_static.lib, jpeg-static.lib
+            for sep in ("_static", "-static"):
+                for cand in list(candidates):
+                    if cand.endswith(sep):
+                        candidates.append(cand[: -len(sep)])
             # Strip version suffix from shared lib stems:
             #   libreproc.so.14 -> stem libreproc.so -> base libreproc
             #   libcurl.4.dylib  -> stem libcurl.4  -> base libcurl
@@ -586,6 +591,7 @@ KNOWN_HEADERS = {
     "pcre2": ["pcre2"],
     "sdl3": ["SDL3"],
     "sdl3webgpu": ["sdl3webgpu"],
+    "spirv-cross": ["spirv_cross", "spirv-cross"],
     "skribidi": ["skb"],
     "sqlite-amalgamation": ["sqlite3"],
     "tomlc99": ["toml"],
@@ -650,13 +656,15 @@ def find_header_files(dep_name: str, platform_dir: Path) -> list[Path]:
                     files.append(f)
                     seen_paths.add(f)
 
-    # Also check for headers directly in include/ matching the search terms
+    # Also check for headers directly in include/ matching the search terms.
+    # Prefix match, not substring: with substring matching, openal-soft's
+    # term "al" also captured ggml-metal.h, mimalloc.h, lualib.h, ...
     for f in include_dir.iterdir():
         if not f.is_file():
             continue
         stem = f.stem.lower()
         for term in search_terms:
-            if term.lower() in stem:
+            if stem.startswith(term.lower()):
                 if f not in seen_paths:
                     files.append(f)
                     seen_paths.add(f)
@@ -691,6 +699,7 @@ def find_config_files(dep_name: str, platform_dir: Path, shared: bool = False) -
     # Known cmake package name aliases (what find_package looks for).
     _CMAKE_ALIASES = {
         "boringssl": ["OpenSSL"],
+        "dawn": ["Dawn"],
         "glfw": ["glfw3"],
         "sdl3": ["SDL3"],
     }
