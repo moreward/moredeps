@@ -158,8 +158,18 @@ mkdir -p "${BUILD_DIR}"
 
 # Pick a generator that works on the host/target combination.
 GENERATOR="Unix Makefiles"
+EP_GENERATOR_ARG=()
 if [[ "${PLATFORM}" == windows_* ]]; then
-  if command -v ninja &> /dev/null; then
+  # Outer super-project: prefer NMake/JOM. cache_restore.py skips unchanged
+  # deps by writing ExternalProject stamp files; Make-style generators honor
+  # stamp mtimes, Ninja does not (it re-runs any edge missing from
+  # .ninja_log), which forced every dep to re-configure/re-link on Windows
+  # despite artifact cache hits.
+  # Inner dependency builds keep Ninja via MOREDEPS_EP_GENERATOR.
+  if command -v jom &> /dev/null && command -v ninja &> /dev/null; then
+    GENERATOR="NMake Makefiles JOM"
+    EP_GENERATOR_ARG=(-DMOREDEPS_EP_GENERATOR=Ninja)
+  elif command -v ninja &> /dev/null; then
     GENERATOR="Ninja"
   elif command -v jom &> /dev/null; then
     GENERATOR="NMake Makefiles JOM"
