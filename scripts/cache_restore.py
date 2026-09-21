@@ -39,7 +39,9 @@ import argparse
 import hashlib
 import io
 import json
+import os
 import sys
+import time
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -210,7 +212,7 @@ _STAMP_STEPS = [
 ]
 
 
-def create_stamps(build_dir: Path, ep_name: str) -> None:
+def create_stamps(build_dir: Path, ep_name: str) -> list[Path]:
     """Create all ExternalProject stamp and info files for *ep_name*.
 
     CMake's ExternalProject uses Make with stamp-file dependencies.
@@ -218,13 +220,19 @@ def create_stamps(build_dir: Path, ep_name: str) -> None:
     if the info file is missing, Make considers the stamp out-of-date and
     runs the step recipe anyway.  We create everything so all steps are
     skipped.
+
+    Returns the list of created files so the caller can normalize mtimes.
     """
     sdir = _stamp_dir(build_dir, ep_name)
     sdir.mkdir(parents=True, exist_ok=True)
 
+    created: list[Path] = []
+
     # Step stamps (empty marker files).
     for step in _STAMP_STEPS:
-        (sdir / f"{ep_name}-{step}").touch()
+        f = sdir / f"{ep_name}-{step}"
+        f.touch()
+        created.append(f)
 
     # Info files that the stamp targets depend on.
     # They can be empty — Make only checks existence, not content.
@@ -233,17 +241,24 @@ def create_stamps(build_dir: Path, ep_name: str) -> None:
         f"{ep_name}-update-info.txt",
         f"{ep_name}-patch-info.txt",
     ]:
-        (sdir / info).touch()
+        f = sdir / info
+        f.touch()
+        created.append(f)
 
     # cfgcmd.txt lives in <ep>-prefix/tmp/, not the stamp dir.
     tmp_dir = build_dir / f"{ep_name}-prefix" / "tmp"
     tmp_dir.mkdir(parents=True, exist_ok=True)
-    (tmp_dir / f"{ep_name}-cfgcmd.txt").touch()
+    f = tmp_dir / f"{ep_name}-cfgcmd.txt"
+    f.touch()
+    created.append(f)
 
     # Top-level complete stamp.
     complete = _complete_stamp(build_dir, ep_name)
     complete.parent.mkdir(parents=True, exist_ok=True)
     complete.touch()
+    created.append(complete)
+
+    return created
 
 
 def discover_external_projects(build_dir: Path) -> list[str]:
@@ -340,7 +355,7 @@ def compute_build_hash(repo_root: Path, dep_name: str, platform: str,
     File hashes are computed from LF-normalized text so that Linux and
     Windows runners produce identical hashes for the same file content.
     """
-    PACKAGING_VERSION = 3  # bump: EXTRA_PACKAGE_FILES added, affects packaged zip contents
+    PACKAGING_VERSION = 6  # bump: static-suffix lib names, dawn cmake configs, header prefix match
 
     def _file_hash(f: Path) -> str:
         h = hashlib.sha256()
@@ -364,8 +379,9 @@ def compute_build_hash(repo_root: Path, dep_name: str, platform: str,
             h.update(_file_hash(f).encode())
 
     # KNOWN_HEADERS affects zip contents — a change means different artifacts.
-    from ci_package import KNOWN_HEADERS, EXTRA_PACKAGE_FILES
+    from ci_package import KNOWN_HEADERS, EXTRA_PACKAGE_FILES, DEP_LIBRARY_NAMES
     h.update(repr(sorted(KNOWN_HEADERS.get(dep_name, []))).encode())
+    h.update(repr(sorted(DEP_LIBRARY_NAMES.get(dep_name, []))).encode())
     h.update(repr(EXTRA_PACKAGE_FILES.get(dep_name)).encode())
 
     # Dep-specific patches.
@@ -404,11 +420,24 @@ def restore_cache(
     out_dir: Path,
     build_dir: Path,
     linkage: str,
+    list_file: Optional[Path] = None,
 ) -> int:
     """Main entry point.  Returns the number of deps restored from cache."""
     if not build_dir.exists():
         print("Build directory does not exist yet; nothing to restore.")
         return 0
+
+    dry_run = list_file is not None
+    if dry_run:
+        # List mode: no downloads, no stamp files.  Just record which EPs
+        # would be restored so the super-project can omit their targets
+        # entirely (Ninja/NMake re-run ExternalProject steps whose stamps
+        # have no entry in the build log, so stamp-only suppression does
+        # not work on Windows).
+        # NB: newline="\n" — the file is read back by bash on Windows, and
+        # CRLF line endings would corrupt every entry.
+        with list_file.open("w", newline="\n"):
+            pass
 
     manifest = get_latest_release_manifest(repo)
     if manifest is None:
@@ -429,6 +458,7 @@ def restore_cache(
 
     restored = 0
     skipped = 0
+    stamp_files: list[Path] = []
 
     for mf_dep, ep_list in sorted(grouped.items()):
         plat_entry = artifacts.get(mf_dep, {}).get(platform)
@@ -468,6 +498,13 @@ def restore_cache(
             skipped += len(ep_list)
             continue
 
+        if dry_run:
+            with list_file.open("a", newline="\n") as fh:
+                for ep in ep_list:
+                    fh.write(ep + "\n")
+            restored += len(ep_list)
+            continue
+
         zip_data = download_zip_for_dep(repo, plat_entry)
         if zip_data is None:
             print(f"    WARNING: failed to download zip; will rebuild")
@@ -481,9 +518,21 @@ def restore_cache(
             continue
 
         for ep in ep_list:
-            create_stamps(build_dir, ep)
+            stamp_files.extend(create_stamps(build_dir, ep))
 
         restored += len(ep_list)
+
+    # Give every restored stamp the same, final mtime.  Stamps were created
+    # in alphabetical order, but the build graph orders dependents after
+    # their dependencies; a dependent whose stamps are older than its
+    # dependency's would be considered out-of-date and rebuild anyway.
+    if stamp_files:
+        now = time.time()
+        for f in stamp_files:
+            try:
+                os.utime(f, (now, now))
+            except OSError:
+                pass
 
     if skipped:
         print(f"\nRestored {restored} EP(s) from cache; {skipped} will be built.")
@@ -508,6 +557,10 @@ def main():
                         help="Current git commit of the moredeps repo")
     parser.add_argument("--shared", action="store_true",
                         help="Restore dynamic-library artifacts instead of static")
+    parser.add_argument("--list-file", default=None,
+                        help="Dry-run: do not download or extract anything; "
+                             "write the names of restorable ExternalProjects "
+                             "(one per line) to this file instead")
     args = parser.parse_args()
 
     out_dir = Path(args.out_dir).resolve()
@@ -521,6 +574,7 @@ def main():
         out_dir=out_dir,
         build_dir=build_dir,
         linkage=linkage,
+        list_file=Path(args.list_file).resolve() if args.list_file else None,
     )
     if n:
         print(f"Restored {n} ExternalProject(s) from cache.")

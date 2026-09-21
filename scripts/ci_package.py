@@ -85,25 +85,25 @@ DEP_LIBRARY_NAMES = {
     "dawn": ["webgpu_dawn"],
     "enet": ["enet"],
     "FastNoiseLite": ["FastNoiseLite"],
-    "flecs": ["flecs_static"],
+    "flecs": ["flecs_static", "flecs"],
     "freetype": ["freetype"],
     "ghostty": ["ghostty-internal", "ghostty-internal-static"],
-    "glfw": ["glfw3"],
+    "glfw": ["glfw3", "glfw3dll", "glfw"],
     "glslang": ["glslang", "SPIRV", "OSDependent", "MachineIndependent", "GenericCodeGen", "glslang-default-resource-limits"],
     "ggml": ["ggml", "ggml-base", "ggml-cpu", "ggml-blas"],
-    "harfbuzz": ["harfbuzz", "harfbuzz-subset"],
+    "harfbuzz": ["harfbuzz", "harfbuzz-subset", "harfbuzz-gpu", "harfbuzz-raster", "harfbuzz-vector"],
     "libunibreak": ["libunibreak"],  # liblibunibreak.a / libunibreak.lib
     "libuv": ["uv", "uv_a"],
     "libyaml": ["yaml"],
     "libwebsockets": ["websockets", "websockets_static"],
     "jolt": ["Jolt"],
-    "libdatachannel": ["datachannel"],
-    "libjpeg-turbo": ["jpeg"],
-    "libpng": ["png16", "png"],
+    "libdatachannel": ["datachannel", "usrsctp", "juice", "srtp2"],
+    "libjpeg-turbo": ["jpeg", "jpeg62", "turbojpeg"],
+    "libpng": ["png16", "png", "png18"],
     "lua": ["lua"],
     "luv": ["luv", "luv_a"],
     "lz4": ["lz4"],
-    "md4c": ["md4c"],
+    "md4c": ["md4c", "md4c-html"],
     "meshoptimizer": ["meshoptimizer"],
     "microui": ["microui"],
     "mimalloc": ["mimalloc"],
@@ -113,9 +113,9 @@ DEP_LIBRARY_NAMES = {
     "minigamepad": ["minigamepad"],
     "mtcc": ["tcc", "tcc1"],  # libtcc.a + libtcc1.a runtime support
     "nanovg": ["nanovg"],
-    "openal-soft": ["OpenAL"],
+    "openal-soft": ["OpenAL", "openal", "openal32"],
     "oniguruma": ["onig"],
-    "pcre2": ["pcre2-8", "pcre2-8-static"],
+    "pcre2": ["pcre2-8", "pcre2-8-static", "pcre2-posix"],
     "physfs": ["physfs", "physfs-static"],
     "raudio": ["raudio"],
     "raylib": ["raylib"],
@@ -315,7 +315,7 @@ def compute_build_hash(dep_name: str, platform: str, dep_commit: str) -> str:
     logic changes in a zip-contents-affecting way.
     Mirrored in scripts/cache_restore.py.
     """
-    PACKAGING_VERSION = 3  # bump: EXTRA_PACKAGE_FILES added, affects packaged zip contents
+    PACKAGING_VERSION = 6  # bump: static-suffix lib names, dawn cmake configs, header prefix match
     def _file_hash(f: Path) -> str:
         h = hashlib.sha256()
         # Normalize line endings so the same file hashes identically on
@@ -341,6 +341,7 @@ def compute_build_hash(dep_name: str, platform: str, dep_commit: str) -> str:
     # KNOWN_HEADERS for this dep — a change in header detection means
     # different zip contents.
     h.update(repr(sorted(KNOWN_HEADERS.get(dep_name, []))).encode())
+    h.update(repr(sorted(DEP_LIBRARY_NAMES.get(dep_name, []))).encode())
     h.update(repr(EXTRA_PACKAGE_FILES.get(dep_name)).encode())
 
     # Dep-specific patches.
@@ -479,6 +480,20 @@ def find_lib_files(dep_name: str, platform_dir: Path) -> list[Path]:
             candidates = [stem]
             if stem.startswith("lib"):
                 candidates.append(stem[3:])
+            # Versioned shared libs: libglfw.so.3.4 -> libglfw,
+            # libxxhash.so.0.8.4 -> libxxhash.  The SONAME file is required
+            # at runtime, so it must match the dep's library names too.
+            if ".so" in f.name:
+                base = f.name.split(".so", 1)[0]
+                if base != f.name:
+                    candidates.append(base)
+                    if base.startswith("lib"):
+                        candidates.append(base[3:])
+            # Windows static lib naming: libpng18_static.lib, jpeg-static.lib
+            for sep in ("_static", "-static"):
+                for cand in list(candidates):
+                    if cand.endswith(sep):
+                        candidates.append(cand[: -len(sep)])
             # Strip version suffix from shared lib stems:
             #   libreproc.so.14 -> stem libreproc.so -> base libreproc
             #   libcurl.4.dylib  -> stem libcurl.4  -> base libcurl
@@ -568,6 +583,7 @@ KNOWN_HEADERS = {
     "libyaml": ["yaml"],
     "libwebsockets": ["libwebsockets", "lws_config", "lws_map"],
     "libjpeg-turbo": ["jpeglib", "jconfig", "jerror", "jmorecfg"],
+    "libpng": ["png", "png16", "png18", "libpng16", "libpng18"],
     "lua": ["lua", "lauxlib", "luaconf", "lualib"],
     "luv": ["luv"],
     "mtcc": ["libtcc", "tcc"],
@@ -575,6 +591,7 @@ KNOWN_HEADERS = {
     "pcre2": ["pcre2"],
     "sdl3": ["SDL3"],
     "sdl3webgpu": ["sdl3webgpu"],
+    "spirv-cross": ["spirv_cross", "spirv-cross"],
     "skribidi": ["skb"],
     "sqlite-amalgamation": ["sqlite3"],
     "tomlc99": ["toml"],
@@ -639,13 +656,15 @@ def find_header_files(dep_name: str, platform_dir: Path) -> list[Path]:
                     files.append(f)
                     seen_paths.add(f)
 
-    # Also check for headers directly in include/ matching the search terms
+    # Also check for headers directly in include/ matching the search terms.
+    # Prefix match, not substring: with substring matching, openal-soft's
+    # term "al" also captured ggml-metal.h, mimalloc.h, lualib.h, ...
     for f in include_dir.iterdir():
         if not f.is_file():
             continue
         stem = f.stem.lower()
         for term in search_terms:
-            if term.lower() in stem:
+            if stem.startswith(term.lower()):
                 if f not in seen_paths:
                     files.append(f)
                     seen_paths.add(f)
@@ -666,16 +685,21 @@ def find_header_files(dep_name: str, platform_dir: Path) -> list[Path]:
     return files
 
 
-def find_config_files(dep_name: str, platform_dir: Path) -> list[Path]:
+def find_config_files(dep_name: str, platform_dir: Path, shared: bool = False) -> list[Path]:
     """Find cmake and pkgconfig files for a dependency.
 
     These are needed by dependents that use find_package / pkg-config.
     We look for cmake subdirectories whose name matches the dep or a known
     alias, and for .pc files mentioning the dep.
+
+    With shared=True, look under lib/cmake-shared/ instead of lib/cmake/:
+    that's where build_all.sh preserves the shared-pass cmake configs, which
+    reference the DLL/import library rather than the static archive.
     """
     # Known cmake package name aliases (what find_package looks for).
     _CMAKE_ALIASES = {
         "boringssl": ["OpenSSL"],
+        "dawn": ["Dawn"],
         "glfw": ["glfw3"],
         "sdl3": ["SDL3"],
     }
@@ -683,13 +707,16 @@ def find_config_files(dep_name: str, platform_dir: Path) -> list[Path]:
 
     files: list[Path] = []
 
-    # cmake configs: lib/cmake/<name>/*
-    cmake_dir = platform_dir / "lib" / "cmake"
+    # cmake configs: lib/cmake/<name>/*  (or lib/cmake-shared/<name>/*)
+    cmake_dir = platform_dir / "lib" / ("cmake-shared" if shared else "cmake")
     if cmake_dir.is_dir():
         for name in cmake_names:
             pkg_dir = cmake_dir / name
             if pkg_dir.is_dir():
                 files.extend(sorted(pkg_dir.rglob("*")))
+
+    if shared:
+        return files
 
     # pkgconfig: lib/pkgconfig/*.pc
     pc_dir = platform_dir / "lib" / "pkgconfig"
@@ -754,10 +781,27 @@ def collect_files_for_platform(dep_name: str, platform: str, platform_dir: Path)
             result.append((f, f"static/{platform}/include/{rel}", "header"))
 
     # cmake configs and pkgconfig files — needed by dependent deps.
-    for f in find_config_files(dep_name, platform_dir):
+    # The dynamic tree must carry the shared-pass cmake configs: those
+    # reference the DLL/import library, while the static-pass configs
+    # reference the static archive (absent from a dynamic-only restore).
+    static_configs = find_config_files(dep_name, platform_dir)
+    for f in static_configs:
         rel = f.relative_to(platform_dir / "lib")
         if has_static:
             result.append((f, f"static/{platform}/lib/{rel}", "config"))
+        # pkgconfig files are linkage-agnostic enough to ship in both trees.
+        if has_shared and f.suffix == ".pc":
+            result.append((f, f"dynamic/{platform}/lib/{rel}", "config"))
+    shared_configs = find_config_files(dep_name, platform_dir, shared=True)
+    if not shared_configs:
+        # Dep built static-only here, or no shared configs were preserved.
+        shared_configs = static_configs
+    for f in shared_configs:
+        cs_root = platform_dir / "lib" / "cmake-shared"
+        root = cs_root if f.is_relative_to(cs_root) else platform_dir / "lib"
+        rel = f.relative_to(root)
+        if f.is_relative_to(cs_root):
+            rel = Path("cmake") / rel
         if has_shared:
             result.append((f, f"dynamic/{platform}/lib/{rel}", "config"))
 
