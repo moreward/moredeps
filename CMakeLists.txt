@@ -63,6 +63,11 @@ endif()
 set(MOREDEPS_PLATFORM "${MOREDEPS_PLATFORM}" CACHE STRING "moredeps target platform" FORCE)
 message(STATUS "moredeps platform: ${MOREDEPS_PLATFORM}")
 
+# ExternalProjects whose artifacts were restored from a previous release by
+# scripts/cache_restore.py (passed in by scripts/build_all.sh).  Their
+# targets are not created; see moredeps_add_dep.
+set(MOREDEPS_RESTORED_EPS "" CACHE STRING "ExternalProjects restored from the release artifact cache")
+
 # Platform classification helpers.
 set(MOREDEPS_IS_IOS OFF)
 set(MOREDEPS_IS_ANDROID OFF)
@@ -137,17 +142,39 @@ function(moredeps_add_dep name)
   set(multiValueArgs CMAKE_ARGS SHARED_CMAKE_ARGS DEPENDS BUILD_BYPRODUCTS INSTALL_COMMAND PATCH_COMMAND)
   cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-  # Inner-build generator override. On Windows the outer super-project may use
-  # NMake/JOM (so cache_restore's stamp files are honored, see
-  # scripts/build_all.sh), while the dependency builds themselves stay on
-  # Ninja. MOREDEPS_EP_GENERATOR is empty on other platforms.
-  set(_generator_args)
-  if(MOREDEPS_EP_GENERATOR)
-    set(_generator_args CMAKE_GENERATOR "${MOREDEPS_EP_GENERATOR}")
-  endif()
-
   if(NOT ARG_SOURCE_DIR)
     set(ARG_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/deps/${name}")
+  endif()
+
+  # Artifact-cache restore (see scripts/build_all.sh + scripts/cache_restore.py).
+  # Restored deps are omitted from the build graph entirely: Ninja/NMake
+  # re-run ExternalProject steps whose stamps have no build-log entry, so
+  # stamp-only suppression only works with Unix Makefiles.  In the static
+  # pass the restored names are plain EP names; in the shared pass they are
+  # the <name>_shared targets.
+  if(MOREDEPS_BUILD_SHARED)
+    set(_restored_name "${name}_shared")
+  else()
+    set(_restored_name "${name}")
+  endif()
+  if("${_restored_name}" IN_LIST MOREDEPS_RESTORED_EPS)
+    return()
+  endif()
+  # Drop edges to restored deps: their artifacts are already in the prefix,
+  # and their targets do not exist.
+  if(ARG_DEPENDS)
+    set(_deps)
+    foreach(_d IN LISTS ARG_DEPENDS)
+      if(MOREDEPS_BUILD_SHARED)
+        set(_d_restored "${_d}_shared")
+      else()
+        set(_d_restored "${_d}")
+      endif()
+      if(NOT "${_d_restored}" IN_LIST MOREDEPS_RESTORED_EPS)
+        list(APPEND _deps "${_d}")
+      endif()
+    endforeach()
+    set(ARG_DEPENDS ${_deps})
   endif()
 
   if(ARG_INSTALL_COMMAND)
@@ -164,7 +191,6 @@ function(moredeps_add_dep name)
       SOURCE_DIR "${ARG_SOURCE_DIR}"
       BINARY_DIR "${CMAKE_BINARY_DIR}/${name}"
       INSTALL_DIR "${CMAKE_INSTALL_PREFIX}"
-      ${_generator_args}
       CMAKE_ARGS
         ${MOREDEPS_COMMON_CMAKE_ARGS}
         ${ARG_CMAKE_ARGS}
@@ -189,7 +215,6 @@ function(moredeps_add_dep name)
       SOURCE_DIR "${ARG_SOURCE_DIR}"
       BINARY_DIR "${CMAKE_BINARY_DIR}/${name}_shared"
       INSTALL_DIR "${CMAKE_INSTALL_PREFIX}"
-      ${_generator_args}
       CMAKE_ARGS
         ${MOREDEPS_COMMON_CMAKE_ARGS}
         ${ARG_CMAKE_ARGS}
@@ -573,6 +598,14 @@ if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID AND (NOT MOREDEPS_IS_MOBILE OR MOR
       list(APPEND _ghostty_test_libs -lpthread -ldl -lm)
     endif()
 
+    # The artifact may come from a fresh build or from the release cache
+    # (in which case the 'ghostty' ExternalProject target does not exist).
+    if("ghostty" IN_LIST MOREDEPS_RESTORED_EPS)
+      set(_ghostty_test_dep "${CMAKE_INSTALL_PREFIX}/lib/libghostty-internal.a")
+    else()
+      set(_ghostty_test_dep ghostty)
+    endif()
+
     add_custom_command(
       OUTPUT ${_ghostty_test_bin}
       COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_INSTALL_PREFIX}/tests
@@ -582,7 +615,7 @@ if(NOT EMSCRIPTEN AND NOT MOREDEPS_IS_ANDROID AND (NOT MOREDEPS_IS_MOBILE OR MOR
         ${_ghostty_test_src}
         ${CMAKE_INSTALL_PREFIX}/lib/libghostty-internal.a
         ${_ghostty_test_libs}
-      DEPENDS ghostty
+      DEPENDS ${_ghostty_test_dep}
       COMMENT "Building Ghostty embedding API smoke test"
     )
     add_custom_target(ghostty_smoke_test ALL DEPENDS ${_ghostty_test_bin})

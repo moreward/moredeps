@@ -88,7 +88,7 @@ DEP_LIBRARY_NAMES = {
     "flecs": ["flecs_static"],
     "freetype": ["freetype"],
     "ghostty": ["ghostty-internal", "ghostty-internal-static"],
-    "glfw": ["glfw3"],
+    "glfw": ["glfw3", "glfw3dll"],
     "glslang": ["glslang", "SPIRV", "OSDependent", "MachineIndependent", "GenericCodeGen", "glslang-default-resource-limits"],
     "ggml": ["ggml", "ggml-base", "ggml-cpu", "ggml-blas"],
     "harfbuzz": ["harfbuzz", "harfbuzz-subset"],
@@ -315,7 +315,7 @@ def compute_build_hash(dep_name: str, platform: str, dep_commit: str) -> str:
     logic changes in a zip-contents-affecting way.
     Mirrored in scripts/cache_restore.py.
     """
-    PACKAGING_VERSION = 3  # bump: EXTRA_PACKAGE_FILES added, affects packaged zip contents
+    PACKAGING_VERSION = 4  # bump: per-linkage cmake configs + glfw3dll import lib
     def _file_hash(f: Path) -> str:
         h = hashlib.sha256()
         # Normalize line endings so the same file hashes identically on
@@ -666,12 +666,16 @@ def find_header_files(dep_name: str, platform_dir: Path) -> list[Path]:
     return files
 
 
-def find_config_files(dep_name: str, platform_dir: Path) -> list[Path]:
+def find_config_files(dep_name: str, platform_dir: Path, shared: bool = False) -> list[Path]:
     """Find cmake and pkgconfig files for a dependency.
 
     These are needed by dependents that use find_package / pkg-config.
     We look for cmake subdirectories whose name matches the dep or a known
     alias, and for .pc files mentioning the dep.
+
+    With shared=True, look under lib/cmake-shared/ instead of lib/cmake/:
+    that's where build_all.sh preserves the shared-pass cmake configs, which
+    reference the DLL/import library rather than the static archive.
     """
     # Known cmake package name aliases (what find_package looks for).
     _CMAKE_ALIASES = {
@@ -683,13 +687,16 @@ def find_config_files(dep_name: str, platform_dir: Path) -> list[Path]:
 
     files: list[Path] = []
 
-    # cmake configs: lib/cmake/<name>/*
-    cmake_dir = platform_dir / "lib" / "cmake"
+    # cmake configs: lib/cmake/<name>/*  (or lib/cmake-shared/<name>/*)
+    cmake_dir = platform_dir / "lib" / ("cmake-shared" if shared else "cmake")
     if cmake_dir.is_dir():
         for name in cmake_names:
             pkg_dir = cmake_dir / name
             if pkg_dir.is_dir():
                 files.extend(sorted(pkg_dir.rglob("*")))
+
+    if shared:
+        return files
 
     # pkgconfig: lib/pkgconfig/*.pc
     pc_dir = platform_dir / "lib" / "pkgconfig"
@@ -754,10 +761,27 @@ def collect_files_for_platform(dep_name: str, platform: str, platform_dir: Path)
             result.append((f, f"static/{platform}/include/{rel}", "header"))
 
     # cmake configs and pkgconfig files — needed by dependent deps.
-    for f in find_config_files(dep_name, platform_dir):
+    # The dynamic tree must carry the shared-pass cmake configs: those
+    # reference the DLL/import library, while the static-pass configs
+    # reference the static archive (absent from a dynamic-only restore).
+    static_configs = find_config_files(dep_name, platform_dir)
+    for f in static_configs:
         rel = f.relative_to(platform_dir / "lib")
         if has_static:
             result.append((f, f"static/{platform}/lib/{rel}", "config"))
+        # pkgconfig files are linkage-agnostic enough to ship in both trees.
+        if has_shared and f.suffix == ".pc":
+            result.append((f, f"dynamic/{platform}/lib/{rel}", "config"))
+    shared_configs = find_config_files(dep_name, platform_dir, shared=True)
+    if not shared_configs:
+        # Dep built static-only here, or no shared configs were preserved.
+        shared_configs = static_configs
+    for f in shared_configs:
+        cs_root = platform_dir / "lib" / "cmake-shared"
+        root = cs_root if f.is_relative_to(cs_root) else platform_dir / "lib"
+        rel = f.relative_to(root)
+        if f.is_relative_to(cs_root):
+            rel = Path("cmake") / rel
         if has_shared:
             result.append((f, f"dynamic/{platform}/lib/{rel}", "config"))
 

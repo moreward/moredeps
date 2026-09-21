@@ -158,18 +158,8 @@ mkdir -p "${BUILD_DIR}"
 
 # Pick a generator that works on the host/target combination.
 GENERATOR="Unix Makefiles"
-EP_GENERATOR_ARG=()
 if [[ "${PLATFORM}" == windows_* ]]; then
-  # Outer super-project: prefer NMake/JOM. cache_restore.py skips unchanged
-  # deps by writing ExternalProject stamp files; Make-style generators honor
-  # stamp mtimes, Ninja does not (it re-runs any edge missing from
-  # .ninja_log), which forced every dep to re-configure/re-link on Windows
-  # despite artifact cache hits.
-  # Inner dependency builds keep Ninja via MOREDEPS_EP_GENERATOR.
-  if command -v jom &> /dev/null && command -v ninja &> /dev/null; then
-    GENERATOR="NMake Makefiles JOM"
-    EP_GENERATOR_ARG=(-DMOREDEPS_EP_GENERATOR=Ninja)
-  elif command -v ninja &> /dev/null; then
+  if command -v ninja &> /dev/null; then
     GENERATOR="Ninja"
   elif command -v jom &> /dev/null; then
     GENERATOR="NMake Makefiles JOM"
@@ -183,17 +173,46 @@ if [[ ! -f "${BUILD_DIR}/CMakeCache.txt" ]]; then
   cmake -S "${REPO_ROOT}" \
         -B "${BUILD_DIR}" \
         -G "${GENERATOR}" \
-        ${EP_GENERATOR_ARG:+"${EP_GENERATOR_ARG[@]}"} \
         -DCMAKE_TOOLCHAIN_FILE="${TOOLCHAIN}" \
         -DCMAKE_BUILD_TYPE=Release
 fi
 
 # Restore unchanged deps from the previous GitHub Release so we don't rebuild them.
-_restore_cache() {
-  local _py=""
-  if command -v python3 &> /dev/null; then _py=python3
-  elif command -v python &> /dev/null; then _py=python
+_py_cmd() {
+  if command -v python3 &> /dev/null; then echo python3
+  elif command -v python &> /dev/null; then echo python
   fi
+}
+
+# Step 1 (dry-run): compute which ExternalProjects would be restored and
+# re-configure with those targets omitted from the build graph.  Restored
+# targets must not exist at all: Ninja/NMake re-run ExternalProject steps
+# whose stamp files have no entry in the build log, so stamp-only
+# suppression silently rebuilds everything on Windows.
+_omit_restored_targets() {  # $1=out_dir $2=build_dir $3=extra flags ("--shared")
+  local _py; _py="$(_py_cmd)"
+  if [[ -z "${_py}" ]]; then
+    return
+  fi
+  local _list="$2/moredeps_restored_eps.txt"
+  "${_py}" "${SCRIPT_DIR}/cache_restore.py" \
+    --platform "${PLATFORM}" \
+    --out-dir "$1" \
+    --build-dir "$2" \
+    --repo-commit "${REPO_COMMIT}" \
+    --list-file "${_list}" \
+    $3
+  local _eps=""
+  if [[ -f "${_list}" ]]; then
+    _eps="$(tr '\n' ';' < "${_list}")"
+  fi
+  # Always pass the variable so stale values don't survive build-dir reuse.
+  cmake -S "${REPO_ROOT}" -B "$2" -DMOREDEPS_RESTORED_EPS="${_eps}" 2>&1 | tail -2
+}
+
+# Step 2: download + extract the restored deps' artifacts into the prefix.
+_restore_cache() {
+  local _py; _py="$(_py_cmd)"
   if [[ -n "${_py}" ]]; then
     echo "--- cache_restore: attempting to restore from cache ---"
     "${_py}" --version 2>&1 || true
@@ -212,6 +231,7 @@ _restore_cache() {
     echo "--- cache_restore: python not found, skipping ---"
   fi
 }
+_omit_restored_targets "${OUT_DIR}" "${BUILD_DIR}" ""
 _restore_cache "${OUT_DIR}" "${BUILD_DIR}" ""
 
 # Build all targets. Respect MOREDEPS_TOP_LEVEL_PARALLEL to limit top-level parallelism.
@@ -264,7 +284,6 @@ if [[ "${BUILD_SHARED}" == "1" && "${PLATFORM}" != "wasm_emscripten" ]]; then
   cmake -S "${REPO_ROOT}" \
         -B "${SHARED_BUILD_DIR}" \
         -G "${GENERATOR}" \
-        ${EP_GENERATOR_ARG:+"${EP_GENERATOR_ARG[@]}"} \
         -DCMAKE_TOOLCHAIN_FILE="${TOOLCHAIN}" \
         -DCMAKE_BUILD_TYPE=Release \
         -DMOREDEPS_BUILD_SHARED=ON \
@@ -272,6 +291,7 @@ if [[ "${BUILD_SHARED}" == "1" && "${PLATFORM}" != "wasm_emscripten" ]]; then
 
   # Restore unchanged shared deps from cache.
   # Shared libs install to SHARED_TMP, then get merged into OUT_DIR later.
+  _omit_restored_targets "${SHARED_TMP}" "${SHARED_BUILD_DIR}" "--shared"
   _restore_cache "${SHARED_TMP}" "${SHARED_BUILD_DIR}" "--shared"
 
   cmake --build "${SHARED_BUILD_DIR}" ${BUILD_PARALLEL}
@@ -302,6 +322,13 @@ if [[ "${BUILD_SHARED}" == "1" && "${PLATFORM}" != "wasm_emscripten" ]]; then
       cp -a "$f" "${OUT_DIR}/lib/import/"
       echo "  lib/import/$(basename $f) (import)"
     done
+  fi
+  # Preserve the shared-pass cmake package configs for ci_package.py: they
+  # reference DLLs/import libs, while the static-pass configs in OUT_DIR
+  # reference static archives.  The dynamic zip payload must ship these.
+  if [[ -d "${SHARED_TMP}/lib/cmake" ]]; then
+    mkdir -p "${OUT_DIR}/lib/cmake-shared"
+    cp -a "${SHARED_TMP}/lib/cmake/." "${OUT_DIR}/lib/cmake-shared/"
   fi
   rm -rf "${SHARED_TMP}"
   echo "Shared libraries merged."

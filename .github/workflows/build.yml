@@ -481,7 +481,7 @@ jobs:
 
       - name: Install build tools
         run: |
-          choco install ninja jom sccache
+          choco install ninja sccache
 
       - name: Install Zig (Ghostty dependency)
         run: |
@@ -549,7 +549,7 @@ jobs:
 
       - name: Install build tools
         run: |
-          choco install ninja jom sccache
+          choco install ninja sccache
 
       - name: Install Zig (Ghostty dependency)
         run: |
