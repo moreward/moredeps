@@ -85,25 +85,25 @@ DEP_LIBRARY_NAMES = {
     "dawn": ["webgpu_dawn"],
     "enet": ["enet"],
     "FastNoiseLite": ["FastNoiseLite"],
-    "flecs": ["flecs_static"],
+    "flecs": ["flecs_static", "flecs"],
     "freetype": ["freetype"],
     "ghostty": ["ghostty-internal", "ghostty-internal-static"],
-    "glfw": ["glfw3", "glfw3dll"],
+    "glfw": ["glfw3", "glfw3dll", "glfw"],
     "glslang": ["glslang", "SPIRV", "OSDependent", "MachineIndependent", "GenericCodeGen", "glslang-default-resource-limits"],
     "ggml": ["ggml", "ggml-base", "ggml-cpu", "ggml-blas"],
-    "harfbuzz": ["harfbuzz", "harfbuzz-subset"],
+    "harfbuzz": ["harfbuzz", "harfbuzz-subset", "harfbuzz-gpu", "harfbuzz-raster", "harfbuzz-vector"],
     "libunibreak": ["libunibreak"],  # liblibunibreak.a / libunibreak.lib
     "libuv": ["uv", "uv_a"],
     "libyaml": ["yaml"],
     "libwebsockets": ["websockets", "websockets_static"],
     "jolt": ["Jolt"],
-    "libdatachannel": ["datachannel"],
+    "libdatachannel": ["datachannel", "usrsctp", "juice", "srtp2"],
     "libjpeg-turbo": ["jpeg"],
-    "libpng": ["png16", "png"],
+    "libpng": ["png16", "png", "png18"],
     "lua": ["lua"],
     "luv": ["luv", "luv_a"],
     "lz4": ["lz4"],
-    "md4c": ["md4c"],
+    "md4c": ["md4c", "md4c-html"],
     "meshoptimizer": ["meshoptimizer"],
     "microui": ["microui"],
     "mimalloc": ["mimalloc"],
@@ -113,9 +113,9 @@ DEP_LIBRARY_NAMES = {
     "minigamepad": ["minigamepad"],
     "mtcc": ["tcc", "tcc1"],  # libtcc.a + libtcc1.a runtime support
     "nanovg": ["nanovg"],
-    "openal-soft": ["OpenAL"],
+    "openal-soft": ["OpenAL", "openal"],
     "oniguruma": ["onig"],
-    "pcre2": ["pcre2-8", "pcre2-8-static"],
+    "pcre2": ["pcre2-8", "pcre2-8-static", "pcre2-posix"],
     "physfs": ["physfs", "physfs-static"],
     "raudio": ["raudio"],
     "raylib": ["raylib"],
@@ -315,7 +315,7 @@ def compute_build_hash(dep_name: str, platform: str, dep_commit: str) -> str:
     logic changes in a zip-contents-affecting way.
     Mirrored in scripts/cache_restore.py.
     """
-    PACKAGING_VERSION = 4  # bump: per-linkage cmake configs + glfw3dll import lib
+    PACKAGING_VERSION = 5  # bump: SONAME/import-lib matching, libpng/libdatachannel contents
     def _file_hash(f: Path) -> str:
         h = hashlib.sha256()
         # Normalize line endings so the same file hashes identically on
@@ -341,6 +341,7 @@ def compute_build_hash(dep_name: str, platform: str, dep_commit: str) -> str:
     # KNOWN_HEADERS for this dep — a change in header detection means
     # different zip contents.
     h.update(repr(sorted(KNOWN_HEADERS.get(dep_name, []))).encode())
+    h.update(repr(sorted(DEP_LIBRARY_NAMES.get(dep_name, []))).encode())
     h.update(repr(EXTRA_PACKAGE_FILES.get(dep_name)).encode())
 
     # Dep-specific patches.
@@ -479,6 +480,15 @@ def find_lib_files(dep_name: str, platform_dir: Path) -> list[Path]:
             candidates = [stem]
             if stem.startswith("lib"):
                 candidates.append(stem[3:])
+            # Versioned shared libs: libglfw.so.3.4 -> libglfw,
+            # libxxhash.so.0.8.4 -> libxxhash.  The SONAME file is required
+            # at runtime, so it must match the dep's library names too.
+            if ".so" in f.name:
+                base = f.name.split(".so", 1)[0]
+                if base != f.name:
+                    candidates.append(base)
+                    if base.startswith("lib"):
+                        candidates.append(base[3:])
             # Strip version suffix from shared lib stems:
             #   libreproc.so.14 -> stem libreproc.so -> base libreproc
             #   libcurl.4.dylib  -> stem libcurl.4  -> base libcurl
@@ -568,6 +578,7 @@ KNOWN_HEADERS = {
     "libyaml": ["yaml"],
     "libwebsockets": ["libwebsockets", "lws_config", "lws_map"],
     "libjpeg-turbo": ["jpeglib", "jconfig", "jerror", "jmorecfg"],
+    "libpng": ["png", "png16", "png18", "libpng16", "libpng18"],
     "lua": ["lua", "lauxlib", "luaconf", "lualib"],
     "luv": ["luv"],
     "mtcc": ["libtcc", "tcc"],

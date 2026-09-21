@@ -355,7 +355,7 @@ def compute_build_hash(repo_root: Path, dep_name: str, platform: str,
     File hashes are computed from LF-normalized text so that Linux and
     Windows runners produce identical hashes for the same file content.
     """
-    PACKAGING_VERSION = 4  # bump: per-linkage cmake configs + glfw3dll import lib
+    PACKAGING_VERSION = 5  # bump: SONAME/import-lib matching, libpng/libdatachannel contents
 
     def _file_hash(f: Path) -> str:
         h = hashlib.sha256()
@@ -379,8 +379,9 @@ def compute_build_hash(repo_root: Path, dep_name: str, platform: str,
             h.update(_file_hash(f).encode())
 
     # KNOWN_HEADERS affects zip contents — a change means different artifacts.
-    from ci_package import KNOWN_HEADERS, EXTRA_PACKAGE_FILES
+    from ci_package import KNOWN_HEADERS, EXTRA_PACKAGE_FILES, DEP_LIBRARY_NAMES
     h.update(repr(sorted(KNOWN_HEADERS.get(dep_name, []))).encode())
+    h.update(repr(sorted(DEP_LIBRARY_NAMES.get(dep_name, []))).encode())
     h.update(repr(EXTRA_PACKAGE_FILES.get(dep_name)).encode())
 
     # Dep-specific patches.
