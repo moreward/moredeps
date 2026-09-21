@@ -204,7 +204,7 @@ _omit_restored_targets() {  # $1=out_dir $2=build_dir $3=extra flags ("--shared"
     $3
   local _eps=""
   if [[ -f "${_list}" ]]; then
-    _eps="$(tr '\n' ';' < "${_list}")"
+    _eps="$(tr -d '\r' < "${_list}" | tr '\n' ';')"
   fi
   # Always pass the variable so stale values don't survive build-dir reuse.
   cmake -S "${REPO_ROOT}" -B "$2" -DMOREDEPS_RESTORED_EPS="${_eps}" 2>&1 | tail -2

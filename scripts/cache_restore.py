@@ -434,7 +434,10 @@ def restore_cache(
         # entirely (Ninja/NMake re-run ExternalProject steps whose stamps
         # have no entry in the build log, so stamp-only suppression does
         # not work on Windows).
-        list_file.write_text("")
+        # NB: newline="\n" — the file is read back by bash on Windows, and
+        # CRLF line endings would corrupt every entry.
+        with list_file.open("w", newline="\n"):
+            pass
 
     manifest = get_latest_release_manifest(repo)
     if manifest is None:
@@ -496,7 +499,7 @@ def restore_cache(
             continue
 
         if dry_run:
-            with list_file.open("a") as fh:
+            with list_file.open("a", newline="\n") as fh:
                 for ep in ep_list:
                     fh.write(ep + "\n")
             restored += len(ep_list)
