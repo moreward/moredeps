@@ -525,6 +525,9 @@ moredeps_add_dep(freetype
     "-DFT_DISABLE_BZIP2=ON"
     "-DFT_DISABLE_PNG=ON"
     "-DFT_DISABLE_HARFBUZZ=OFF"
+    # HVF is experimental and introduces an Apple libhvf dependency, which
+    # static consumers would otherwise have to resolve explicitly.
+    "-DFT_DISABLE_HVF=ON"
     "-DFT_DISABLE_BROTLI=ON"
     "-DFT_ENABLE_ERROR_STRINGS=ON"
 )

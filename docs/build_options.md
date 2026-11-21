@@ -167,6 +167,7 @@ Upstream `CMakeLists.txt` includes `GNUInstallDirs` after `add_subdirectory(src)
 | `FT_DISABLE_BZIP2` | `OFF` | `ON` | Disable bzip2 to reduce deps. |
 | `FT_DISABLE_PNG` | `OFF` | `ON` | Disable PNG bitmap support unless needed. |
 | `FT_DISABLE_HARFBUZZ` | `OFF` | `OFF` | **Enable** HarfBuzz interdependency for improved auto-hinting. |
+| `FT_DISABLE_HVF` | `OFF` | `ON` | Disable the experimental HVF driver and its Apple `libhvf` dependency for relocatable static packages. |
 | `FT_DISABLE_BROTLI` | `OFF` | `ON` | Disable WOFF2 support to reduce deps. |
 | `FT_ENABLE_ERROR_STRINGS` | `OFF` | `ON` | Useful error descriptions. |
 
