@@ -181,18 +181,6 @@ Upstream `CMakeLists.txt` includes `GNUInstallDirs` after `add_subdirectory(src)
 
 **Excluded on `wasm_emscripten`** (web apps use SDL3 / emscripten HTML5 APIs).
 
-### `ghostty`
-
-Built via Zig. The wrapper runs in `src/ghostty/`:
-
-| Wrapper setting | Value | Notes |
-|---|---|---|
-| Build command | `zig build -Dapp-runtime=none -Demit-lib-vt=false -Demit-xcframework=true` (Apple) / `-Demit-xcframework=false` (other) | Emits the full Ghostty embedding API (`ghostty.h`). |
-| Source handling | copied to build tree | Avoids writing `zig-out` and `.zig-cache` into the submodule. The top-level `macos/` UI assets are only copied when building for Apple platforms. |
-| Installed artifacts | `lib/libghostty-internal.a`, `include/ghostty.h`, `include/ghostty/vt*.h` | The static library is a fat archive that bundles the vendored dependencies (freetype, harfbuzz, glslang, etc.) on macOS/Linux. The `ghostty/vt` headers are installed for convenience even though the build targets the full embedding API. |
-
-**Platform support:** macOS arm64 (universal x86_64+arm64), Linux x64/arm64, Windows x64/arm64, iOS arm64, iOS simulator arm64. **Excluded on `wasm_emscripten` and Android** because the full API depends on system/desktop libraries (font rendering, glslang, etc.) that do not build for those targets.
-
 ### `glslang`
 
 Khronos reference GLSL/SPIR-V compiler. Built as static libraries with tests and binaries disabled.
@@ -210,7 +198,7 @@ Khronos reference GLSL/SPIR-V compiler. Built as static libraries with tests and
 
 ### `oniguruma`
 
-Regular expression library used by Ghostty.
+Regular expression library.
 
 | Option | Upstream default | Proposed default | Notes |
 |---|---|---|---|
@@ -218,7 +206,7 @@ Regular expression library used by Ghostty.
 
 ### `spirv-cross`
 
-SPIR-V cross-compiler used by Ghostty for shader reflection/translation.
+SPIR-V cross-compiler for shader reflection/translation.
 
 | Option | Upstream default | Proposed default | Notes |
 |---|---|---|---|
@@ -798,7 +786,6 @@ These dependencies do not have native CMake builds (or the native build is unsui
 
 | Dep | Build system | Wrapper / notes |
 |---|---|---|
-| `ghostty` | Zig | `src/ghostty/CMakeLists.txt` runs `zig build -Dapp-runtime=none` and installs `lib/libghostty-internal.a` + `include/ghostty.h`. Builds on macOS, Linux, Windows, and iOS. |
 | `lua-5.5.0` | Makefile | `src/lua/CMakeLists.txt` drives the upstream `make` rules and installs `liblua.a` + headers. |
 | `mtcc` | Makefile / MSVC batch | `src/mtcc/` wrapper runs `./configure` + `make` on Unix, a custom batch with `cl`/`lib` on Windows x64. **Excluded on `wasm_emscripten` and `windows_arm64`.** |
 | `skribidi` | CMake | `src/skribidi/CMakeLists.txt` builds from `deps/skribidi` and links against the pinned `harfbuzz`, `SheenBidi`, `libunibreak`, and `budouxc` submodules. |

@@ -314,3 +314,9 @@ The last change added `dcimgui` (Dear Bindings-generated C API for Dear ImGui). 
 - Rebuilt `dcimgui` locally for `macos_arm64`, `ios_arm64`, and `android_arm64`.
 - Ran `tests/run_tests.py --deps dcimgui` for all three platforms; static link tests pass.
 - Cancelled the in-progress failing GitHub Actions run (30190766784) to avoid wasting runner time.
+
+## 2026-11-22 — Remove Ghostty
+
+- **Removed the `ghostty` dependency entirely** (submodule, `src/ghostty/` wrapper, CMake block, smoke tests, packaging mappings, CI steps, docs). Every CI failure in the 2026-11 dependency-update runs traced back to Ghostty's Zig toolchain: Zig 0.16 removed `--global-cache-dir`, the macOS/iOS runner images started shipping Zig 0.17.1 (which Ghostty's pinned build.zig rejects), and Zig's bundled Clang no longer matches current MSVC STL headers on Windows (STL1000). Revisit only if Ghostty/Zig reach a stable 1.0-era toolchain.
+- **Dropped all Zig from CI**: no more `zig` installs (Linux/macOS/Windows), no more Zig stdlib patching, and `windows_arm64` is back on the native `windows-11-arm` runner.
+- Kept `glslang`, `oniguruma`, and `spirv-cross` — they were added for Ghostty but are useful standalone libraries.

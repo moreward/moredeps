@@ -103,11 +103,11 @@ All platforms are built in CI on every run (see [`docs/ci_plan.md`](docs/ci_plan
 
 | Platform | Status | Libraries |
 |---|---|---|
-| **Windows x64** | ✅ Validated | 77 |
-| **Windows arm64** | ✅ Validated | 75 (native ARM64 MSVC; mtcc excluded) |
-| **Linux x64** | ✅ Validated | 76 |
-| **Linux arm64** | ✅ Validated | 76 |
-| **macOS arm64** | ✅ Validated | 74 |
+| **Windows x64** | ✅ Validated | 76 |
+| **Windows arm64** | ✅ Validated | 74 (native ARM64 MSVC; mtcc excluded) |
+| **Linux x64** | ✅ Validated | 75 |
+| **Linux arm64** | ✅ Validated | 75 |
+| **macOS arm64** | ✅ Validated | 73 |
 | **Emscripten (wasm32)** | ✅ Validated | 65 (excludes desktop-only deps) |
 
 ### Known exclusions
