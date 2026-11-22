@@ -114,22 +114,22 @@ else()
   set(GHOSTTY_ZIG_OPTIMIZE "-Doptimize=ReleaseFast")
 endif()
 
-set(GHOSTTY_ZIG_ARGS
-  build
-  -Dapp-runtime=none
-  -Demit-lib-vt=false
-  -Demit-macos-app=false
-  -Demit-docs=false
-  -Demit-webdata=false
-  -Demit-bench=false
-  -Demit-helpgen=false
-  -Demit-terminfo=false
-  -Demit-termcap=false
-  -Demit-themes=false
-  ${GHOSTTY_ZIG_OPTIMIZE}
+# Zig 0.16 removed the top-level --global-cache-dir build option. Probe the
+# installed zig binary so the same wrapper keeps working with both older and
+# newer Zig releases without changing CI images.
+execute_process(
+  COMMAND ${ZIG_EXECUTABLE} build --help
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  OUTPUT_VARIABLE _ghostty_zig_build_help
+  ERROR_QUIET
+)
+set(_ghostty_zig_cache_args
   --cache-dir ${GHOSTTY_ZIG_CACHE}
   --global-cache-dir ${GHOSTTY_ZIG_GLOBAL_CACHE}
 )
+if(NOT _ghostty_zig_build_help MATCHES --global-cache-dir)
+  set(_ghostty_zig_cache_args)
+endif()
 
 set(GHOSTTY_ZIG_ARGS
   build
@@ -144,8 +144,7 @@ set(GHOSTTY_ZIG_ARGS
   -Demit-termcap=false
   -Demit-themes=false
   ${GHOSTTY_ZIG_OPTIMIZE}
-  --cache-dir ${GHOSTTY_ZIG_CACHE}
-  --global-cache-dir ${GHOSTTY_ZIG_GLOBAL_CACHE}
+  ${_ghostty_zig_cache_args}
 )
 
 # For non-Apple platforms we must explicitly tell zig build which target we are
